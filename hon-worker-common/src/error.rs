@@ -17,4 +17,6 @@ pub enum WorkerError {
     TreasuryOutOfFunds,
     #[error("treasury limit reached, try again tomorrow")]
     TreasuryLimitReached,
+    #[error("user was already referred")]
+    AlreadyReferred,
 }
