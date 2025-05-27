@@ -157,6 +157,7 @@ pub struct ReferralReqWithSignature {
 pub struct ReferralReq {
     pub referrer: Principal,
     pub referee: Principal,
+    pub referee_canister: Principal,
 }
 
 pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Message {
