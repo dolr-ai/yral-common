@@ -9,7 +9,6 @@ pub use local::*;
 pub use remote::*;
 
 pub mod canister_ids;
-pub mod limits;
 
 pub const CENTS_IN_E6S: u64 = 1_000_000;
 pub const GOBGOB_TOTAL_COUNT: u32 = 18557;
