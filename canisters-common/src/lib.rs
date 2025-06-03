@@ -3,7 +3,7 @@ use std::sync::Arc;
 use agent_wrapper::AgentWrapper;
 use candid::{Decode, Principal};
 use canisters_client::{
-    individual_user_template::{IndividualUserTemplate, Result22, Result4, UserCanisterDetails},
+    individual_user_template::{Canister, IndividualUserTemplate, Result15, Result3, SnsInitPayload as CanisterSnsInitPayload, UserCanisterDetails},
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
     sns_governance::SnsGovernance,
@@ -80,7 +80,7 @@ impl Canisters<true> {
         self.individual_user(self.user_canister).await
     }
 
-    pub async fn deploy_cdao_sns(&self, init_payload: SnsInitPayload) -> Result<Result4> {
+    pub async fn deploy_cdao_sns(&self, init_payload: SnsInitPayload) -> Result<Result3> {
         let agent = self.agent.get_agent().await;
         let args = candid::encode_args((init_payload, CDAO_SWAP_TIME_SECS)).unwrap();
         let bytes = agent
@@ -88,7 +88,7 @@ impl Canisters<true> {
             .with_arg(args)
             .call_and_wait()
             .await?;
-        Ok(Decode!(&bytes, Result4)?)
+        Ok(Decode!(&bytes, Result3)?)
     }
 
     pub fn profile_details(&self) -> ProfileDetails {
@@ -196,8 +196,8 @@ impl Canisters<true> {
             .await
             .map_err(|e| e.to_string())
         {
-            Ok(Result22::Ok(_)) => (),
-            Err(e) | Ok(Result22::Err(e)) => log::warn!("Failed to update last access time: {e}"),
+            Ok(Result15::Ok(_)) => (),
+            Err(e) | Ok(Result15::Err(e)) => log::warn!("Failed to update last access time: {e}"),
         }
 
         res.profile_details = Some(user.get_profile_details().await?.into());

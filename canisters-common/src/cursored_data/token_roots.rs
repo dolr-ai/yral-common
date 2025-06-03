@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use candid::Principal;
-use canisters_client::individual_user_template::Result11;
+use canisters_client::individual_user_template::Result8;
 use futures_util::{
     future,
     stream::{self, FuturesOrdered, FuturesUnordered},
@@ -107,7 +107,7 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
 
         let mut tokens_fetched = 0;
         let mut tokens: Vec<TokenListResponse> = match tokens {
-            Result11::Ok(v) => {
+            Result8::Ok(v) => {
                 tokens_fetched = v.len();
                 v.into_iter()
                     .map(|t| async move {
@@ -144,7 +144,7 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
                     .collect::<Vec<TokenListResponse>>()
                     .await
             }
-            Result11::Err(_) => vec![],
+            Result8::Err(_) => vec![],
         };
 
         println!("{tokens_fetched}, {}, {}", end - start, tokens.len());
@@ -154,7 +154,6 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
             let mut rep = stream::iter(
                 [
                     RootType::SATS,
-                    RootType::COYNS,
                     RootType::CENTS,
                     RootType::from_str("btc").unwrap(),
                     RootType::from_str("usdc").unwrap(),
@@ -187,23 +186,6 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
                         } else {
                             None
                         }
-                    }
-                    RootType::COYNS | RootType::CENTS | RootType::SATS => {
-                        let metadata = self
-                            .canisters
-                            .token_metadata_by_root_type(
-                                &self.nsfw_detector,
-                                Some(self.user_principal),
-                                root_type.clone(),
-                            )
-                            .await
-                            .ok()??;
-
-                        Some(TokenListResponse {
-                            root: root_type,
-                            airdrop_claimed: true,
-                            token_metadata: metadata,
-                        })
                     }
                     _ => None,
                 }
