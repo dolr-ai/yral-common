@@ -187,6 +187,23 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
                             None
                         }
                     }
+                    RootType::CENTS | RootType::SATS => {
+                        let metadata = self
+                            .canisters
+                            .token_metadata_by_root_type(
+                                &self.nsfw_detector,
+                                Some(self.user_principal),
+                                root_type.clone(),
+                            )
+                            .await
+                            .ok()??;
+
+                        Some(TokenListResponse {
+                            root: root_type,
+                            airdrop_claimed: true,
+                            token_metadata: metadata,
+                        })
+                    }
                     _ => None,
                 }
             })
