@@ -90,7 +90,7 @@ impl Display for RootType {
     }
 }
 
-async fn load_cents_balance(
+pub async fn load_cents_balance(
     user_canister: Principal,
 ) -> std::result::Result<BalanceInfoResponse, PndError> {
     let balance_url = PUMP_AND_DUMP_WORKER_URL
@@ -102,7 +102,7 @@ async fn load_cents_balance(
     Ok(res)
 }
 
-async fn load_sats_balance(
+pub async fn load_sats_balance(
     user_principal: Principal,
 ) -> std::result::Result<SatsBalanceInfo, PndError> {
     let url: Url = hon_worker_common::WORKER_URL.parse().unwrap();
@@ -116,6 +116,23 @@ async fn load_sats_balance(
 }
 
 impl<const A: bool> Canisters<A> {
+    pub async fn icrc1_balance_of(
+        &self,
+        user_principal: Principal,
+        ledger_id: Principal,
+    ) -> Result<Nat> {
+        let ledger = self.sns_ledger(ledger_id).await;
+
+        let balance = ledger
+            .icrc_1_balance_of(LedgerAccount {
+                owner: user_principal,
+                subaccount: None,
+            })
+            .await?;
+
+        Ok(balance)
+    }
+
     pub async fn token_metadata_by_root_type(
         &self,
         nsfw_detector: &impl TokenInfoProvider,

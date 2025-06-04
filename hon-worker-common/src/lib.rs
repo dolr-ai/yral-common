@@ -1,3 +1,5 @@
+pub mod limits;
+
 mod error;
 
 pub use error::*;
@@ -171,4 +173,54 @@ pub fn sign_withdraw_request(
     use yral_identity::ic_agent::sign_message;
     let msg = hon_game_withdraw_msg(&request);
     sign_message(sender, msg)
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReferralItem {
+    pub referrer: Principal,
+    pub referee: Principal,
+    pub amount: u64,
+    pub created_at: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReferralReqWithSignature {
+    pub request: ReferralReq,
+    pub signature: Signature,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
+pub struct ReferralReq {
+    pub referrer: Principal,
+    pub referee: Principal,
+    pub referee_canister: Principal,
+}
+
+pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Message {
+    yral_identity::msg_builder::Message::default()
+        .method_name("hon_worker_referral".into())
+        .args((request,))
+        .expect("Referral request should serialize")
+}
+
+#[cfg(feature = "client")]
+pub fn sign_referral_request(
+    sender: &impl ic_agent::Identity,
+    request: ReferralReq,
+) -> yral_identity::Result<Signature> {
+    use yral_identity::ic_agent::sign_message;
+    let msg = hon_referral_msg(request);
+    sign_message(sender, msg)
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PaginatedReferralsReq {
+    pub cursor: Option<u64>,
+    pub limit: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PaginatedReferralsRes {
+    pub items: Vec<ReferralItem>,
+    pub cursor: Option<u64>,
 }
