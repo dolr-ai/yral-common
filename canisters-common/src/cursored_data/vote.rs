@@ -1,11 +1,10 @@
 use std::sync::Mutex;
 
 use candid::Principal;
-use canisters_client::individual_user_template::PlacedBetDetail;
 use hon_worker_common::{GameRes, PaginatedGamesReq, PaginatedGamesRes, WORKER_URL};
 use url::Url;
 
-use crate::{utils::vote::VoteDetails, Canisters, Error};
+use crate::{utils::vote::VoteDetails, Error};
 
 use super::{CursoredDataProvider, KeyedData, PageEntry};
 
@@ -17,79 +16,10 @@ impl KeyedData for VoteDetails {
     }
 }
 
-/// Note that this can only provide details for
-/// 10 votes at a time
-/// any less or any more, the fetching will panic
-#[derive(Clone)]
-pub struct VotesProvider {
-    canisters: Canisters<false>,
-    user: Principal,
-}
 
-impl VotesProvider {
-    pub fn new(canisters: Canisters<false>, user: Principal) -> Self {
-        Self { canisters, user }
-    }
-}
 
-impl CursoredDataProvider for VotesProvider {
-    type Data = VoteDetails;
-    type Error = Error;
 
-    async fn get_by_cursor_inner(
-        &self,
-        start: usize,
-        end: usize,
-    ) -> Result<PageEntry<VoteDetails>, Error> {
-        let user = self.canisters.individual_user(self.user).await;
-        assert_eq!(end - start, 10);
-        let bets = user
-            .get_hot_or_not_bets_placed_by_this_profile_with_pagination(start as u64)
-            .await?;
-        let list_end = bets.len() < (end - start);
-        Ok(PageEntry {
-            data: bets.into_iter().map(PlacedBetDetail::into).collect(),
-            end: list_end,
-        })
-    }
-}
 
-/// Note that this can only provide details for
-/// 10 votes at a time
-/// any less or any more, the fetching will panic
-#[derive(Clone)]
-pub struct VotesWithCentsProvider {
-    canisters: Canisters<false>,
-    user: Principal,
-}
-
-impl VotesWithCentsProvider {
-    pub fn new(canisters: Canisters<false>, user: Principal) -> Self {
-        Self { canisters, user }
-    }
-}
-
-impl CursoredDataProvider for VotesWithCentsProvider {
-    type Data = VoteDetails;
-    type Error = Error;
-
-    async fn get_by_cursor_inner(
-        &self,
-        start: usize,
-        end: usize,
-    ) -> Result<PageEntry<VoteDetails>, Error> {
-        let user = self.canisters.individual_user(self.user).await;
-        assert_eq!(end - start, 10);
-        let bets = user
-            .get_hot_or_not_bets_placed_by_this_profile_with_pagination_v_1(start as u64)
-            .await?;
-        let list_end = bets.len() < (end - start);
-        Ok(PageEntry {
-            data: bets.into_iter().map(PlacedBetDetail::into).collect(),
-            end: list_end,
-        })
-    }
-}
 
 impl KeyedData for GameRes {
     type Key = (Principal, u64);

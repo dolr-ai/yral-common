@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal};
 use canisters_client::individual_user_template::{
-    BetDirection, BetOutcomeForBetMaker, BettingStatus, PlaceBetArg, PlacedBetDetail, Result3,
+      BettingStatus,   
 };
 use hon_worker_common::{GameInfo, GameInfoReq};
 use serde::{Deserialize, Serialize};
@@ -69,32 +69,8 @@ impl VerifiableHonBetReq {
     }
 }
 
-impl From<HonBetArg> for PlaceBetArg {
-    fn from(
-        HonBetArg {
-            bet_amount,
-            post_id,
-            bet_direction,
-            post_canister_id,
-        }: HonBetArg,
-    ) -> Self {
-        Self {
-            bet_direction: bet_direction.into(),
-            bet_amount,
-            post_id,
-            post_canister_id,
-        }
-    }
-}
 
-impl From<VoteKind> for BetDirection {
-    fn from(kind: VoteKind) -> Self {
-        match kind {
-            VoteKind::Hot => BetDirection::Hot,
-            VoteKind::Not => BetDirection::Not,
-        }
-    }
-}
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct VoteDetails {
@@ -132,98 +108,7 @@ impl VoteDetails {
     }
 }
 
-impl From<PlacedBetDetail> for VoteDetails {
-    fn from(bet: PlacedBetDetail) -> Self {
-        let outcome = match bet.outcome_received {
-            BetOutcomeForBetMaker::Lost => VoteOutcome::Lost,
-            BetOutcomeForBetMaker::Draw(w) => VoteOutcome::Draw(w),
-            BetOutcomeForBetMaker::Won(w) => VoteOutcome::Won(w),
-            BetOutcomeForBetMaker::AwaitingResult => VoteOutcome::AwaitingResult,
-        };
-        let vote_kind = match bet.bet_direction {
-            BetDirection::Hot => VoteKind::Hot,
-            BetDirection::Not => VoteKind::Not,
-        };
-        Self {
-            outcome,
-            post_id: bet.post_id,
-            canister_id: bet.canister_id,
-            vote_kind,
-            vote_amount: bet.amount_bet,
-            placed_at: Duration::new(
-                bet.bet_placed_at.secs_since_epoch,
-                bet.bet_placed_at.nanos_since_epoch,
-            ),
-            slot_id: bet.slot_id,
-        }
-    }
-}
-
 impl Canisters<true> {
-    pub async fn vote_on_post(
-        &self,
-        vote_amount: u64,
-        vote_direction: VoteKind,
-        post_id: u64,
-        post_canister_id: Principal,
-    ) -> Result<BettingStatus> {
-        let user = self.authenticated_user().await;
-
-        let place_bet_arg = PlaceBetArg {
-            bet_amount: vote_amount,
-            post_id,
-            bet_direction: vote_direction.into(),
-            post_canister_id,
-        };
-
-        let res = user.bet_on_currently_viewing_post(place_bet_arg).await?;
-
-        let betting_status = match res {
-            Result3::Ok(p) => p,
-            Result3::Err(e) => {
-                // todo send event that betting failed
-                return Err(Error::YralCanister(format!(
-                    "bet_on_currently_viewing_post error {e:?}"
-                )));
-            }
-        };
-
-        Ok(betting_status)
-    }
-
-    pub async fn vote_with_cents_on_post(
-        &self,
-        vote_amount: u64,
-        vote_direction: VoteKind,
-        post_id: u64,
-        post_canister_id: Principal,
-    ) -> Result<BettingStatus> {
-        let user = self.authenticated_user().await;
-
-        let place_bet_arg = PlaceBetArg {
-            bet_amount: vote_amount * CENTS_IN_E6S,
-            post_id,
-            bet_direction: vote_direction.into(),
-            post_canister_id,
-        };
-
-        let res = user
-            .bet_on_currently_viewing_post_v_1(place_bet_arg)
-            .await?;
-
-        let betting_status = match res {
-            Result3::Ok(p) => p,
-            Result3::Err(e) => {
-                // todo send event that betting failed
-                return Err(Error::YralCanister(format!(
-                    "bet_on_currently_viewing_post_v_1 error {e:?}"
-                )));
-            }
-        };
-
-        Ok(betting_status)
-    }
-
     /// Places a vote on a post via cloudflare. The vote amount must be in cents e0s
     pub async fn vote_with_cents_on_post_via_cloudflare(
         &self,
