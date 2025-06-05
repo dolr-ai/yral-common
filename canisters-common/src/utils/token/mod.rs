@@ -161,7 +161,7 @@ impl<const A: bool> Canisters<A> {
                 };
 
                 Ok(Some(TokenMetadata {
-                    logo_b64: "/img/pumpdump/cents.webp".to_string(),
+                    logo_b64: "/img/yral/cents.webp".to_string(),
                     name: CENT_TOKEN_NAME.into(),
                     description: "".to_string(),
                     symbol: CENT_TOKEN_NAME.into(),

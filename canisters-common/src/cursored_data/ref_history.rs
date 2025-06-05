@@ -1,7 +1,6 @@
 use candid::Principal;
 
-
-use super::{ KeyedData };
+use super::KeyedData;
 
 #[derive(Clone, Copy)]
 pub struct HistoryDetails {
@@ -17,5 +16,3 @@ impl KeyedData for HistoryDetails {
         self.referee
     }
 }
-
-

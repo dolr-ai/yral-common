@@ -47,8 +47,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn
-                .zadd_multiple::<&str, f64, MLFeedCacheHistoryItem, ()>(key, chunk)
+            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItem, ()>(key, chunk)
                 .await?;
         }
 
@@ -57,13 +56,12 @@ impl MLFeedCacheState {
 
         // if num items is greater than MAX_WATCH_HISTORY_CACHE_LEN, remove the oldest items till len is MAX_WATCH_HISTORY_CACHE_LEN without while loop
         if num_items > MAX_WATCH_HISTORY_CACHE_LEN {
-            conn
-                .zremrangebyrank::<&str, ()>(
-                    key,
-                    0,
-                    (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
-                )
-                .await?;
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+            )
+            .await?;
         }
 
         Ok(())
@@ -84,8 +82,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn
-                .zadd_multiple::<&str, f64, MLFeedCacheHistoryItem, ()>(key, chunk)
+            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItem, ()>(key, chunk)
                 .await?;
         }
 
@@ -93,13 +90,12 @@ impl MLFeedCacheState {
         let num_items = conn.zcard::<&str, u64>(key).await?;
 
         if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN {
-            conn
-                .zremrangebyrank::<&str, ()>(
-                    key,
-                    0,
-                    (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
-                )
-                .await?;
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+            )
+            .await?;
         }
 
         Ok(())
@@ -152,8 +148,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn
-                .zadd_multiple::<&str, u64, PlainPostItem, ()>(key, chunk)
+            conn.zadd_multiple::<&str, u64, PlainPostItem, ()>(key, chunk)
                 .await?;
         }
 
@@ -162,13 +157,12 @@ impl MLFeedCacheState {
 
         // if num items is greater than MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN, remove the oldest items till len is MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN without while loop
         if num_items > MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN {
-            conn
-                .zremrangebyrank::<&str, ()>(
-                    key,
-                    0,
-                    (num_items - (MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN + 1)) as isize,
-                )
-                .await?;
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - (MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN + 1)) as isize,
+            )
+            .await?;
         }
 
         Ok(())
@@ -208,8 +202,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn
-                .zadd_multiple::<&str, f64, PostItem, ()>(key, chunk)
+            conn.zadd_multiple::<&str, f64, PostItem, ()>(key, chunk)
                 .await?;
         }
 
@@ -217,8 +210,7 @@ impl MLFeedCacheState {
         let num_items = conn.zcard::<&str, u64>(key).await?;
 
         if num_items > MAX_USER_CACHE_LEN {
-            conn
-                .zremrangebyrank::<&str, ()>(key, 0, (num_items - MAX_USER_CACHE_LEN - 1) as isize)
+            conn.zremrangebyrank::<&str, ()>(key, 0, (num_items - MAX_USER_CACHE_LEN - 1) as isize)
                 .await?;
         }
 
@@ -245,8 +237,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn
-                .zadd_multiple::<&str, f64, PostItem, ()>(key, chunk)
+            conn.zadd_multiple::<&str, f64, PostItem, ()>(key, chunk)
                 .await?;
         }
 
@@ -254,13 +245,12 @@ impl MLFeedCacheState {
         let num_items = conn.zcard::<&str, u64>(key).await?;
 
         if num_items > MAX_GLOBAL_CACHE_LEN {
-            conn
-                .zremrangebyrank::<&str, ()>(
-                    key,
-                    0,
-                    (num_items - MAX_GLOBAL_CACHE_LEN - 1) as isize,
-                )
-                .await?;
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - MAX_GLOBAL_CACHE_LEN - 1) as isize,
+            )
+            .await?;
         }
 
         Ok(())
@@ -315,8 +305,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn
-                .zadd_multiple::<&str, u64, BufferItem, ()>(key, chunk)
+            conn.zadd_multiple::<&str, u64, BufferItem, ()>(key, chunk)
                 .await?;
         }
 
