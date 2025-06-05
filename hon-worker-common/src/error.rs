@@ -19,6 +19,8 @@ pub enum WorkerError {
     TreasuryLimitReached,
     #[error("user was already referred")]
     AlreadyReferred,
+    #[error("specified airdropped with negative delta")]
+    InvalidAirdropDelta,
 }
 
 #[derive(Serialize, Deserialize, Debug, Error)]

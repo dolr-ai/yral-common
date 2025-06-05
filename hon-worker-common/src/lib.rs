@@ -7,6 +7,7 @@ pub use error::*;
 use candid::{CandidType, Principal};
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use yral_identity::{Signature, msg_builder::Message};
 
 pub const WORKER_URL: &str = "https://yral-hot-or-not.go-bazzinga.workers.dev/";
@@ -37,6 +38,15 @@ pub fn verifiable_claim_request_message(args: ClaimRequest) -> Message {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SatsBalanceInfo {
     pub balance: BigUint,
+    pub airdropped: BigUint,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SatsBalanceInfoV2 {
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    pub balance: BigUint,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
     pub airdropped: BigUint,
 }
 
