@@ -7,7 +7,6 @@ use futures_util::{
     stream::{self, FuturesOrdered, FuturesUnordered},
     StreamExt,
 };
-use grpc_traits::TokenInfoProvider;
 
 use crate::{
     consts::SUPPORTED_NON_YRAL_TOKENS_ROOT,
@@ -29,18 +28,16 @@ impl KeyedData for RootType {
 }
 
 #[derive(Clone)]
-pub struct TokenRootList<TkInfo: TokenInfoProvider> {
+pub struct TokenRootList {
     pub viewer_principal: Principal,
     pub canisters: Canisters<false>,
     pub user_canister: Principal,
     pub user_principal: Principal,
-    pub nsfw_detector: TkInfo,
     pub exclude: Vec<RootType>,
 }
 
 pub async fn eligible_non_yral_supported_tokens(
     cans: &Canisters<false>,
-    nsfw_detector: &impl TokenInfoProvider,
     user_principal: Principal,
 ) -> Result<Vec<TokenListResponse>> {
     let tasks = SUPPORTED_NON_YRAL_TOKENS_ROOT
@@ -48,7 +45,7 @@ pub async fn eligible_non_yral_supported_tokens(
         .map(|&token_root| async move {
             let token_root = Principal::from_text(token_root).ok()?;
             let metadata_res = cans
-                .token_metadata_by_root(nsfw_detector, Some(user_principal), token_root)
+                .token_metadata_by_root(Some(user_principal), token_root)
                 .await
                 .ok()?;
             Some((token_root, metadata_res))
@@ -95,7 +92,7 @@ impl KeyedData for TokenListResponse {
     }
 }
 
-impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRootList<TkInfo> {
+impl CursoredDataProvider for TokenRootList {
     type Data = TokenListResponse;
     type Error = Error;
 
@@ -115,11 +112,7 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
 
                         let metadata = self
                             .canisters
-                            .token_metadata_by_root_type(
-                                &self.nsfw_detector,
-                                Some(self.user_principal),
-                                root.clone(),
-                            )
+                            .token_metadata_by_root_type(Some(self.user_principal), root.clone())
                             .await
                             .ok()??;
 
@@ -191,7 +184,6 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
                         let metadata = self
                             .canisters
                             .token_metadata_by_root_type(
-                                &self.nsfw_detector,
                                 Some(self.user_principal),
                                 root_type.clone(),
                             )
@@ -211,12 +203,7 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
             .await;
 
             rep.extend(
-                eligible_non_yral_supported_tokens(
-                    &self.canisters,
-                    &self.nsfw_detector,
-                    self.user_principal,
-                )
-                .await?,
+                eligible_non_yral_supported_tokens(&self.canisters, self.user_principal).await?,
             );
             rep.retain(|item| !self.exclude.contains(&item.root));
             tokens.splice(0..0, rep);
