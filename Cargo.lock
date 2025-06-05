@@ -4343,6 +4343,8 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "syn 2.0.101",
+ "tokio",
+ "web-time",
 ]
 
 [[package]]
