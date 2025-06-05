@@ -7,10 +7,32 @@ pub use error::*;
 use candid::{CandidType, Principal};
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
-use yral_identity::Signature;
+use yral_identity::{Signature, msg_builder::Message};
 
 pub const WORKER_URL: &str = "https://yral-hot-or-not.go-bazzinga.workers.dev/";
 pub type WorkerResponse<T> = Result<T, WorkerError>;
+
+#[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
+pub struct ClaimRequest {
+    /// User's principal id
+    pub user_principal: Principal,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct VerifiableClaimRequest {
+    pub sender: Principal,
+    pub request: ClaimRequest,
+    /// The amount of airdrop to be claimed in sats (e0s)
+    pub amount: u64,
+    pub signature: Signature,
+}
+
+pub fn verifiable_claim_request_message(args: ClaimRequest) -> Message {
+    Message::default()
+        .method_name("claim_sats_airdrop_request".into())
+        .args((args,))
+        .expect("Request must serialize")
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SatsBalanceInfo {
@@ -109,6 +131,16 @@ pub fn sign_vote_request(
 ) -> yral_identity::Result<Signature> {
     use yral_identity::ic_agent::sign_message;
     let msg = hon_game_vote_msg(request.clone());
+    sign_message(sender, msg)
+}
+
+#[cfg(feature = "client")]
+pub fn sign_claim_request(
+    sender: &impl ic_agent::Identity,
+    request: ClaimRequest,
+) -> yral_identity::Result<Signature> {
+    use yral_identity::ic_agent::sign_message;
+    let msg = verifiable_claim_request_message(request.clone());
     sign_message(sender, msg)
 }
 

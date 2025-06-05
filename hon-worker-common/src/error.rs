@@ -20,3 +20,9 @@ pub enum WorkerError {
     #[error("user was already referred")]
     AlreadyReferred,
 }
+
+#[derive(Serialize, Deserialize, Debug, Error)]
+pub enum AirdropClaimError {
+    #[error("Invalid Signature")]
+    InvalidSignature,
+}
