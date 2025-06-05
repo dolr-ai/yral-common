@@ -13,8 +13,6 @@ pub struct TokenListItemFS {
     pub created_at: String,
     #[serde(default)]
     pub link: String,
-    #[serde(default)]
-    pub is_nsfw: bool,
 }
 
 pub trait TokenInfoProvider {
