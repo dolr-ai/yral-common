@@ -3,7 +3,7 @@ use std::{
     env,
     ffi::OsStr,
     fs,
-    io::{BufReader, Write},
+    io::{BufReader},
     path::PathBuf,
     sync::LazyLock,
 };
@@ -103,10 +103,6 @@ fn build_canister_ids(out_dir: &str) -> Result<()> {
 }
 
 fn build_did_intfs(out_dir: &str) -> Result<()> {
-    let diag_log_path = PathBuf::from(out_dir).join("build_diag.log");
-    let mut diag_log_file = fs::File::create(&diag_log_path)?;
-    writeln!(diag_log_file, "Starting build_did_intfs diagnostics...")?;
-
     println!("cargo:rerun-if-changed=./did/*");
 
     let mut candid_config = candid_parser::bindings::rust::Config::new();
@@ -116,8 +112,8 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
     let mut did_mod_contents = String::new();
     let whitelist = DID_WHITELIST.clone();
 
-    writeln!(diag_log_file, "DID Whitelist: {:?}", whitelist)?;
-    writeln!(diag_log_file, "Attempting to read from ./did directory")?;
+    eprintln!("cargo:warning=Active DID Whitelist: {:?}", whitelist);
+    eprintln!("cargo:warning=Reading from ./did directory");
 
     let did_out_path = PathBuf::from(&out_dir).join("did");
     fs::create_dir_all(&did_out_path)?;
@@ -127,47 +123,33 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let did_path = did_file_info.path();
 
         if did_path.extension() != Some(OsStr::new("did")) {
-            writeln!(diag_log_file, "Skipping non-.did file: {}", did_path.display())?;
             continue;
         }
 
         let file_name_os_str = did_path.file_stem().ok_or_else(|| anyhow::anyhow!("File has no stem: {:?}", did_path))?;
         let file_name = file_name_os_str.to_str().ok_or_else(|| anyhow::anyhow!("Filename not valid UTF-8: {:?}", file_name_os_str))?;
 
-        writeln!(diag_log_file, "Found DID file: {}, processed name: {}", did_path.display(), file_name)?;
-
         if !whitelist.contains(file_name) {
-            writeln!(diag_log_file, "Skipping {} as it is not in the whitelist.", file_name)?;
             continue;
         }
 
-        writeln!(diag_log_file, "Processing {} as it IS in the whitelist.", file_name)?;
+        eprintln!("cargo:warning=Processing DID file: {}", file_name);
 
         let service_name_pascal = file_name.to_case(Case::Pascal);
         candid_config.set_service_name(service_name_pascal.clone());
 
-        let absolute_did_path = std::fs::canonicalize(&did_path)?;
-        writeln!(diag_log_file, "Attempting to check DID file (absolute path): {}", absolute_did_path.display())?;
-
         let did_content_str = match fs::read_to_string(&did_path) {
             Ok(content) => content,
             Err(e) => {
-                writeln!(diag_log_file, "Failed to read DID file {} to string: {}. Skipping.", did_path.display(), e)?;
+                eprintln!("cargo:warning=Failed to read DID file {} to string: {}. Skipping.", did_path.display(), e);
                 continue;
             }
         };
-        let snippet_len = std::cmp::min(did_content_str.len(), 100);
-        writeln!(
-            diag_log_file,
-            "Content snippet for {}: '{}...'",
-            did_path.display(),
-            &did_content_str[..snippet_len].replace('\n', "\\n")
-        )?;
 
         let ast: IDLProg = match did_content_str.parse() {
             Ok(parsed_ast) => parsed_ast,
             Err(e) => {
-                writeln!(diag_log_file, "Failed to parse DID content from {} into AST: {}. Skipping.", did_path.display(), e)?;
+                eprintln!("cargo:warning=Failed to parse DID content from {} into AST: {}. Skipping.", did_path.display(), e);
                 continue;
             }
         };
@@ -176,7 +158,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let actor_type_opt = match check_prog(&mut type_env, &ast) {
             Ok(actor) => actor,
             Err(e) => {
-                writeln!(diag_log_file, "Failed to type check AST from {}: {}. Skipping.", did_path.display(), e)?;
+                eprintln!("cargo:warning=Failed to type check AST from {}: {}. Skipping.", did_path.display(), e);
                 continue;
             }
         };
@@ -184,38 +166,31 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let actor = match &actor_type_opt {
             Some(actor_ref) => actor_ref,
             None => {
-                writeln!(
-                    diag_log_file,
-                    "No actor (service definition) found after check_prog for DID file: {}. Skipping code generation for this file.",
+                eprintln!(
+                    "cargo:warning=No actor (service definition) found after check_prog for DID file: {}. Skipping code generation for this file.",
                     did_path.display()
-                )?;
+                );
                 continue;
             }
         };
 
         let mut methods_to_wrap = HashSet::<String>::new();
 
-        // Attempt to extract service definition, checking for both Service and Class actor types
         let mut service_methods_opt: Option<&Vec<(String, candid_parser::candid::types::Type)>> = None;
 
         match actor.as_ref() {
             CandidTypeInner::Service(service_def) => {
-                writeln!(diag_log_file, "Actor for {} is CandidTypeInner::Service", did_path.display())?;
                 service_methods_opt = Some(service_def);
             }
-            CandidTypeInner::Class(args, service_constructor_type) => {
-                // For a service constructor `(args) -> service { meths }`,
-                // the `service_constructor_type` is the `service { meths }` part.
-                writeln!(diag_log_file, "Actor for {} is CandidTypeInner::Class. Args: {:?}", did_path.display(), args)?;
+            CandidTypeInner::Class(_, service_constructor_type) => {
                 if let CandidTypeInner::Service(service_def) = service_constructor_type.as_ref() {
-                    writeln!(diag_log_file, "  Extracted service definition from Class constructor type.")?;
                     service_methods_opt = Some(service_def);
                 } else {
-                    writeln!(diag_log_file, "  Class constructor type for {} is not Service: {:?}", did_path.display(), service_constructor_type.as_ref())?;
+                    eprintln!("cargo:warning=  Class constructor type for {} is not Service: {:?}", did_path.display(), service_constructor_type.as_ref());
                 }
             }
             other_type => {
-                writeln!(diag_log_file, "Actor for {} is an unexpected type: {:?}. Cannot extract service methods.", did_path.display(), other_type)?;
+                eprintln!("cargo:warning=Actor for {} is an unexpected type: {:?}. Cannot extract service methods.", did_path.display(), other_type);
             }
         }
 
@@ -226,22 +201,18 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                 }
             }
         } else {
-             writeln!(diag_log_file, "Could not extract service methods for {}. methods_to_wrap will be empty.", did_path.display())?;
+             eprintln!("cargo:warning=Could not extract service methods for {}. methods_to_wrap will be empty.", did_path.display());
         }
-
-        writeln!(diag_log_file, "Updated for service {}: methods_to_wrap = {:?}", service_name_pascal, methods_to_wrap)?;
 
         let original_bindings_str = candid_parser::bindings::rust::compile(&candid_config, &type_env, &actor_type_opt);
         
         let mut ast_code: syn::File = match syn::parse_str(&original_bindings_str) {
             Ok(parsed_ast) => parsed_ast,
             Err(e) => {
-                writeln!(diag_log_file, "Failed to parse generated bindings for {}: {}. Using original bindings.", file_name, e)?;
+                eprintln!("cargo:warning=Failed to parse generated bindings for {}: {}. Using original bindings.", file_name, e);
                 let binding_file_path = did_out_path.join(format!("{}.rs", file_name));
                 if let Err(write_err) = fs::write(&binding_file_path, &original_bindings_str) {
-                    writeln!(diag_log_file, "Failed to write original bindings for {} after parse error: {}", file_name, write_err)?;
-                } else {
-                    writeln!(diag_log_file, "Successfully wrote original bindings for {} after parse error.", file_name)?;
+                    eprintln!("cargo:warning=Failed to write original bindings for {} after parse error: {}", file_name, write_err);
                 }
                 did_mod_contents.push_str(&format!(
                     "#[path = \"{}\"] pub mod {};\n",
@@ -269,17 +240,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                         let is_async = method_fn.sig.asyncness.is_some();
                         let is_eligible_for_retry = methods_to_wrap.contains(&current_method_name);
 
-                        writeln!(
-                            diag_log_file,
-                            "Service: {}, Method: {}, IsAsync: {}, IsEligibleForRetry (in methods_to_wrap): {}",
-                            service_name_pascal,
-                            current_method_name,
-                            is_async,
-                            is_eligible_for_retry
-                        )?;
-
                         if is_async && is_eligible_for_retry {
-                            writeln!(diag_log_file, "Attempting to wrap method: {}", current_method_name)?;
                             let mut original_method_ast = method_fn.clone();
                             let impl_method_name_ident = format_ident!("{}_impl", current_method_name);
                             original_method_ast.sig.ident = impl_method_name_ident.clone();
@@ -320,7 +281,6 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                         match self.#impl_method_name_ident(#(#arg_passing_code),*).await {
                                             Ok(res) => return Ok(res),
                                             Err(e) => {
-                                                // Conditional retry based on error message
                                                 if e.to_string().contains("An error happened during communication with the replica") {
                                                     attempts += 1;
                                                     if attempts > max_retries {
@@ -332,7 +292,6 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                                     let actual_delay = ::std::time::Duration::from_millis(capped_delay_ms);
                                                     ::tokio::time::sleep(actual_delay).await;
                                                 } else {
-                                                    // Not the specific error we want to retry on, so return immediately
                                                     return Err(e);
                                                 }
                                             }
@@ -345,12 +304,11 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                             match syn::parse2::<ImplItem>(new_method_toks) {
                                 Ok(parsed_item) => new_impl_items.push(parsed_item),
                                 Err(e) => {
-                                     writeln!(diag_log_file, "Failed to parse wrapped method for {} in {}: {}. Keeping original.", current_method_name, file_name, e)?;
+                                     eprintln!("cargo:warning=Failed to parse wrapped method for {} in {}: {}. Keeping original.", current_method_name, file_name, e);
                                      new_impl_items.push(ImplItem::Fn(method_fn.clone()));
                                 }
                             }
                         } else {
-                            writeln!(diag_log_file, "NOT wrapping method: {}. Conditions not met (IsAsync: {}, IsEligible: {}).", current_method_name, is_async, is_eligible_for_retry)?;
                             new_impl_items.push(ImplItem::Fn(method_fn.clone()));
                         }
                     } else {
@@ -370,8 +328,6 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let binding_file_path = did_out_path.join(format!("{}.rs", file_name));
         fs::write(&binding_file_path, pretty_modified_code_str)?;
 
-        writeln!(diag_log_file, "Successfully wrote modified bindings to: {}", binding_file_path.display())?;
-
         did_mod_contents.push_str(&format!(
             "#[path = \"{}\"] pub mod {};\n",
             binding_file_path.to_string_lossy().replace("\\", "/"),
@@ -381,8 +337,6 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
 
     let binding_mod_file = did_out_path.join("mod.rs");
     fs::write(binding_mod_file, &did_mod_contents)?;
-    writeln!(diag_log_file, "Final did_mod_contents for {}/mod.rs: {}\n-------", did_out_path.display(), did_mod_contents)?;
-    writeln!(diag_log_file, "build_did_intfs diagnostics complete.")?;
 
     Ok(())
 }
