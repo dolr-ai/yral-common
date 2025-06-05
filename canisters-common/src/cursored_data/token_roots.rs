@@ -199,7 +199,6 @@ impl<TkInfo: TokenInfoProvider + Send + Sync> CursoredDataProvider for TokenRoot
                             .await
                             .ok()??;
 
-                        // TODO: for sats, add request to fetch airdrop status
                         Some(TokenListResponse {
                             root: root_type,
                             airdrop_claimed: true,
