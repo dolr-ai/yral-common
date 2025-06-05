@@ -256,7 +256,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
             if let Item::Impl(item_impl) = item {
                 if let syn::Type::Path(type_path) = &*item_impl.self_ty {
                     if let Some(segment) = type_path.path.segments.first() {
-                        if segment.ident.to_string() != service_name_pascal {
+                        if segment.ident != service_name_pascal {
                             continue; 
                         }
                     } else { continue; }
@@ -305,8 +305,8 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                             let arg_definitions = method_fn.sig.inputs.clone();
                             let return_type = method_fn.sig.output.clone();
                             let visibility = method_fn.vis.clone();
-                            let asyncness = method_fn.sig.asyncness.clone();
-                            let unsafety = method_fn.sig.unsafety.clone();
+                            let asyncness = method_fn.sig.asyncness;
+                            let unsafety = method_fn.sig.unsafety;
                             let abi = method_fn.sig.abi.clone();
                             let generics = &method_fn.sig.generics;
 
