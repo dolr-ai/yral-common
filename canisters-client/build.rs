@@ -9,7 +9,7 @@ use std::{
 };
 
 use anyhow::Result;
-use candid_parser::{Principal, candid::types::{TypeInner as CandidTypeInner, FuncMode as CandidFuncMode, TypeEnv}, IDLProg, check_prog};
+use candid_parser::{Principal, candid::types::{TypeInner as CandidTypeInner, TypeEnv}, IDLProg, check_prog};
 use convert_case::{Case, Casing};
 use serde::Deserialize;
 
@@ -193,7 +193,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
             }
         };
 
-        let mut non_query_update_methods = HashSet::<String>::new();
+        let mut methods_to_wrap = HashSet::<String>::new();
 
         // Attempt to extract service definition, checking for both Service and Class actor types
         let mut service_methods_opt: Option<&Vec<(String, candid_parser::candid::types::Type)>> = None;
@@ -221,17 +221,15 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
 
         if let Some(service_def) = service_methods_opt {
             for (method_name, method_type) in service_def {
-                if let CandidTypeInner::Func(func_details) = method_type.as_ref() {
-                    if !func_details.modes.contains(&CandidFuncMode::Query) && !func_details.modes.contains(&CandidFuncMode::Oneway) {
-                        non_query_update_methods.insert(method_name.to_case(Case::Snake));
-                    }
+                if let CandidTypeInner::Func(_func_details) = method_type.as_ref() {
+                    methods_to_wrap.insert(method_name.to_case(Case::Snake));
                 }
             }
         } else {
-             writeln!(diag_log_file, "Could not extract service methods for {}. non_query_update_methods will be empty.", did_path.display())?;
+             writeln!(diag_log_file, "Could not extract service methods for {}. methods_to_wrap will be empty.", did_path.display())?;
         }
 
-        writeln!(diag_log_file, "Updated for service {}: non_query_update_methods = {:?}", service_name_pascal, non_query_update_methods)?;
+        writeln!(diag_log_file, "Updated for service {}: methods_to_wrap = {:?}", service_name_pascal, methods_to_wrap)?;
 
         let original_bindings_str = candid_parser::bindings::rust::compile(&candid_config, &type_env, &actor_type_opt);
         
@@ -269,11 +267,11 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                     if let ImplItem::Fn(method_fn) = impl_item_ref {
                         let current_method_name = method_fn.sig.ident.to_string();
                         let is_async = method_fn.sig.asyncness.is_some();
-                        let is_eligible_for_retry = non_query_update_methods.contains(&current_method_name);
+                        let is_eligible_for_retry = methods_to_wrap.contains(&current_method_name);
 
                         writeln!(
                             diag_log_file,
-                            "Service: {}, Method: {}, IsAsync: {}, IsEligibleForRetry (in non_query_update_methods): {}",
+                            "Service: {}, Method: {}, IsAsync: {}, IsEligibleForRetry (in methods_to_wrap): {}",
                             service_name_pascal,
                             current_method_name,
                             is_async,
@@ -322,23 +320,20 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                         match self.#impl_method_name_ident(#(#arg_passing_code),*).await {
                                             Ok(res) => return Ok(res),
                                             Err(e) => {
-                                                attempts += 1;
-                                                if attempts > max_retries {
-                                                    return Err(e);
-                                                }
-                                                let delay_multiplier = 2_u64.pow(attempts.saturating_sub(1));
-                                                let current_delay_ms = base_delay.as_millis() as u64 * delay_multiplier;
-                                                let capped_delay_ms = ::std::cmp::min(current_delay_ms, 10_000);
-                                                
-                                                #[cfg(target_arch = "wasm32")]
-                                                {
-                                                    let actual_delay = ::web_time::Duration::from_millis(capped_delay_ms);
-                                                    ::web_time::sleep(actual_delay).await;
-                                                }
-                                                #[cfg(not(target_arch = "wasm32"))]
-                                                {
+                                                // Conditional retry based on error message
+                                                if e.to_string().contains("An error happened during communication with the replica") {
+                                                    attempts += 1;
+                                                    if attempts > max_retries {
+                                                        return Err(e);
+                                                    }
+                                                    let delay_multiplier = 2_u64.pow(attempts.saturating_sub(1));
+                                                    let current_delay_ms = base_delay.as_millis() as u64 * delay_multiplier;
+                                                    let capped_delay_ms = ::std::cmp::min(current_delay_ms, 10_000);
                                                     let actual_delay = ::std::time::Duration::from_millis(capped_delay_ms);
                                                     ::tokio::time::sleep(actual_delay).await;
+                                                } else {
+                                                    // Not the specific error we want to retry on, so return immediately
+                                                    return Err(e);
                                                 }
                                             }
                                         }

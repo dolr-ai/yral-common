@@ -9,7 +9,6 @@ candid.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 tokio = { version = "1", features = ["time"] }
-web-time.workspace = true
 
 [build-dependencies]
 serde.workspace = true
