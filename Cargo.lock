@@ -4365,7 +4365,6 @@ dependencies = [
  "url",
  "web-time",
  "yral-canisters-client",
- "yral-grpc-traits",
  "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-identity?rev=adbf4be5cb62a26f2a90032261321bf1df33f08b)",
  "yral-metadata-client",
  "yral-metadata-types",
@@ -4396,13 +4395,6 @@ dependencies = [
 
 [[package]]
 name = "yral-config-keys"
-version = "0.1.0"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "yral-grpc-traits"
 version = "0.1.0"
 dependencies = [
  "serde",

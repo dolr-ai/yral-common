@@ -23,7 +23,6 @@ thiserror.workspace = true
 log.workspace = true
 k256 = { workspace = true, default-features = false }
 rust_decimal = "1.36.0"
-grpc-traits.workspace = true
 web-time.workspace = true
 reqwest = { version = "0.12", default-features = false, features = [
     "json",
