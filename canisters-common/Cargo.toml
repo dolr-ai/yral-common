@@ -10,7 +10,9 @@ pump-n-dump-common = { workspace = true }
 hon-worker-common = { workspace = true }
 candid.workspace = true
 url.workspace = true
-yral-identity = { workspace = true, default-features = false, features = ["ic-agent"] }
+yral-identity = { workspace = true, default-features = false, features = [
+    "ic-agent",
+] }
 yral-metadata-client = { git = "https://github.com/yral-dapp/yral-metadata", rev = "56e3f1f1f5f452673bee17739520c800c1264295", default-features = false }
 yral-metadata-types = { git = "https://github.com/yral-dapp/yral-metadata", rev = "56e3f1f1f5f452673bee17739520c800c1264295", default-features = false }
 types.workspace = true
@@ -21,7 +23,6 @@ thiserror.workspace = true
 log.workspace = true
 k256 = { workspace = true, default-features = false }
 rust_decimal = "1.36.0"
-grpc-traits.workspace = true
 web-time.workspace = true
 reqwest = { version = "0.12", default-features = false, features = [
     "json",

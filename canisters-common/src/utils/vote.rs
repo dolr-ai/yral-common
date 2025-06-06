@@ -1,7 +1,5 @@
 use candid::{CandidType, Principal};
-use canisters_client::individual_user_template::{
-      BettingStatus,   
-};
+use canisters_client::individual_user_template::BettingStatus;
 use hon_worker_common::{GameInfo, GameInfoReq};
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
@@ -68,9 +66,6 @@ impl VerifiableHonBetReq {
         })
     }
 }
-
-
-
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct VoteDetails {

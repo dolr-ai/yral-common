@@ -16,11 +16,6 @@ impl KeyedData for VoteDetails {
     }
 }
 
-
-
-
-
-
 impl KeyedData for GameRes {
     type Key = (Principal, u64);
 

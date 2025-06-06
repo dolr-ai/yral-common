@@ -1,12 +1,12 @@
 use canisters_client::sns_swap::GetInitArg;
 use hon_worker_common::SatsBalanceInfo;
-use pump_n_dump_common::{rest::BalanceInfoResponse, WithdrawalState};
+use hon_worker_common::WithdrawalState;
+use pump_n_dump_common::rest::BalanceInfoResponse;
 use std::{fmt::Display, str::FromStr};
 use url::Url;
 
 use balance::{TokenBalance, TokenBalanceOrClaiming};
 use candid::{Nat, Principal};
-use grpc_traits::TokenInfoProvider;
 use ic_agent::export::PrincipalError;
 
 use crate::{
@@ -41,8 +41,6 @@ pub struct TokenMetadata {
     pub ledger: Principal,
     pub index: Principal,
     pub decimals: u8,
-    #[serde(default)]
-    pub is_nsfw: bool,
     #[serde(default)]
     pub token_owner: Option<TokenOwner>,
 }
@@ -132,7 +130,6 @@ impl<const A: bool> Canisters<A> {
 
     pub async fn token_metadata_by_root_type(
         &self,
-        nsfw_detector: &impl TokenInfoProvider,
         user_principal: Option<Principal>,
         root_type: RootType,
     ) -> Result<Option<TokenMetadata>> {
@@ -164,7 +161,7 @@ impl<const A: bool> Canisters<A> {
                 };
 
                 Ok(Some(TokenMetadata {
-                    logo_b64: "/img/pumpdump/cents.webp".to_string(),
+                    logo_b64: "/img/yral/cents.webp".to_string(),
                     name: CENT_TOKEN_NAME.into(),
                     description: "".to_string(),
                     symbol: CENT_TOKEN_NAME.into(),
@@ -175,7 +172,6 @@ impl<const A: bool> Canisters<A> {
                     ledger: Principal::anonymous(),
                     index: Principal::anonymous(),
                     decimals: 8,
-                    is_nsfw: false,
                     token_owner: None,
                 }))
             }
@@ -202,20 +198,15 @@ impl<const A: bool> Canisters<A> {
                     ledger: Principal::anonymous(),
                     index: Principal::anonymous(),
                     decimals: 8,
-                    is_nsfw: false,
                     token_owner: None,
                 }))
             }
-            RootType::Other(root) => {
-                self.token_metadata_by_root(nsfw_detector, user_principal, root)
-                    .await
-            }
+            RootType::Other(root) => self.token_metadata_by_root(user_principal, root).await,
         }
     }
 
     pub async fn token_metadata_by_root(
         &self,
-        nsfw_detector: &impl TokenInfoProvider,
         user_principal: Option<Principal>,
         token_root: Principal,
     ) -> Result<Option<TokenMetadata>> {
@@ -232,14 +223,7 @@ impl<const A: bool> Canisters<A> {
         };
 
         let metadata = self
-            .get_token_metadata(
-                nsfw_detector,
-                user_principal,
-                token_root,
-                governance,
-                ledger,
-                index,
-            )
+            .get_token_metadata(user_principal, token_root, governance, ledger, index)
             .await?;
 
         Ok(Some(metadata))
@@ -247,7 +231,6 @@ impl<const A: bool> Canisters<A> {
 
     pub async fn get_token_metadata(
         &self,
-        nsfw_detector: &impl TokenInfoProvider,
         user_principal: Option<Principal>,
         token_root: Principal,
         governance: Principal,
@@ -263,12 +246,6 @@ impl<const A: bool> Canisters<A> {
         let fees = ledger_can.icrc_1_fee().await?;
         let decimals = ledger_can.icrc_1_decimals().await?;
 
-        let is_nsfw = nsfw_detector
-            .get_token_by_id(token_root.to_string())
-            .await
-            .map(|token_info| token_info.is_nsfw)
-            .unwrap_or(false);
-
         let token_owner = self.get_token_owner(token_root).await?;
 
         let mut token_metadata = TokenMetadata {
@@ -283,7 +260,6 @@ impl<const A: bool> Canisters<A> {
             ledger,
             index,
             decimals,
-            is_nsfw,
             token_owner,
         };
 
@@ -434,7 +410,6 @@ impl<const A: bool> Canisters<A> {
             ledger,
             index,
             decimals,
-            is_nsfw: false,
             token_owner: None,
         };
 
