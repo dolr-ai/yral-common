@@ -281,18 +281,21 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                         match self.#impl_method_name_ident(#(#arg_passing_code),*).await {
                                             Ok(res) => return Ok(res),
                                             Err(e) => {
-                                                if e.to_string().contains("An error happened during communication with the replica") {
-                                                    attempts += 1;
-                                                    if attempts > max_retries {
+                                                match e{
+                                                    ::ic_agent::AgentError::TransportError(_) | ::ic_agent::AgentError::CertifiedReject(_) => {
+                                                        attempts += 1;
+                                                        if attempts > max_retries {
+                                                            return Err(e);
+                                                        }
+                                                        let delay_multiplier = 2_u64.pow(attempts.saturating_sub(1));
+                                                        let current_delay_ms = base_delay.as_millis() as u64 * delay_multiplier;
+                                                        let capped_delay_ms = ::std::cmp::min(current_delay_ms, 10_000);
+                                                        let actual_delay = ::std::time::Duration::from_millis(capped_delay_ms);
+                                                        ::tokio::time::sleep(actual_delay).await;
+                                                    },
+                                                    _ => {
                                                         return Err(e);
                                                     }
-                                                    let delay_multiplier = 2_u64.pow(attempts.saturating_sub(1));
-                                                    let current_delay_ms = base_delay.as_millis() as u64 * delay_multiplier;
-                                                    let capped_delay_ms = ::std::cmp::min(current_delay_ms, 10_000);
-                                                    let actual_delay = ::std::time::Duration::from_millis(capped_delay_ms);
-                                                    ::tokio::time::sleep(actual_delay).await;
-                                                } else {
-                                                    return Err(e);
                                                 }
                                             }
                                         }
