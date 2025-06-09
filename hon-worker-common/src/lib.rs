@@ -4,7 +4,7 @@ mod error;
 
 pub use error::*;
 
-use candid::{CandidType, Principal};
+use candid::{CandidType, Nat, Principal};
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -231,4 +231,10 @@ pub struct PaginatedReferralsReq {
 pub struct PaginatedReferralsRes {
     pub items: Vec<ReferralItem>,
     pub cursor: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum WithdrawalState {
+    Value(Nat),
+    NeedMoreEarnings(Nat),
 }
