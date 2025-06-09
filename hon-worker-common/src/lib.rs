@@ -202,8 +202,12 @@ pub struct ReferralReq {
     pub referrer: Principal,
     pub referee: Principal,
     pub referee_canister: Principal,
-    #[serde(default)]
+    #[serde(default = "default_referral_amount")]
     pub amount: u64,
+}
+
+pub fn default_referral_amount() -> u64 {
+    limits::REFERRAL_REWARD
 }
 
 pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Message {
