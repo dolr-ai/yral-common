@@ -58,8 +58,14 @@ pub enum HotOrNot {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GameResult {
-    Win { win_amt: BigUint },
-    Loss { lose_amt: BigUint },
+    Win {
+        win_amt: BigUint,
+        updated_balance: BigUint,
+    },
+    Loss {
+        lose_amt: BigUint,
+        updated_balance: BigUint,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
