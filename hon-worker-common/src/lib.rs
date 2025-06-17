@@ -97,6 +97,11 @@ pub struct VoteRes {
     pub game_result: GameResult,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct VoteResV2 {
+    pub game_result: GameResultV2,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
 pub struct VoteRequest {
     pub post_canister: Principal,
