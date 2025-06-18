@@ -3,7 +3,6 @@ pub mod ref_history;
 pub mod token_roots;
 pub mod transaction;
 pub mod vote;
-pub mod vote_v2;
 
 use std::{error::Error, future::Future, hash::Hash};
 
