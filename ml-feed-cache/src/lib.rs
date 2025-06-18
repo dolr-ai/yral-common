@@ -360,6 +360,7 @@ impl MLFeedCacheState {
         let mut conn = self.redis_pool.get().await.unwrap();
 
         // All user cache suffixes
+        #[allow(clippy::useless_vec)]
         let suffixes = vec![
             consts::USER_WATCH_HISTORY_CLEAN_SUFFIX,
             consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX,

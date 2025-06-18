@@ -3,18 +3,21 @@ use std::{
     env,
     ffi::OsStr,
     fs,
-    io::{BufReader},
+    io::BufReader,
     path::PathBuf,
     sync::LazyLock,
 };
 
 use anyhow::Result;
-use candid_parser::{Principal, candid::types::{TypeInner as CandidTypeInner, TypeEnv}, IDLProg, check_prog};
+use candid_parser::{
+    candid::types::{TypeEnv, TypeInner as CandidTypeInner},
+    check_prog, IDLProg, Principal,
+};
 use convert_case::{Case, Casing};
 use serde::Deserialize;
 
-use syn::{Item, ImplItem, Visibility, FnArg, Pat};
-use quote::{format_ident};
+use quote::format_ident;
+use syn::{FnArg, ImplItem, Item, Pat, Visibility};
 
 static DID_WHITELIST: LazyLock<HashSet<&str>> = LazyLock::new(|| {
     #[allow(unused_mut)]
@@ -126,8 +129,12 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
             continue;
         }
 
-        let file_name_os_str = did_path.file_stem().ok_or_else(|| anyhow::anyhow!("File has no stem: {:?}", did_path))?;
-        let file_name = file_name_os_str.to_str().ok_or_else(|| anyhow::anyhow!("Filename not valid UTF-8: {:?}", file_name_os_str))?;
+        let file_name_os_str = did_path
+            .file_stem()
+            .ok_or_else(|| anyhow::anyhow!("File has no stem: {:?}", did_path))?;
+        let file_name = file_name_os_str
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("Filename not valid UTF-8: {:?}", file_name_os_str))?;
 
         if !whitelist.contains(file_name) {
             continue;
@@ -141,7 +148,11 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let did_content_str = match fs::read_to_string(&did_path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!("cargo:warning=Failed to read DID file {} to string: {}. Skipping.", did_path.display(), e);
+                eprintln!(
+                    "cargo:warning=Failed to read DID file {} to string: {}. Skipping.",
+                    did_path.display(),
+                    e
+                );
                 continue;
             }
         };
@@ -149,7 +160,11 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let ast: IDLProg = match did_content_str.parse() {
             Ok(parsed_ast) => parsed_ast,
             Err(e) => {
-                eprintln!("cargo:warning=Failed to parse DID content from {} into AST: {}. Skipping.", did_path.display(), e);
+                eprintln!(
+                    "cargo:warning=Failed to parse DID content from {} into AST: {}. Skipping.",
+                    did_path.display(),
+                    e
+                );
                 continue;
             }
         };
@@ -158,11 +173,15 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let actor_type_opt = match check_prog(&mut type_env, &ast) {
             Ok(actor) => actor,
             Err(e) => {
-                eprintln!("cargo:warning=Failed to type check AST from {}: {}. Skipping.", did_path.display(), e);
+                eprintln!(
+                    "cargo:warning=Failed to type check AST from {}: {}. Skipping.",
+                    did_path.display(),
+                    e
+                );
                 continue;
             }
         };
-        
+
         let actor = match &actor_type_opt {
             Some(actor_ref) => actor_ref,
             None => {
@@ -176,7 +195,8 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
 
         let mut methods_to_wrap = HashSet::<String>::new();
 
-        let mut service_methods_opt: Option<&Vec<(String, candid_parser::candid::types::Type)>> = None;
+        let mut service_methods_opt: Option<&Vec<(String, candid_parser::candid::types::Type)>> =
+            None;
 
         match actor.as_ref() {
             CandidTypeInner::Service(service_def) => {
@@ -186,7 +206,11 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                 if let CandidTypeInner::Service(service_def) = service_constructor_type.as_ref() {
                     service_methods_opt = Some(service_def);
                 } else {
-                    eprintln!("cargo:warning=  Class constructor type for {} is not Service: {:?}", did_path.display(), service_constructor_type.as_ref());
+                    eprintln!(
+                        "cargo:warning=  Class constructor type for {} is not Service: {:?}",
+                        did_path.display(),
+                        service_constructor_type.as_ref()
+                    );
                 }
             }
             other_type => {
@@ -201,11 +225,12 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                 }
             }
         } else {
-             eprintln!("cargo:warning=Could not extract service methods for {}. methods_to_wrap will be empty.", did_path.display());
+            eprintln!("cargo:warning=Could not extract service methods for {}. methods_to_wrap will be empty.", did_path.display());
         }
 
-        let original_bindings_str = candid_parser::bindings::rust::compile(&candid_config, &type_env, &actor_type_opt);
-        
+        let original_bindings_str =
+            candid_parser::bindings::rust::compile(&candid_config, &type_env, &actor_type_opt);
+
         let mut ast_code: syn::File = match syn::parse_str(&original_bindings_str) {
             Ok(parsed_ast) => parsed_ast,
             Err(e) => {
@@ -228,10 +253,14 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                 if let syn::Type::Path(type_path) = &*item_impl.self_ty {
                     if let Some(segment) = type_path.path.segments.first() {
                         if segment.ident != service_name_pascal {
-                            continue; 
+                            continue;
                         }
-                    } else { continue; }
-                } else { continue; }
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
 
                 let mut new_impl_items = Vec::new();
                 for impl_item_ref in &item_impl.items {
@@ -242,13 +271,17 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
 
                         if is_async && is_eligible_for_retry {
                             let mut original_method_ast = method_fn.clone();
-                            let impl_method_name_ident = format_ident!("{}_impl", current_method_name);
+                            let impl_method_name_ident =
+                                format_ident!("{}_impl", current_method_name);
                             original_method_ast.sig.ident = impl_method_name_ident.clone();
                             original_method_ast.vis = Visibility::Inherited;
 
                             let wrapper_method_name_ident = method_fn.sig.ident.clone();
-                            
-                            let arg_passing_code: Vec<proc_macro2::TokenStream> = method_fn.sig.inputs.iter()
+
+                            let arg_passing_code: Vec<proc_macro2::TokenStream> = method_fn
+                                .sig
+                                .inputs
+                                .iter()
                                 .filter_map(|fn_arg| match fn_arg {
                                     FnArg::Receiver(_) => None,
                                     FnArg::Typed(pat_type) => {
@@ -256,8 +289,8 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                             let arg_name = &pat_ident.ident;
                                             Some(quote::quote! { #arg_name.clone() })
                                         } else {
-                                            let pat_tokens = quote::quote!{#pat_type.pat};
-                                            Some(quote::quote!{ #pat_tokens.clone()})
+                                            let pat_tokens = quote::quote! {#pat_type.pat};
+                                            Some(quote::quote! { #pat_tokens.clone()})
                                         }
                                     }
                                 })
@@ -302,13 +335,13 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                     }
                                 }
                             };
-                            
+
                             new_impl_items.push(ImplItem::Fn(original_method_ast));
                             match syn::parse2::<ImplItem>(new_method_toks) {
                                 Ok(parsed_item) => new_impl_items.push(parsed_item),
                                 Err(e) => {
-                                     eprintln!("cargo:warning=Failed to parse wrapped method for {} in {}: {}. Keeping original.", current_method_name, file_name, e);
-                                     new_impl_items.push(ImplItem::Fn(method_fn.clone()));
+                                    eprintln!("cargo:warning=Failed to parse wrapped method for {} in {}: {}. Keeping original.", current_method_name, file_name, e);
+                                    new_impl_items.push(ImplItem::Fn(method_fn.clone()));
                                 }
                             }
                         } else {
@@ -321,11 +354,11 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                 item_impl.items = new_impl_items;
             }
         }
-        
+
         let modified_code_str = quote::quote! { #ast_code }.to_string();
         let pretty_modified_code_str = match syn::parse_file(&modified_code_str) {
             Ok(file_ast) => prettyplease::unparse(&file_ast),
-            Err(_) => modified_code_str, 
+            Err(_) => modified_code_str,
         };
 
         let binding_file_path = did_out_path.join(format!("{}.rs", file_name));
