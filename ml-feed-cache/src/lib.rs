@@ -355,6 +355,35 @@ impl MLFeedCacheState {
 
         Ok(res)
     }
+
+    pub async fn delete_user_caches(&self, key: &str) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        // All user cache suffixes
+        #[allow(clippy::useless_vec)]
+        let suffixes = vec![
+            consts::USER_WATCH_HISTORY_CLEAN_SUFFIX,
+            consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX,
+            consts::USER_WATCH_HISTORY_NSFW_SUFFIX,
+            consts::USER_SUCCESS_HISTORY_NSFW_SUFFIX,
+            consts::USER_WATCH_HISTORY_PLAIN_POST_ITEM_SUFFIX,
+            consts::USER_LIKE_HISTORY_PLAIN_POST_ITEM_SUFFIX,
+            consts::USER_CACHE_CLEAN_SUFFIX,
+            consts::USER_CACHE_NSFW_SUFFIX,
+            consts::USER_CACHE_MIXED_SUFFIX,
+        ];
+
+        // Build all keys with suffixes
+        let keys: Vec<String> = suffixes
+            .iter()
+            .map(|suffix| format!("{}{}", key, suffix))
+            .collect();
+
+        // Delete all keys in one statement
+        conn.del::<Vec<String>, ()>(keys).await?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -561,5 +590,185 @@ mod tests {
 
         let num_items = conn.zcard::<&str, u64>("test_key").await.unwrap();
         assert_eq!(num_items, 95);
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_caches() {
+        let state = MLFeedCacheState::new().await;
+        let mut conn = state.redis_pool.get().await.unwrap();
+
+        let test_base_key = "test_user_delete";
+
+        // Create some test data for each cache type
+        let test_items = vec![
+            PostItem {
+                canister_id: "test_canister".to_string(),
+                post_id: 1,
+                video_id: "test_video_1".to_string(),
+                nsfw_probability: 0.1,
+            },
+            PostItem {
+                canister_id: "test_canister".to_string(),
+                post_id: 2,
+                video_id: "test_video_2".to_string(),
+                nsfw_probability: 0.2,
+            },
+        ];
+
+        let history_items = vec![
+            MLFeedCacheHistoryItem {
+                video_id: "test_video_1".to_string(),
+                item_type: "video_viewed".to_string(),
+                canister_id: "test_canister".to_string(),
+                post_id: 1,
+                nsfw_probability: 0.0,
+                timestamp: SystemTime::now(),
+                percent_watched: 50.0,
+            },
+            MLFeedCacheHistoryItem {
+                video_id: "test_video_2".to_string(),
+                item_type: "like_video".to_string(),
+                canister_id: "test_canister".to_string(),
+                post_id: 2,
+                nsfw_probability: 0.0,
+                timestamp: SystemTime::now(),
+                percent_watched: 100.0,
+            },
+        ];
+
+        // Add data to various cache types
+        state
+            .add_user_cache_items(
+                &format!("{}{}", test_base_key, consts::USER_CACHE_CLEAN_SUFFIX),
+                test_items.clone(),
+            )
+            .await
+            .unwrap();
+        state
+            .add_user_cache_items(
+                &format!("{}{}", test_base_key, consts::USER_CACHE_NSFW_SUFFIX),
+                test_items.clone(),
+            )
+            .await
+            .unwrap();
+        state
+            .add_user_cache_items(
+                &format!("{}{}", test_base_key, consts::USER_CACHE_MIXED_SUFFIX),
+                test_items.clone(),
+            )
+            .await
+            .unwrap();
+
+        state
+            .add_user_watch_history_items(
+                &format!(
+                    "{}{}",
+                    test_base_key,
+                    consts::USER_WATCH_HISTORY_CLEAN_SUFFIX
+                ),
+                history_items.clone(),
+            )
+            .await
+            .unwrap();
+        state
+            .add_user_watch_history_items(
+                &format!(
+                    "{}{}",
+                    test_base_key,
+                    consts::USER_WATCH_HISTORY_NSFW_SUFFIX
+                ),
+                history_items.clone(),
+            )
+            .await
+            .unwrap();
+
+        state
+            .add_user_success_history_items(
+                &format!(
+                    "{}{}",
+                    test_base_key,
+                    consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX
+                ),
+                history_items.clone(),
+            )
+            .await
+            .unwrap();
+        state
+            .add_user_success_history_items(
+                &format!(
+                    "{}{}",
+                    test_base_key,
+                    consts::USER_SUCCESS_HISTORY_NSFW_SUFFIX
+                ),
+                history_items.clone(),
+            )
+            .await
+            .unwrap();
+
+        state
+            .add_user_history_plain_items(
+                &format!(
+                    "{}{}",
+                    test_base_key,
+                    consts::USER_WATCH_HISTORY_PLAIN_POST_ITEM_SUFFIX
+                ),
+                history_items.clone(),
+            )
+            .await
+            .unwrap();
+        state
+            .add_user_history_plain_items(
+                &format!(
+                    "{}{}",
+                    test_base_key,
+                    consts::USER_LIKE_HISTORY_PLAIN_POST_ITEM_SUFFIX
+                ),
+                history_items,
+            )
+            .await
+            .unwrap();
+
+        // Verify data exists
+        let cache_clean_len = conn
+            .zcard::<&str, u64>(&format!(
+                "{}{}",
+                test_base_key,
+                consts::USER_CACHE_CLEAN_SUFFIX
+            ))
+            .await
+            .unwrap();
+        assert_eq!(cache_clean_len, 2);
+
+        let watch_clean_len = conn
+            .zcard::<&str, u64>(&format!(
+                "{}{}",
+                test_base_key,
+                consts::USER_WATCH_HISTORY_CLEAN_SUFFIX
+            ))
+            .await
+            .unwrap();
+        assert_eq!(watch_clean_len, 2);
+
+        // Delete all user caches
+        state.delete_user_caches(test_base_key).await.unwrap();
+
+        // Verify all caches are deleted
+        let suffixes = vec![
+            consts::USER_WATCH_HISTORY_CLEAN_SUFFIX,
+            consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX,
+            consts::USER_WATCH_HISTORY_NSFW_SUFFIX,
+            consts::USER_SUCCESS_HISTORY_NSFW_SUFFIX,
+            consts::USER_WATCH_HISTORY_PLAIN_POST_ITEM_SUFFIX,
+            consts::USER_LIKE_HISTORY_PLAIN_POST_ITEM_SUFFIX,
+            consts::USER_CACHE_CLEAN_SUFFIX,
+            consts::USER_CACHE_NSFW_SUFFIX,
+            consts::USER_CACHE_MIXED_SUFFIX,
+        ];
+
+        for suffix in suffixes {
+            let full_key = format!("{}{}", test_base_key, suffix);
+            let exists = conn.exists::<&str, bool>(&full_key).await.unwrap();
+            assert!(!exists, "Key {} should not exist", full_key);
+        }
     }
 }
