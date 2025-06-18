@@ -1,7 +1,9 @@
 use std::sync::Mutex;
 
 use candid::Principal;
-use hon_worker_common::{GameRes, GameResV2, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2, WORKER_URL};
+use hon_worker_common::{
+    GameRes, GameResV2, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2, WORKER_URL,
+};
 use url::Url;
 
 use crate::{utils::vote::VoteDetails, Error};
@@ -46,7 +48,6 @@ impl Clone for VotesWithSatsProvider {
         }
     }
 }
-
 
 impl CursoredDataProvider for VotesWithSatsProvider {
     type Data = GameRes;
@@ -94,7 +95,6 @@ impl VotesWithSatsProvider {
     }
 }
 
-
 impl KeyedData for GameResV2 {
     type Key = (Principal, u64);
 
@@ -125,7 +125,6 @@ impl Clone for VotesWithSatsProviderV2 {
         }
     }
 }
-
 
 impl CursoredDataProvider for VotesWithSatsProviderV2 {
     type Data = GameResV2;
