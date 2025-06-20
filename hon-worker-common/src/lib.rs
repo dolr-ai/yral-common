@@ -63,6 +63,18 @@ pub enum GameResult {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum GameResultV2 {
+    Win {
+        win_amt: BigUint,
+        updated_balance: BigUint,
+    },
+    Loss {
+        lose_amt: BigUint,
+        updated_balance: BigUint,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GameInfo {
     CreatorReward(BigUint),
     Vote {
@@ -72,8 +84,22 @@ pub enum GameInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum GameInfoV2 {
+    CreatorReward(BigUint),
+    Vote {
+        vote_amount: BigUint,
+        game_result: GameResultV2,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VoteRes {
     pub game_result: GameResult,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct VoteResV2 {
+    pub game_result: GameResultV2,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
@@ -92,6 +118,13 @@ pub struct GameRes {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameResV2 {
+    pub post_canister: Principal,
+    pub post_id: u64,
+    pub game_info: GameInfoV2,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaginatedGamesReq {
     pub page_size: usize,
     pub cursor: Option<String>,
@@ -100,6 +133,12 @@ pub struct PaginatedGamesReq {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaginatedGamesRes {
     pub games: Vec<GameRes>,
+    pub next: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PaginatedGamesResV2 {
+    pub games: Vec<GameResV2>,
     pub next: Option<String>,
 }
 
