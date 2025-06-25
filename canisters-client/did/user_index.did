@@ -131,17 +131,17 @@ service : (UserIndexInitArgs) -> {
   clear_snapshot : () -> ();
   collect_creator_dao_stats_in_the_network : () -> (Result_1);
   create_pool_of_individual_user_available_canisters : (text, blob) -> (
-    Result_2
-  );
+      Result_2,
+    );
   delete_all_sns_creator_token_in_the_network : () -> ();
   delete_all_sns_creator_token_of_an_individual_canister : (principal) -> (
-    Result_3
-  );
+      Result_3,
+    );
   download_snapshot : (nat64, nat64) -> (blob) query;
   fixup_individual_canisters_mapping : () -> ();
   get_current_list_of_all_well_known_principal_values : () -> (
-    vec record { KnownPrincipalType; principal }
-  ) query;
+      vec record { KnownPrincipalType; principal },
+    ) query;
   get_index_details_is_user_name_taken : (text) -> (bool) query;
   get_index_details_last_upgrade_status : () -> (UpgradeStatus) query;
   get_last_broadcast_call_status : () -> (BroadcastCallStatus) query;
@@ -149,44 +149,44 @@ service : (UserIndexInitArgs) -> {
   get_recycle_status : () -> (RecycleStatus) query;
   get_requester_principals_canister_id_create_if_not_exists : () -> (Result);
   get_requester_principals_canister_id_create_if_not_exists_and_optionally_allow_referrer : () -> (
-    principal
-  );
+      principal,
+    );
   get_subnet_available_capacity : () -> (nat64) query;
   get_subnet_backup_capacity : () -> (nat64) query;
   get_user_canister_id_from_unique_user_name : (text) -> (opt principal) query;
   get_user_canister_id_from_user_principal_id : (principal) -> (
-    opt principal
-  ) query;
+      opt principal,
+    ) query;
   get_user_canister_incl_avail_list : () -> (vec principal) query;
   get_user_canister_list : () -> (vec principal) query;
   get_user_canister_status : (principal) -> (Result_4);
   get_user_id_and_canister_list : () -> (
-    vec record { principal; principal }
-  ) query;
+      vec record { principal; principal },
+    ) query;
   get_user_index_canister_count : () -> (nat64) query;
   get_user_index_canister_cycle_balance : () -> (nat) query;
   get_version : () -> (text) query;
   get_version_number : () -> (nat64) query;
   get_well_known_principal_value : (KnownPrincipalType) -> (
-    opt principal
-  ) query;
+      opt principal,
+    ) query;
   http_request : (HttpRequest) -> (HttpResponse) query;
   issue_rewards_for_referral : (principal, principal, principal) -> (Result_2);
   load_snapshot : () -> ();
   make_individual_canister_logs_private : (principal) -> (Result_3);
   make_individual_canister_logs_public : (principal) -> (Result_3);
   notify_specific_individual_canister_to_upgrade_creator_dao_governance_canisters : (
-    principal,
-    blob,
-  ) -> (Result_3);
+      principal,
+      blob,
+    ) -> (Result_3);
   provision_empty_canisters : (nat64) -> ();
   receive_and_save_snaphot : (nat64, blob) -> ();
   receive_creator_dao_stats_from_individual_canister : (vec principal) -> (
-    Result_3
-  );
+      Result_3,
+    );
   receive_empty_canister_from_individual_canister : (vec principal) -> (
-    Result_3
-  );
+      Result_3,
+    );
   recharge_individual_user_canister : () -> (Result_3);
   reclaim_cycles_from_individual_canisters : () -> ();
   redeem_gdollr : (principal, nat) -> (Result_3);
@@ -198,21 +198,27 @@ service : (UserIndexInitArgs) -> {
   set_permission_to_upgrade_individual_canisters : (bool) -> (text);
   start_upgrades_for_individual_canisters : (text, blob) -> (text);
   toggle_signups_enabled : () -> (Result_3);
+  uninstall_individual_user_canister : (principal) -> (Result_3);
   update_index_with_unique_user_name_corresponding_to_user_principal_id : (
-    text,
-    principal,
-  ) -> (Result_5);
+      text,
+      principal,
+    ) -> (Result_5);
   update_pd_onboarding_reward_for_all_individual_users : (nat) -> (Result_3);
   update_profile_owner_for_individual_canisters : () -> ();
   update_restart_timers_hon_game : () -> (text);
   update_well_known_principal : (KnownPrincipalType, principal) -> ();
   upgrade_all_creator_dao_governance_canisters_in_the_network : (blob) -> ();
+  upgrade_specific_individual_canister_with_wasm_version : (
+      principal,
+      text,
+      blob,
+    ) -> (Result_3);
   upgrade_specific_individual_user_canister_with_latest_wasm : (
-    principal,
-    opt principal,
-    opt CanisterInstallMode,
-  ) -> (Result_3);
+      principal,
+      opt principal,
+      opt CanisterInstallMode,
+    ) -> (Result_3);
   validate_reset_user_individual_canisters : (vec principal) -> (
-    Result_2
-  ) query;
-};
+      Result_2,
+    ) query;
+}
