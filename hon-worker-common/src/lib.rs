@@ -5,9 +5,9 @@ mod error;
 pub use error::*;
 
 use candid::{CandidType, Nat, Principal};
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde_with::{DisplayFromStr, serde_as};
 use yral_identity::{Signature, msg_builder::Message};
 
 pub const WORKER_URL: &str = "https://yral-hot-or-not.go-bazzinga.workers.dev/";
@@ -282,4 +282,21 @@ pub struct PaginatedReferralsRes {
 pub enum WithdrawalState {
     Value(Nat),
     NeedMoreEarnings(Nat),
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SatsBalanceUpdateRequest {
+    #[serde_as(as = "DisplayFromStr")]
+    pub delta: BigInt,
+    pub is_airdropped: bool,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SatsBalanceUpdateRequestV2 {
+    pub previous_balance: BigUint,
+    #[serde_as(as = "DisplayFromStr")]
+    pub delta: BigInt,
+    pub is_airdropped: bool,
 }
