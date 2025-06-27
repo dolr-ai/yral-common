@@ -12,6 +12,7 @@ num-bigint.workspace = true
 url.workspace = true
 thiserror.workspace = true
 serde_with.workspace = true
+limits.workspace = true
 
 [features]
 client = ["yral-identity/ic-agent", "dep:ic-agent"]
