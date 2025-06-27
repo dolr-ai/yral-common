@@ -3,7 +3,6 @@ mod error;
 pub use error::*;
 
 use candid::{CandidType, Nat, Principal};
-use limits::REFERRAL_REWARD;
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
