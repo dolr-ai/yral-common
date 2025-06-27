@@ -1,0 +1,11 @@
+[package]
+name = "limits"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+candid.workspace = true
+serde.workspace = true
+num-bigint.workspace = true
+thiserror.workspace = true
+serde_with.workspace = true

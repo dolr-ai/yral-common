@@ -1,0 +1,24 @@
+name: Deploy hot-or-not-ssr app on limits change
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "limits/**"
+
+jobs:
+  deploy-ssr-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch deploy ssr app workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.DISPATCH_PAT }}
+          script: |
+            const result = await github.rest.repos.createDispatchEvent({
+              owner: 'dolr-ai',
+              repo: 'hot-or-not-web-leptos-ssr',
+              event_type: 'limits-common-change',
+              client_payload: {"version": "v5.3.10"}
+            })
+            console.log(result);
