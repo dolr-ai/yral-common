@@ -7,7 +7,7 @@ pub const MAX_WITHDRAWAL_PER_DAY: u64 = 10000;
 
 // Reward limit
 pub const NEW_USER_SIGNUP_REWARD: u64 = 1000;
-pub const REFERRAL_REWARD: u64 = 10;
+pub const REFERRAL_REWARD: u64 = 5;
 pub const SATS_AIRDROP_LIMIT_RANGE: Range<u64> = 50..100;
 pub const AIRDROP_REWARD: u64 = 1000;
 pub const AIRDROP_REWARD_PER_DAY: u64 = 10000;
