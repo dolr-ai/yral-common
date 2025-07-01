@@ -1,4 +1,6 @@
 name: Deploy hot-or-not-ssr app on limits change
+permissions:
+  contents: read
 on:
   push:
     branches:
