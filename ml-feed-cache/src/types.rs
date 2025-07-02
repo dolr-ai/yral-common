@@ -106,6 +106,14 @@ pub struct BufferItem {
     pub timestamp: SystemTime,
 }
 
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
+pub struct FeedRequestV2 {
+    pub user_id: String,
+    pub canister_id: String,
+    pub filter_results: Vec<String>, // List of video IDs to filter results
+    pub num_results: u32,
+}
+
 #[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
 pub struct PostItemV2 {
     pub publisher_user_id: String,
