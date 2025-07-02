@@ -4498,6 +4498,8 @@ dependencies = [
  "ic-agent",
  "k256",
  "serde",
+ "serde_json",
+ "utoipa",
 ]
 
 [[package]]
