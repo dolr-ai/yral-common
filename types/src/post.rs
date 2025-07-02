@@ -1,5 +1,4 @@
 use ic_agent::export::Principal;
-use redis_macros::{FromRedisValue, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use utoipa::ToSchema;
@@ -32,7 +31,7 @@ pub struct FeedRequestV2 {
     pub num_results: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
 pub struct PostItemV2 {
     pub publisher_user_id: String,
     pub canister_id: String,

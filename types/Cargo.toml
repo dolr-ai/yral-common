@@ -8,10 +8,4 @@ serde.workspace = true
 k256 = { workspace = true, default-features = false, features = ["jwk"] }
 ic-agent.workspace = true
 utoipa = "5.3.1"
-redis = { version = "0.29.1", features = [
-    "tokio-rustls-comp",
-    "tls-rustls-webpki-roots",
-    "json",
-] }
-redis-macros = "0.5.2"
 serde_json.workspace = true
