@@ -26,5 +26,3 @@ jobs:
               event_type: 'limits-common-change',
               client_payload: {"commit_hash": "${{ env.SHORT_SHA }}" }
             })
-            console.log("SHORT_SHA: ${env.SHORT_SHA}");
-            console.log(result);
