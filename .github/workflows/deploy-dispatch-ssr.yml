@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Short SHA
-        id: vars
         run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+
       - name: Dispatch deploy ssr app workflow
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.DISPATCH_PAT }}
+          github-token: ${{ secrets.LEPTOS_SSR_DISPATCH_TOKEN }}
           script: |
             const result = await github.rest.repos.createDispatchEvent({
               owner: 'dolr-ai',
