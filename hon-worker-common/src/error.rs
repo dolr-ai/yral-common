@@ -1,3 +1,4 @@
+use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -21,6 +22,12 @@ pub enum WorkerError {
     AlreadyReferred,
     #[error("specified airdropped with negative delta")]
     InvalidAirdropDelta,
+    #[error("conflict while updating balance, retry")]
+    BalanceTransactionConflict { new_balance: BigUint },
+    #[error("sats credit limit reached")]
+    SatsCreditLimitReached,
+    #[error("sats deduct limit reached")]
+    SatsDeductLimitReached,
 }
 
 #[derive(Serialize, Deserialize, Debug, Error)]

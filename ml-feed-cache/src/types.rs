@@ -105,3 +105,32 @@ pub struct BufferItem {
     pub user_canister_id: String,
     pub timestamp: SystemTime,
 }
+
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
+pub struct PostItemV2 {
+    pub publisher_user_id: String,
+    pub canister_id: String,
+    pub post_id: u64,
+    pub video_id: String,
+    pub nsfw_probability: f32,
+}
+
+impl Eq for PostItemV2 {}
+
+impl PartialEq for PostItemV2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.publisher_user_id == other.publisher_user_id && self.post_id == other.post_id
+    }
+}
+
+impl Hash for PostItemV2 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.publisher_user_id.hash(state);
+        self.post_id.hash(state);
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
+pub struct FeedResponseV2 {
+    pub posts: Vec<PostItemV2>,
+}
