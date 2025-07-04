@@ -23,6 +23,7 @@ use sns_validation::pbs::sns_pb::SnsInitPayload;
 use types::delegated_identity::DelegatedIdentityWire;
 use utils::profile::ProfileDetails;
 use yral_metadata_client::MetadataClient;
+use yral_metadata_types::SetUserMetadataReqMetadata;
 
 pub mod agent_wrapper;
 mod consts;
@@ -31,7 +32,6 @@ mod error;
 pub mod utils;
 
 pub use error::*;
-use yral_metadata_types::UserMetadata;
 pub const CENT_TOKEN_NAME: &str = "CENTS";
 pub const SATS_TOKEN_NAME: &str = "Satoshi";
 pub const SATS_TOKEN_SYMBOL: &str = "SATS";
@@ -126,7 +126,7 @@ impl Canisters<true> {
         self.metadata_client
             .set_user_metadata(
                 self.identity(),
-                UserMetadata {
+                SetUserMetadataReqMetadata {
                     user_canister_id: user_canister,
                     user_name: "".into(),
                 },
