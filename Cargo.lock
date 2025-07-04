@@ -1350,6 +1350,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "ic-agent",
+ "limits",
  "num-bigint",
  "serde",
  "serde_with",
@@ -1902,6 +1903,17 @@ checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
  "bitflags",
  "libc",
+]
+
+[[package]]
+name = "limits"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "num-bigint",
+ "serde",
+ "serde_with",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
