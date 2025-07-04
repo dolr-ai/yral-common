@@ -25,3 +25,4 @@ pub enum CoinState {
 pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C10, CoinState::C20];
 pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C10;
 pub const MAX_BET_AMOUNT: usize = 20;
+pub const TEST_VAR_REMOVE_THIS: usize = 0;
