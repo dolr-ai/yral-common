@@ -179,7 +179,7 @@ impl Canisters<true> {
 
         let maybe_meta = res
             .metadata_client
-            .get_user_metadata(id.sender().unwrap())
+            .get_user_metadata_v2(id.sender().unwrap().to_text())
             .await?;
         res.user_canister = if let Some(meta) = maybe_meta.as_ref() {
             meta.user_canister_id
@@ -255,7 +255,7 @@ impl<const A: bool> Canisters<A> {
     ) -> Result<Option<Principal>> {
         let meta = self
             .metadata_client
-            .get_user_metadata(user_principal)
+            .get_user_metadata_v2(user_principal.to_text())
             .await?;
         if let Some(meta) = meta {
             return Ok(Some(meta.user_canister_id));

@@ -146,7 +146,7 @@ impl<const A: bool> Canisters<A> {
         }
 
         let creator_principal = post_details.created_by_user_principal_id;
-        let creator_meta = self.metadata_client.get_user_metadata(creator_principal).await?; 
+        let creator_meta = self.metadata_client.get_user_metadata_v2(creator_principal.to_text()).await?; 
         post_details.created_by_unique_user_name = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
