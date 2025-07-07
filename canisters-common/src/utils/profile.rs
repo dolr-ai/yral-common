@@ -1,8 +1,8 @@
 use candid::Principal;
-use canisters_client::individual_user_template::UserProfileDetailsForFrontend;
+use canisters_client::individual_user_template::UserProfileDetailsForFrontendV2;
 use serde::{Deserialize, Serialize};
 
-use crate::consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT};
+use crate::{consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT}, Canisters, Result};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ProfileDetails {
@@ -17,8 +17,8 @@ pub struct ProfileDetails {
     pub nots: u64,
 }
 
-impl From<UserProfileDetailsForFrontend> for ProfileDetails {
-    fn from(user: UserProfileDetailsForFrontend) -> Self {
+impl From<UserProfileDetailsForFrontendV2> for ProfileDetails {
+    fn from(user: UserProfileDetailsForFrontendV2) -> Self {
         Self {
             username: user.unique_user_name,
             lifetime_earnings: user.lifetime_earnings,
@@ -67,5 +67,18 @@ impl ProfileDetails {
         }
 
         propic_from_principal(self.principal)
+    }
+}
+
+impl<const A: bool> Canisters<A> {
+    pub async fn get_profile_details(&self, username_or_principal: String) -> Result<Option<ProfileDetails>> {
+        let Some(meta) = self.metadata_client.get_user_metadata_v2(username_or_principal).await? else {
+            return Ok(None);
+        };
+        let user_profile = self.individual_user(meta.user_canister_id).await;
+        let mut profile_details = user_profile.get_profile_details_v_2().await?;
+        profile_details.unique_user_name = (!meta.user_name.is_empty()).then_some(meta.user_name);
+
+        Ok(Some(profile_details.into()))
     }
 }
