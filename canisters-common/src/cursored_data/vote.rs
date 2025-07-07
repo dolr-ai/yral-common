@@ -2,9 +2,10 @@ use std::sync::Mutex;
 
 use candid::Principal;
 use hon_worker_common::{
-    GameRes, GameResV2, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2, WORKER_URL,
+    GameRes, GameResV2, GameResV3, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2, PaginatedGamesResV3, WORKER_URL,
 };
 use url::Url;
+use yral_metadata_client::MetadataClient;
 
 use crate::{utils::vote::VoteDetails, Error};
 
@@ -103,6 +104,14 @@ impl KeyedData for GameResV2 {
     }
 }
 
+impl KeyedData for GameResV3 {
+    type Key = (Principal, u64);
+
+    fn key(&self) -> Self::Key {
+        (self.publisher_principal, self.post_id)
+    }
+}
+
 /// Only goes forward and ignores start and end parameters when paginating
 ///
 /// UB: Retrieving next page while the current page hasn't finished loading will lead to undefine behavior
@@ -163,6 +172,91 @@ impl VotesWithSatsProviderV2 {
     pub fn new(user_principal: Principal) -> Self {
         Self {
             user_principal,
+            next: Mutex::new(None),
+        }
+    }
+
+    fn get_cursor(&self) -> Option<String> {
+        self.next.lock().unwrap().clone()
+    }
+}
+
+/// VotesWithSatsProviderV3 calls the /v3 API and converts GameResV3 to GameRes using metadata client
+pub struct VotesWithSatsProviderV3 {
+    next: Mutex<Option<String>>,
+    user_principal: Principal,
+    metadata_client: MetadataClient<false>,
+}
+
+impl Clone for VotesWithSatsProviderV3 {
+    fn clone(&self) -> Self {
+        let lock = self.next.lock().unwrap();
+        let next = lock.clone();
+        let user_principal = self.user_principal;
+        let metadata_client = self.metadata_client.clone();
+
+        Self {
+            next: Mutex::new(next),
+            user_principal,
+            metadata_client,
+        }
+    }
+}
+
+impl CursoredDataProvider for VotesWithSatsProviderV3 {
+    type Data = GameRes;
+    type Error = Error;
+
+    async fn get_by_cursor_inner(
+        &self,
+        start: usize,
+        end: usize,
+    ) -> Result<PageEntry<Self::Data>, Self::Error> {
+        let url: Url = WORKER_URL.parse().unwrap();
+        let path = format!("/v3/games/{}", self.user_principal);
+        let url = url.join(&path).unwrap();
+        let cursor = self.get_cursor();
+        let req = PaginatedGamesReq {
+            page_size: end - start,
+            cursor,
+        };
+
+        let client = reqwest::Client::new();
+        let PaginatedGamesResV3 { games, next }: PaginatedGamesResV3 =
+            client.post(url).json(&req).send().await?.json().await?;
+
+        let end = next.is_none();
+        *self.next.lock().unwrap() = next;
+
+        // Convert GameResV3 to GameRes using metadata client
+        let mut converted_games = Vec::new();
+        let publisher_principals: Vec<Principal> = games.iter().map(|g| g.publisher_principal).collect();
+        
+        // Get canister mappings in bulk
+        let canister_mappings = self.metadata_client
+            .get_user_metadata_bulk(publisher_principals)
+            .await?;
+
+        for game_v3 in games {
+            if let Some(Some(metadata)) = canister_mappings.get(&game_v3.publisher_principal) {
+                let game_res = GameRes {
+                    post_canister: metadata.user_canister_id,
+                    post_id: game_v3.post_id,
+                    game_info: game_v3.game_info,
+                };
+                converted_games.push(game_res);
+            }
+        }
+
+        Ok(PageEntry { data: converted_games, end })
+    }
+}
+
+impl VotesWithSatsProviderV3 {
+    pub fn new(user_principal: Principal, metadata_client: MetadataClient<false>) -> Self {
+        Self {
+            user_principal,
+            metadata_client,
             next: Mutex::new(None),
         }
     }
