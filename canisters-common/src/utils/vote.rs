@@ -153,7 +153,7 @@ impl Canisters<true> {
         Ok(info)
     }
 
-    pub async fn fetch_game_with_sats_info_v2(
+    pub async fn fetch_game_with_sats_info_v3(
         &self,
         cloudflare_url: reqwest::Url,
         request: GameInfoReqV3,
