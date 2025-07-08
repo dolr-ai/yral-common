@@ -351,3 +351,17 @@ pub fn hon_game_vote_msg_v3(request: VoteRequestV3) -> yral_identity::msg_builde
         .args((request,))
         .expect("Vote request should serialize")
 }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentiment {
+    pub request: VoteRequest,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentimentV3 {
+    pub request: VoteRequestV3,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+}
