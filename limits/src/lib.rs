@@ -25,6 +25,6 @@ pub enum CoinState {
 }
 
 pub const BET_COIN_ENABLED_STATES: [CoinState; 3] = [CoinState::C1, CoinState::C5, CoinState::C10];
-pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C10;
+pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C1;
 pub const MAX_BET_AMOUNT: usize = 10;
 pub const TEST_VAR_REMOVE_THIS: usize = 0;
