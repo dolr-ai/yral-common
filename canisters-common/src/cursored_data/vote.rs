@@ -2,7 +2,8 @@ use std::sync::Mutex;
 
 use candid::Principal;
 use hon_worker_common::{
-    GameRes, GameResV2, GameResV3, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2, PaginatedGamesResV3, WORKER_URL,
+    GameRes, GameResV2, GameResV3, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2,
+    PaginatedGamesResV3, WORKER_URL,
 };
 use url::Url;
 use yral_metadata_client::MetadataClient;
@@ -230,10 +231,12 @@ impl CursoredDataProvider for VotesWithSatsProviderV3 {
 
         // Convert GameResV3 to GameRes using metadata client
         let mut converted_games = Vec::new();
-        let publisher_principals: Vec<Principal> = games.iter().map(|g| g.publisher_principal).collect();
-        
+        let publisher_principals: Vec<Principal> =
+            games.iter().map(|g| g.publisher_principal).collect();
+
         // Get canister mappings in bulk
-        let canister_mappings = self.metadata_client
+        let canister_mappings = self
+            .metadata_client
             .get_user_metadata_bulk(publisher_principals)
             .await?;
 
@@ -248,7 +251,10 @@ impl CursoredDataProvider for VotesWithSatsProviderV3 {
             }
         }
 
-        Ok(PageEntry { data: converted_games, end })
+        Ok(PageEntry {
+            data: converted_games,
+            end,
+        })
     }
 }
 
