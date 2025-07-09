@@ -1,14 +1,14 @@
 use std::ops::Range;
 
 // Withdraw limits
-pub const MIN_WITHDRAWAL_PER_TXN_SATS: u64 = 200;
-pub const MAX_WITHDRAWAL_PER_TXN_SATS: u64 = 500;
-pub const MAX_WITHDRAWAL_PER_DAY_SATS: u64 = 10_000;
+pub const MIN_WITHDRAWAL_PER_TXN_SATS: u64 = 50;
+pub const MAX_WITHDRAWAL_PER_TXN_SATS: u64 = 60;
+pub const MAX_WITHDRAWAL_PER_DAY_SATS: u64 = 60;
 
 // Reward limit
-pub const NEW_USER_SIGNUP_REWARD_SATS: u64 = 100;
+pub const NEW_USER_SIGNUP_REWARD_SATS: u64 = 25;
 pub const REFERRAL_REWARD_SATS: u64 = 5;
-pub const SATS_AIRDROP_LIMIT_RANGE_SATS: Range<u64> = 50..100;
+pub const SATS_AIRDROP_LIMIT_RANGE_SATS: Range<u64> = 25..30;
 pub const AIRDROP_REWARD_SATS: u64 = 1000;
 pub const AIRDROP_REWARD_PER_DAY_SATS: u64 = 10000;
 
@@ -18,9 +18,9 @@ pub const MAX_CREDITED_PER_DAY_PER_USER_SATS: u64 = 1_000_000;
 pub const MAX_DEDUCTED_PER_DAY_PER_USER_SATS: u64 = 100_000;
 
 // Coin state control
-pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C10, CoinState::C20];
-pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C10;
-pub const MAX_BET_AMOUNT_SATS: u64 = 20;
+pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C1, CoinState::C5];
+pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C1;
+pub const MAX_BET_AMOUNT_SATS: u64 = 5; // CoinState::C5 is 5
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CoinState {
