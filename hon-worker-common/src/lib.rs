@@ -1,5 +1,3 @@
-pub mod limits;
-
 mod error;
 
 pub use error::*;
@@ -246,7 +244,7 @@ pub struct ReferralReq {
 }
 
 pub fn default_referral_amount() -> u64 {
-    limits::REFERRAL_REWARD
+    limits::REFERRAL_REWARD_SATS
 }
 
 pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Message {
@@ -299,4 +297,71 @@ pub struct SatsBalanceUpdateRequestV2 {
     #[serde_as(as = "DisplayFromStr")]
     pub delta: BigInt,
     pub is_airdropped: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct GameResV3 {
+    pub publisher_principal: Principal,
+    pub post_id: u64,
+    pub game_info: GameInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PaginatedGamesResV3 {
+    pub games: Vec<GameResV3>,
+    pub next: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct GameInfoReqV3 {
+    pub publisher_principal: Principal,
+    pub post_id: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
+pub struct VoteRequestV3 {
+    pub publisher_principal: Principal,
+    pub post_id: u64,
+    pub vote_amount: u128,
+    pub direction: HotOrNot,
+}
+
+#[cfg(feature = "client")]
+pub fn sign_vote_request_v3(
+    sender: &impl ic_agent::Identity,
+    request: VoteRequestV3,
+) -> yral_identity::Result<Signature> {
+    use yral_identity::ic_agent::sign_message;
+    let msg = hon_game_vote_msg_v3(request.clone());
+    sign_message(sender, msg)
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HoNGameVoteReqV3 {
+    pub request: VoteRequestV3,
+    /// Sentiment from alloydb
+    pub fetched_sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+    pub signature: Signature,
+}
+
+pub fn hon_game_vote_msg_v3(request: VoteRequestV3) -> yral_identity::msg_builder::Message {
+    yral_identity::msg_builder::Message::default()
+        .method_name("hon_worker_game_vote_v3".into())
+        .args((request,))
+        .expect("Vote request should serialize")
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentiment {
+    pub request: VoteRequest,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentimentV3 {
+    pub request: VoteRequestV3,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
 }

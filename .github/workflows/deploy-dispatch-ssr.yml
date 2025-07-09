@@ -1,0 +1,28 @@
+name: Deploy hot-or-not-ssr app on limits change
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "limits/**"
+
+jobs:
+  deploy-ssr-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Short SHA
+        run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: Dispatch deploy ssr app workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.LEPTOS_SSR_DISPATCH_TOKEN }}
+          script: |
+            const result = await github.rest.repos.createDispatchEvent({
+              owner: 'dolr-ai',
+              repo: 'hot-or-not-web-leptos-ssr',
+              event_type: 'limits-common-change',
+              client_payload: {"commit_hash": "${{ env.SHORT_SHA }}" }
+            })
