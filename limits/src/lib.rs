@@ -32,29 +32,3 @@ pub enum CoinState {
     C100,
     C200,
 }
-
-impl CoinState {
-    pub fn to_cents(&self) -> u64 {
-        match self {
-            CoinState::C1 => 1,
-            CoinState::C5 => 5,
-            CoinState::C10 => 10,
-            CoinState::C20 => 20,
-            CoinState::C50 => 50,
-            CoinState::C100 => 100,
-            CoinState::C200 => 200,
-        }
-    }
-    pub fn from_cents(cents: u64) -> CoinState {
-        match cents {
-            1 => CoinState::C1,
-            5 => CoinState::C5,
-            10 => CoinState::C10,
-            20 => CoinState::C20,
-            50 => CoinState::C50,
-            100 => CoinState::C100,
-            200 => CoinState::C200,
-            _ => DEFAULT_BET_COIN_STATE,
-        }
-    }
-}
