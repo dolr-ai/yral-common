@@ -24,5 +24,9 @@ pub enum CoinState {
 
 pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C10, CoinState::C20];
 pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C10;
-pub const MAX_BET_AMOUNT: usize = 20;
-pub const TEST_VAR_REMOVE_THIS: usize = 0;
+pub const MAX_BET_AMOUNT_SATS: u64 = 20;
+
+// Treasury
+pub const MAXIMUM_CKBTC_TREASURY_PER_DAY_PER_USER: u64 = 500;
+pub const MAXIMUM_SATS_CREDITED_PER_DAY_PER_USER: u64 = 1_000_000;
+pub const MAXIMUM_SATS_DEDUCTED_PER_DAY_PER_USER: u64 = 100_000;
