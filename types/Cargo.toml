@@ -7,3 +7,5 @@ edition = "2021"
 serde.workspace = true
 k256 = { workspace = true, default-features = false, features = ["jwk"] }
 ic-agent.workspace = true
+utoipa = "5.3.1"
+serde_json.workspace = true
