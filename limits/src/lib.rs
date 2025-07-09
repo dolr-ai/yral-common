@@ -12,9 +12,20 @@ pub const SATS_AIRDROP_LIMIT_RANGE_SATS: Range<u64> = 50..100;
 pub const AIRDROP_REWARD_SATS: u64 = 1000;
 pub const AIRDROP_REWARD_PER_DAY_SATS: u64 = 10000;
 
+// For workers - SATS as a service
+pub const MAX_CKBTC_TREASURY_PER_DAY_PER_USER: u64 = 500;
+pub const MAX_CREDITED_PER_DAY_PER_USER_SATS: u64 = 1_000_000;
+pub const MAX_DEDUCTED_PER_DAY_PER_USER_SATS: u64 = 100_000;
+
 // Coin state control
+pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C10, CoinState::C20];
+pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C10;
+pub const MAX_BET_AMOUNT_SATS: u64 = 20;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CoinState {
+    C1,
+    C5,
     C10,
     C20,
     C50,
@@ -25,6 +36,8 @@ pub enum CoinState {
 impl CoinState {
     pub fn to_cents(&self) -> u64 {
         match self {
+            CoinState::C1 => 1,
+            CoinState::C5 => 5,
             CoinState::C10 => 10,
             CoinState::C20 => 20,
             CoinState::C50 => 50,
@@ -34,6 +47,8 @@ impl CoinState {
     }
     pub fn from_cents(cents: u64) -> CoinState {
         match cents {
+            1 => CoinState::C1,
+            5 => CoinState::C5,
             10 => CoinState::C10,
             20 => CoinState::C20,
             50 => CoinState::C50,
@@ -56,12 +71,3 @@ impl CoinState {
             .unwrap_or(DEFAULT_BET_COIN_STATE)
     }
 }
-
-pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C10, CoinState::C20];
-pub const DEFAULT_BET_COIN_STATE: CoinState = CoinState::C10;
-pub const MAX_BET_AMOUNT_SATS: u64 = 20;
-
-// For workers - SATS as a service
-pub const MAXIMUM_CKBTC_TREASURY_PER_DAY_PER_USER: u64 = 500;
-pub const MAXIMUM_SATS_CREDITED_PER_DAY_PER_USER: u64 = 1_000_000;
-pub const MAXIMUM_SATS_DEDUCTED_PER_DAY_PER_USER: u64 = 100_000;
