@@ -4563,7 +4563,7 @@ dependencies = [
 [[package]]
 name = "yral-metadata-client"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#af7d1554300d2d40b5f26e0d7c617692300593bb"
+source = "git+https://github.com/yral-dapp/yral-metadata?rev=af7d1554300d2d40b5f26e0d7c617692300593bb#af7d1554300d2d40b5f26e0d7c617692300593bb"
 dependencies = [
  "ic-agent",
  "reqwest",
@@ -4575,7 +4575,7 @@ dependencies = [
 [[package]]
 name = "yral-metadata-types"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#af7d1554300d2d40b5f26e0d7c617692300593bb"
+source = "git+https://github.com/yral-dapp/yral-metadata?rev=af7d1554300d2d40b5f26e0d7c617692300593bb#af7d1554300d2d40b5f26e0d7c617692300593bb"
 dependencies = [
  "candid",
  "serde",

@@ -13,8 +13,8 @@ url.workspace = true
 yral-identity = { workspace = true, default-features = false, features = [
     "ic-agent",
 ] }
-yral-metadata-client = { git = "https://github.com/yral-dapp/yral-metadata", branch = "master", default-features = false }
-yral-metadata-types = { git = "https://github.com/yral-dapp/yral-metadata", branch = "master", default-features = false }
+yral-metadata-client = { git = "https://github.com/yral-dapp/yral-metadata", rev = "af7d1554300d2d40b5f26e0d7c617692300593bb", default-features = false }
+yral-metadata-types = { git = "https://github.com/yral-dapp/yral-metadata", rev = "af7d1554300d2d40b5f26e0d7c617692300593bb", default-features = false }
 types.workspace = true
 sns-validation.path = "../sns-validation"
 serde.workspace = true
