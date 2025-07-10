@@ -244,7 +244,7 @@ pub struct ReferralReq {
 }
 
 pub fn default_referral_amount() -> u64 {
-    limits::REFERRAL_REWARD
+    limits::REFERRAL_REWARD_SATS
 }
 
 pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Message {
@@ -350,4 +350,18 @@ pub fn hon_game_vote_msg_v3(request: VoteRequestV3) -> yral_identity::msg_builde
         .method_name("hon_worker_game_vote_v3".into())
         .args((request,))
         .expect("Vote request should serialize")
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentiment {
+    pub request: VoteRequest,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentimentV3 {
+    pub request: VoteRequestV3,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
 }
