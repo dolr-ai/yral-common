@@ -251,7 +251,7 @@ impl<const A: bool> Canisters<A> {
     ) -> Result<Option<Principal>> {
         let meta = self
             .metadata_client
-            .get_user_metadata(user_principal)
+            .get_user_metadata_v2(user_principal.to_text())
             .await?;
         if let Some(meta) = meta {
             return Ok(Some(meta.user_canister_id));
