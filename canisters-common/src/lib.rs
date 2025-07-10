@@ -201,8 +201,11 @@ impl Canisters<true> {
             Err(e) | Ok(Result15::Err(e)) => log::warn!("Failed to update last access time: {e}"),
         }
 
-        let mut profile_details: ProfileDetails = user.get_profile_details_v_2().await?.into();
-        profile_details.username = maybe_meta.map(|meta| meta.user_name).filter(|s| !s.is_empty());
+        let profile_details = ProfileDetails::from_canister(
+            res.user_canister,
+            maybe_meta.map(|meta| meta.user_name),
+            user.get_profile_details_v_2().await?.into()
+        );
         res.profile_details = Some(profile_details);
 
         Ok(res)
