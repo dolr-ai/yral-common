@@ -13,20 +13,22 @@ pub struct ProfileDetails {
     pub profile_pic: Option<String>,
     pub display_name: Option<String>,
     pub principal: Principal,
+    pub user_canister: Principal,
     pub hots: u64,
     pub nots: u64,
 }
 
-impl From<UserProfileDetailsForFrontendV2> for ProfileDetails {
-    fn from(user: UserProfileDetailsForFrontendV2) -> Self {
+impl ProfileDetails {
+    pub fn from_canister(user_canister: Principal, username: Option<String>, user: UserProfileDetailsForFrontendV2) -> Self {
         Self {
-            username: user.unique_user_name,
+            username: username.filter(|u| !u.is_empty()),
             lifetime_earnings: user.lifetime_earnings,
             followers_cnt: user.followers_count,
             following_cnt: user.following_count,
             profile_pic: user.profile_picture_url,
             display_name: user.display_name,
             principal: user.principal_id,
+            user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
         }
@@ -76,9 +78,12 @@ impl<const A: bool> Canisters<A> {
             return Ok(None);
         };
         let user_profile = self.individual_user(meta.user_canister_id).await;
-        let mut profile_details = user_profile.get_profile_details_v_2().await?;
-        profile_details.unique_user_name = (!meta.user_name.is_empty()).then_some(meta.user_name);
+        let user = user_profile.get_profile_details_v_2().await?;
 
-        Ok(Some(profile_details.into()))
+        Ok(Some(ProfileDetails::from_canister(
+            meta.user_canister_id,
+            Some(meta.user_name),
+            user
+        )))
     }
 }
