@@ -15,7 +15,7 @@ jobs:
       - name: Short SHA
         run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
 
-      - name: Dispatch deploy ssr app workflow
+      - name: Dispatch event to hot-or-not-web-leptos-ssr
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.LEPTOS_SSR_DISPATCH_TOKEN }}
@@ -23,6 +23,18 @@ jobs:
             const result = await github.rest.repos.createDispatchEvent({
               owner: 'dolr-ai',
               repo: 'hot-or-not-web-leptos-ssr',
+              event_type: 'limits-common-change',
+              client_payload: {"commit_hash": "${{ env.SHORT_SHA }}" }
+            })
+
+      - name: Dispatch event to yral-backend-cloudflare-workers
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.LIMITS_CHANGE_DISPATCH_TOKEN }}
+          script: |
+            const result = await github.rest.repos.createDispatchEvent({
+              owner: 'dolr-ai',
+              repo: 'yral-backend-cloudflare-workers',
               event_type: 'limits-common-change',
               client_payload: {"commit_hash": "${{ env.SHORT_SHA }}" }
             })
