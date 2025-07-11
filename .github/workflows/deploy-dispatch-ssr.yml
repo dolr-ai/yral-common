@@ -30,7 +30,7 @@ jobs:
       - name: Dispatch event to yral-backend-cloudflare-workers
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.LEPTOS_SSR_DISPATCH_TOKEN }}
+          github-token: ${{ secrets.LIMITS_CHANGE_DISPATCH_TOKEN }}
           script: |
             const result = await github.rest.repos.createDispatchEvent({
               owner: 'dolr-ai',
