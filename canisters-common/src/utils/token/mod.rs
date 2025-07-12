@@ -143,7 +143,7 @@ impl<const A: bool> Canisters<A> {
                 };
 
                 let Some(user_canister) = self
-                    .get_individual_canister_by_user_principal(user_principal)
+                    .get_individual_canister_v2(user_principal.to_string())
                     .await?
                 else {
                     return Ok(None);
@@ -470,7 +470,7 @@ impl<const A: bool> Canisters<A> {
         log::debug!("transfer res: {res:?}");
 
         let destination_canister_id = self
-            .get_individual_canister_by_user_principal(destination)
+            .get_individual_canister_v2(destination.to_text())
             .await?;
         let Some(destination_canister_id) = destination_canister_id else {
             return Ok(());

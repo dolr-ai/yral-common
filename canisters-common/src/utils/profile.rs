@@ -1,8 +1,8 @@
 use candid::Principal;
-use canisters_client::individual_user_template::UserProfileDetailsForFrontend;
+use canisters_client::individual_user_template::UserProfileDetailsForFrontendV2;
 use serde::{Deserialize, Serialize};
 
-use crate::consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT};
+use crate::{consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT}, Canisters, Result};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ProfileDetails {
@@ -13,20 +13,22 @@ pub struct ProfileDetails {
     pub profile_pic: Option<String>,
     pub display_name: Option<String>,
     pub principal: Principal,
+    pub user_canister: Principal,
     pub hots: u64,
     pub nots: u64,
 }
 
-impl From<UserProfileDetailsForFrontend> for ProfileDetails {
-    fn from(user: UserProfileDetailsForFrontend) -> Self {
+impl ProfileDetails {
+    pub fn from_canister(user_canister: Principal, username: Option<String>, user: UserProfileDetailsForFrontendV2) -> Self {
         Self {
-            username: user.unique_user_name,
+            username: username.filter(|u| !u.is_empty()),
             lifetime_earnings: user.lifetime_earnings,
             followers_cnt: user.followers_count,
             following_cnt: user.following_count,
             profile_pic: user.profile_picture_url,
             display_name: user.display_name,
             principal: user.principal_id,
+            user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
         }
@@ -67,5 +69,21 @@ impl ProfileDetails {
         }
 
         propic_from_principal(self.principal)
+    }
+}
+
+impl<const A: bool> Canisters<A> {
+    pub async fn get_profile_details(&self, username_or_principal: String) -> Result<Option<ProfileDetails>> {
+        let Some(meta) = self.metadata_client.get_user_metadata_v2(username_or_principal).await? else {
+            return Ok(None);
+        };
+        let user_profile = self.individual_user(meta.user_canister_id).await;
+        let user = user_profile.get_profile_details_v_2().await?;
+
+        Ok(Some(ProfileDetails::from_canister(
+            meta.user_canister_id,
+            Some(meta.user_name),
+            user
+        )))
     }
 }
