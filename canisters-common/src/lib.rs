@@ -204,11 +204,25 @@ impl Canisters<true> {
         let profile_details = ProfileDetails::from_canister(
             res.user_canister,
             maybe_meta.map(|meta| meta.user_name),
-            user.get_profile_details_v_2().await?.into()
+            user.get_profile_details_v_2().await?
         );
         res.profile_details = Some(profile_details);
 
         Ok(res)
+    }
+
+    pub async fn set_username(&mut self, new_username: String) -> Result<()> {
+        self.metadata_client.set_user_metadata(
+            self.identity(),
+        SetUserMetadataReqMetadata {
+                user_canister_id: self.user_canister,
+                user_name: new_username.clone(),
+        }).await?;
+        if let Some(p) = self.profile_details.as_mut() {
+            p.username = Some(new_username)
+        }
+
+        Ok(())
     }
 
     pub fn from_wire(wire: CanistersAuthWire, base: Canisters<false>) -> Result<Self> {
