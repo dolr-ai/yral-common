@@ -23,7 +23,7 @@ use sns_validation::pbs::sns_pb::SnsInitPayload;
 use types::delegated_identity::DelegatedIdentityWire;
 use utils::profile::ProfileDetails;
 use yral_metadata_client::MetadataClient;
-use yral_metadata_types::SetUserMetadataReqMetadata;
+use yral_metadata_types::{SetUserMetadataReqMetadata, UserMetadataV2};
 
 pub mod agent_wrapper;
 mod consts;
@@ -140,7 +140,7 @@ impl Canisters<true> {
         let user = self.authenticated_user().await;
 
         let maybe_referrer_canister = self
-            .get_individual_canister_by_user_principal(referrer)
+            .get_individual_canister_v2(referrer.to_text())
             .await?;
         let Some(referrer_canister) = maybe_referrer_canister else {
             return Ok(());
@@ -177,11 +177,12 @@ impl Canisters<true> {
             profile_details: None,
         };
 
-        let maybe_user_canister = res
-            .get_individual_canister_by_user_principal(id.sender().unwrap())
+        let maybe_meta = res
+            .metadata_client
+            .get_user_metadata_v2(id.sender().unwrap().to_text())
             .await?;
-        res.user_canister = if let Some(user_canister) = maybe_user_canister {
-            user_canister
+        res.user_canister = if let Some(meta) = maybe_meta.as_ref() {
+            meta.user_canister_id
         } else {
             res.create_individual_canister().await?
         };
@@ -200,9 +201,28 @@ impl Canisters<true> {
             Err(e) | Ok(Result15::Err(e)) => log::warn!("Failed to update last access time: {e}"),
         }
 
-        res.profile_details = Some(user.get_profile_details().await?.into());
+        let profile_details = ProfileDetails::from_canister(
+            res.user_canister,
+            maybe_meta.map(|meta| meta.user_name),
+            user.get_profile_details_v_2().await?
+        );
+        res.profile_details = Some(profile_details);
 
         Ok(res)
+    }
+
+    pub async fn set_username(&mut self, new_username: String) -> Result<()> {
+        self.metadata_client.set_user_metadata(
+            self.identity(),
+        SetUserMetadataReqMetadata {
+                user_canister_id: self.user_canister,
+                user_name: new_username.clone(),
+        }).await?;
+        if let Some(p) = self.profile_details.as_mut() {
+            p.username = Some(new_username)
+        }
+
+        Ok(())
     }
 
     pub fn from_wire(wire: CanistersAuthWire, base: Canisters<false>) -> Result<Self> {
@@ -245,13 +265,14 @@ impl<const A: bool> Canisters<A> {
         PlatformOrchestrator(PLATFORM_ORCHESTRATOR_ID, agent)
     }
 
+    #[deprecated = "Use `get_individual_canister_v2` instead"]
     pub async fn get_individual_canister_by_user_principal(
         &self,
         user_principal: Principal,
     ) -> Result<Option<Principal>> {
         let meta = self
             .metadata_client
-            .get_user_metadata(user_principal)
+            .get_user_metadata_v2(user_principal.to_text())
             .await?;
         if let Some(meta) = meta {
             return Ok(Some(meta.user_canister_id));
@@ -264,6 +285,26 @@ impl<const A: bool> Canisters<A> {
         {
             Ok(None)
         }
+    }
+
+    pub async fn get_user_metadata(
+        &self,
+        username_or_principal: String,
+    ) -> Result<Option<UserMetadataV2>> {
+        let meta = self
+            .metadata_client
+            .get_user_metadata_v2(username_or_principal)
+            .await?;
+        Ok(meta)
+    }
+
+    pub async fn get_individual_canister_v2(
+        &self,
+        username_or_principal: String,
+    ) -> Result<Option<Principal>> {
+        let meta = self.get_user_metadata(username_or_principal).await?;
+
+        Ok(meta.map(|m| m.user_canister_id))
     }
 
     pub async fn sns_governance(&self, canister_id: Principal) -> SnsGovernance<'_> {

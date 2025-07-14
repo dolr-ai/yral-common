@@ -118,7 +118,7 @@ impl<const A: bool> Canisters<A> {
         nsfw_probability: f32,
     ) -> Result<Option<PostDetails>> {
         let post_creator_can = self.individual_user(user_canister).await;
-        let post_details = match post_creator_can
+        let mut post_details = match post_creator_can
             .get_individual_post_details_by_id(post_id)
             .await
         {
@@ -144,6 +144,10 @@ impl<const A: bool> Canisters<A> {
         if res.is_err() || (res.is_ok() && res.unwrap().status() != 200) {
             return Ok(None);
         }
+
+        let creator_principal = post_details.created_by_user_principal_id;
+        let creator_meta = self.metadata_client.get_user_metadata_v2(creator_principal.to_text()).await?; 
+        post_details.created_by_unique_user_name = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
             A,
