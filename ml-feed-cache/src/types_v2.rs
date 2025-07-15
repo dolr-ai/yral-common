@@ -8,17 +8,17 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Clone, ToRedisArgs, FromRedisValue, Debug)]
-pub struct MLFeedCacheHistoryItem {
-    pub canister_id: String,
+pub struct MLFeedCacheHistoryItemV2 {
+    pub publisher_user_id: String,
+    pub canister_id: String, // TODO: will be deprecated later. there to abide by current contract
     pub post_id: u64,
     pub video_id: String,
-    pub nsfw_probability: f32,
     pub item_type: String,
     pub timestamp: SystemTime,
     pub percent_watched: f32,
 }
 
-pub fn get_history_item_score(item: &MLFeedCacheHistoryItem) -> f64 {
+pub fn get_history_item_score(item: &MLFeedCacheHistoryItemV2) -> f64 {
     // Convert timestamp to seconds since epoch
     let timestamp_secs = item
         .timestamp
@@ -39,69 +39,50 @@ pub fn get_history_item_score(item: &MLFeedCacheHistoryItem) -> f64 {
     timestamp_secs + item_type_score + percent_watched_score
 }
 
+
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue, Eq, PartialEq, Hash)]
+pub struct PlainPostItemV2 {
+    pub video_id: String
+}
+
+
+
+
 #[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
-pub struct PostItem {
+pub struct PostItemV2 {
+    pub publisher_user_id: String,
     pub canister_id: String,
     pub post_id: u64,
     pub video_id: String,
-    pub nsfw_probability: f32,
+    pub is_nsfw: bool,
 }
 
-impl Eq for PostItem {}
+impl Eq for PostItemV2 {}
 
-impl PartialEq for PostItem {
+impl PartialEq for PostItemV2 {
     fn eq(&self, other: &Self) -> bool {
-        self.canister_id == other.canister_id && self.post_id == other.post_id
+        self.video_id == other.video_id
     }
 }
 
-impl Hash for PostItem {
+impl Hash for PostItemV2 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.canister_id.hash(state);
-        self.post_id.hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
-pub struct PlainPostItem {
-    pub canister_id: String,
-    pub post_id: u64,
-}
-
-impl Eq for PlainPostItem {}
-
-impl PartialEq for PlainPostItem {
-    fn eq(&self, other: &Self) -> bool {
-        self.canister_id == other.canister_id && self.post_id == other.post_id
-    }
-}
-
-impl Hash for PlainPostItem {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.canister_id.hash(state);
-        self.post_id.hash(state);
+        self.video_id.hash(state);
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
-pub struct FeedRequest {
-    pub canister_id: String,
-    pub filter_results: Vec<PostItem>,
-    pub num_results: u32,
-}
-
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
-pub struct FeedResponse {
-    pub posts: Vec<PostItem>,
+pub struct FeedResponseV2 {
+    pub posts: Vec<PostItemV2>,
 }
 
 #[derive(Serialize, Deserialize, Clone, ToRedisArgs, FromRedisValue, Debug)]
-pub struct BufferItem {
-    pub publisher_canister_id: String,
+pub struct BufferItemV2 {
+    pub publisher_user_id: String,
     pub post_id: u64,
     pub video_id: String,
     pub item_type: String,
     pub percent_watched: f32,
-    pub user_canister_id: String,
+    pub user_id: String,
     pub timestamp: SystemTime,
 }
