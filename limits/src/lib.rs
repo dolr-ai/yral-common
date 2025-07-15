@@ -1,5 +1,8 @@
 use std::ops::Range;
 
+// Creator commission
+pub const CREATOR_COMMISSION_PERCENT: u64 = 10;
+
 // Withdraw limits
 pub const MIN_WITHDRAWAL_PER_TXN_SATS: u64 = 50;
 pub const MAX_WITHDRAWAL_PER_TXN_SATS: u64 = 60;
