@@ -38,6 +38,7 @@ impl MLFeedCacheState {
         Self { redis_pool }
     }
 
+    #[deprecated(since = "0.2.0", note = "Use add_user_watch_history_items_v2 instead")]
     pub async fn add_user_watch_history_items(
         &self,
         key: &str,
@@ -73,6 +74,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use add_user_success_history_items_v2 instead")]
     pub async fn add_user_success_history_items(
         &self,
         key: &str,
@@ -107,6 +109,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use get_history_items_v2 instead")]
     pub async fn get_history_items(
         &self,
         key: &str,
@@ -128,6 +131,7 @@ impl MLFeedCacheState {
         Ok(num_items)
     }
 
+    #[deprecated(since = "0.2.0", note = "Use add_user_history_plain_items_v2 instead")]
     pub async fn add_user_history_plain_items(
         &self,
         key: &str,
@@ -174,6 +178,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use is_user_history_plain_item_exists_v2 instead")]
     pub async fn is_user_history_plain_item_exists(
         &self,
         key: &str,
@@ -188,6 +193,7 @@ impl MLFeedCacheState {
         Ok(res.is_some())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use add_user_cache_items_v2 instead")]
     pub async fn add_user_cache_items(
         &self,
         key: &str,
@@ -223,6 +229,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use add_global_cache_items_v2 instead")]
     pub async fn add_global_cache_items(
         &self,
         key: &str,
@@ -262,6 +269,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use get_cache_items_v2 instead")]
     pub async fn get_cache_items(
         &self,
         key: &str,
@@ -283,11 +291,13 @@ impl MLFeedCacheState {
         Ok(num_items)
     }
 
+    #[deprecated(since = "0.2.0", note = "Use add_user_buffer_items_v2 instead")]
     pub async fn add_user_buffer_items(&self, items: Vec<BufferItem>) -> Result<(), anyhow::Error> {
         self.add_user_buffer_items_impl(USER_HOTORNOT_BUFFER_KEY, items)
             .await
     }
 
+    #[deprecated(since = "0.2.0", note = "Use v2 buffer methods instead")]
     pub async fn add_user_buffer_items_impl(
         &self,
         key: &str,
@@ -318,6 +328,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.2.0", note = "Use get_user_buffer_items_by_timestamp_v2 instead")]
     pub async fn get_user_buffer_items_by_timestamp(
         &self,
         timestamp: u64,
@@ -326,6 +337,7 @@ impl MLFeedCacheState {
             .await
     }
 
+    #[deprecated(since = "0.2.0", note = "Use get_user_buffer_items_by_timestamp_impl_v2 instead")]
     pub async fn get_user_buffer_items_by_timestamp_impl(
         &self,
         key: &str,
@@ -340,6 +352,7 @@ impl MLFeedCacheState {
         Ok(items)
     }
 
+    #[deprecated(since = "0.2.0", note = "Use remove_user_buffer_items_by_timestamp_v2 instead")]
     pub async fn remove_user_buffer_items_by_timestamp(
         &self,
         timestamp_secs: u64,
@@ -348,6 +361,7 @@ impl MLFeedCacheState {
             .await
     }
 
+    #[deprecated(since = "0.2.0", note = "Use remove_user_buffer_items_by_timestamp_impl_v2 instead")]
     pub async fn remove_user_buffer_items_by_timestamp_impl(
         &self,
         key: &str,
@@ -362,6 +376,7 @@ impl MLFeedCacheState {
         Ok(res)
     }
 
+    #[deprecated(since = "0.2.0", note = "Use delete_user_caches_v2 instead")]
     pub async fn delete_user_caches(&self, key: &str) -> Result<(), anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
