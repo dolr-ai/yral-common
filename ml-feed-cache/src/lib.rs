@@ -292,6 +292,7 @@ impl MLFeedCacheState {
     }
 
     #[deprecated(since = "0.2.0", note = "Use add_user_buffer_items_v2 instead")]
+    #[allow(deprecated)]
     pub async fn add_user_buffer_items(&self, items: Vec<BufferItem>) -> Result<(), anyhow::Error> {
         self.add_user_buffer_items_impl(USER_HOTORNOT_BUFFER_KEY, items)
             .await
@@ -329,6 +330,7 @@ impl MLFeedCacheState {
     }
 
     #[deprecated(since = "0.2.0", note = "Use get_user_buffer_items_by_timestamp_v2 instead")]
+    #[allow(deprecated)]
     pub async fn get_user_buffer_items_by_timestamp(
         &self,
         timestamp: u64,
@@ -353,6 +355,7 @@ impl MLFeedCacheState {
     }
 
     #[deprecated(since = "0.2.0", note = "Use remove_user_buffer_items_by_timestamp_v2 instead")]
+    #[allow(deprecated)]
     pub async fn remove_user_buffer_items_by_timestamp(
         &self,
         timestamp_secs: u64,
