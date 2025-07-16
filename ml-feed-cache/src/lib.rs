@@ -1,5 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ::types::post::PostItemV2;
 use consts::{
     MAX_GLOBAL_CACHE_LEN, MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN, MAX_SUCCESS_HISTORY_CACHE_LEN,
     MAX_USER_CACHE_LEN, MAX_WATCH_HISTORY_CACHE_LEN, USER_HOTORNOT_BUFFER_KEY,
@@ -9,7 +10,7 @@ use redis::AsyncCommands;
 use types::{get_history_item_score, BufferItem, MLFeedCacheHistoryItem, PlainPostItem, PostItem};
 use types_v2::{
     get_history_item_score as get_history_item_score_v2, BufferItemV2, MLFeedCacheHistoryItemV2,
-    PlainPostItemV2, PostItemV2,
+    PlainPostItemV2,
 };
 
 pub mod consts;
@@ -74,7 +75,10 @@ impl MLFeedCacheState {
         Ok(())
     }
 
-    #[deprecated(since = "0.2.0", note = "Use add_user_success_history_items_v2 instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use add_user_success_history_items_v2 instead"
+    )]
     pub async fn add_user_success_history_items(
         &self,
         key: &str,
@@ -178,7 +182,10 @@ impl MLFeedCacheState {
         Ok(())
     }
 
-    #[deprecated(since = "0.2.0", note = "Use is_user_history_plain_item_exists_v2 instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use is_user_history_plain_item_exists_v2 instead"
+    )]
     pub async fn is_user_history_plain_item_exists(
         &self,
         key: &str,
@@ -329,7 +336,10 @@ impl MLFeedCacheState {
         Ok(())
     }
 
-    #[deprecated(since = "0.2.0", note = "Use get_user_buffer_items_by_timestamp_v2 instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use get_user_buffer_items_by_timestamp_v2 instead"
+    )]
     #[allow(deprecated)]
     pub async fn get_user_buffer_items_by_timestamp(
         &self,
@@ -339,7 +349,10 @@ impl MLFeedCacheState {
             .await
     }
 
-    #[deprecated(since = "0.2.0", note = "Use get_user_buffer_items_by_timestamp_impl_v2 instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use get_user_buffer_items_by_timestamp_impl_v2 instead"
+    )]
     pub async fn get_user_buffer_items_by_timestamp_impl(
         &self,
         key: &str,
@@ -354,7 +367,10 @@ impl MLFeedCacheState {
         Ok(items)
     }
 
-    #[deprecated(since = "0.2.0", note = "Use remove_user_buffer_items_by_timestamp_v2 instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use remove_user_buffer_items_by_timestamp_v2 instead"
+    )]
     #[allow(deprecated)]
     pub async fn remove_user_buffer_items_by_timestamp(
         &self,
@@ -364,7 +380,10 @@ impl MLFeedCacheState {
             .await
     }
 
-    #[deprecated(since = "0.2.0", note = "Use remove_user_buffer_items_by_timestamp_impl_v2 instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use remove_user_buffer_items_by_timestamp_impl_v2 instead"
+    )]
     pub async fn remove_user_buffer_items_by_timestamp_impl(
         &self,
         key: &str,

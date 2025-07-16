@@ -17,6 +17,7 @@ serde_json.workspace = true
 serde-redis = "0.14.0"
 anyhow = "1.0.97"
 utoipa = "5.3.1"
+types.workspace = true
 
 [dev-dependencies]
 tokio = { version = "1.44.1", features = ["rt", "macros"] }
