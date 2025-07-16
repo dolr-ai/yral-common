@@ -32,7 +32,7 @@ pub enum Error {
     #[error("invalid identity: {0}")]
     Identity(#[from] k256::elliptic_curve::Error),
     #[error("identity error: {0}")]
-    YralIdentity(#[from] yral_identity::Error),
+    YralIdentity(#[from] identity::Error),
     #[error("failed to get transactions: {0}")]
     GetTransactions(String),
     #[error("failed to parse transaction")]

@@ -3,7 +3,7 @@ use canisters_client::individual_user_template::BettingStatus;
 use hon_worker_common::{GameInfo, GameInfoReq, GameInfoReqV3};
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
-use yral_identity::{ic_agent::sign_message, msg_builder::Message, Signature};
+use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 
 use crate::{consts::CENTS_IN_E6S, Canisters, Error, HonError, Result};
 
@@ -55,7 +55,7 @@ pub fn verifiable_hon_bet_message(args: HonBetArg) -> Message {
 }
 
 impl VerifiableHonBetReq {
-    pub fn new(sender: &impl ic_agent::Identity, args: HonBetArg) -> yral_identity::Result<Self> {
+    pub fn new(sender: &impl ic_agent::Identity, args: HonBetArg) -> identity::Result<Self> {
         let msg = verifiable_hon_bet_message(args);
         let signature = sign_message(sender, msg)?;
 

@@ -369,15 +369,15 @@ impl From<Canisters<true>> for CanistersAuthWire {
     }
 }
 
-pub fn yral_auth_login_hint(identity: &impl Identity) -> yral_identity::Result<String> {
-    let msg = yral_identity::msg_builder::Message::default()
+pub fn yral_auth_login_hint(identity: &impl Identity) -> identity::Result<String> {
+    let msg = identity::msg_builder::Message::default()
         .method_name("yral_auth_v2_login_hint".into());
-    let sig = yral_identity::ic_agent::sign_message(identity, msg)?;
+    let sig = identity::ic_agent::sign_message(identity, msg)?;
 
     #[derive(Serialize)]
     struct LoginHint {
         pub user_principal: Principal,
-        pub signature: yral_identity::Signature,
+        pub signature: identity::Signature,
     }
 
     let login_hint = LoginHint {

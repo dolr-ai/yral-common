@@ -1,0 +1,24 @@
+[package]
+name = "yral-identity"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ic-validator-ingress-message = { git = "https://github.com/dfinity/ic.git", default-features = false, rev = "b2a4053f1dca2455511f2c6c0dc12cb65f93b4b1", optional = true }
+ic-types = { git = "https://github.com/dfinity/ic.git", rev = "b2a4053f1dca2455511f2c6c0dc12cb65f93b4b1", optional = true }
+ic-agent = { workspace = true, default-features = false, optional = true }
+candid.workspace = true
+web-time.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+getrandom = { version = "0.2.15", optional = true }
+
+[dev-dependencies]
+k256 = "0.13.3"
+rand = "0.8.5"
+
+[features]
+default = ["ic-agent", "ic-git"]
+ic-agent = ["dep:ic-agent"]
+ic-git = ["ic-validator-ingress-message", "ic-types"]
+wasm-bindgen = ["ic-agent/wasm-bindgen", "getrandom/js", "ic-validator-ingress-message/js"]
