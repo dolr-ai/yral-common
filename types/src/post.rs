@@ -1,4 +1,5 @@
 use ic_agent::export::Principal;
+#[cfg(feature = "redis")]
 use redis_macros::{FromRedisValue, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -24,7 +25,8 @@ pub struct FeedResponse {
     pub posts: Vec<PostItem>,
 }
 
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
+#[cfg_attr(feature = "redis", derive(ToRedisArgs, FromRedisValue))]
 pub struct PostItemV2 {
     pub publisher_user_id: String,
     pub canister_id: String,
