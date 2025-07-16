@@ -1609,7 +1609,7 @@ name = "hon-worker-common"
 version = "0.1.0"
 dependencies = [
  "candid",
- "ic-agent 0.41.0",
+ "ic-agent",
  "limits",
  "num-bigint",
  "serde",
@@ -1765,49 +1765,6 @@ dependencies = [
 
 [[package]]
 name = "ic-agent"
-version = "0.38.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17a656d3b25007f59ba0700e65b332efd56d5dbfc6014994000ab3dbb221f54a"
-dependencies = [
- "async-lock",
- "async-trait",
- "backoff",
- "cached 0.52.0",
- "candid",
- "ed25519-consensus",
- "futures-util",
- "hex",
- "http",
- "http-body",
- "ic-certification 2.6.0",
- "ic-transport-types 0.38.2",
- "ic-verify-bls-signature",
- "k256",
- "leb128",
- "p256",
- "pem 3.0.5",
- "pkcs8",
- "rand 0.8.5",
- "rangemap",
- "reqwest",
- "ring",
- "rustls-webpki 0.102.8",
- "sec1",
- "serde",
- "serde_bytes",
- "serde_cbor",
- "serde_repr",
- "sha2 0.10.9",
- "simple_asn1",
- "thiserror 1.0.69",
- "time",
- "tokio",
- "tower-service",
- "url",
-]
-
-[[package]]
-name = "ic-agent"
 version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9f0125ba06162d2626d80318cad1d3540426a92d2929c5a7a10edc0b0127cca"
@@ -1831,12 +1788,13 @@ dependencies = [
  "http-body",
  "ic-certification 3.0.3",
  "ic-ed25519",
- "ic-transport-types 0.41.0",
+ "ic-transport-types",
  "ic-verify-bls-signature",
  "js-sys",
  "k256",
  "leb128",
  "p256",
+ "pem 3.0.5",
  "pkcs8",
  "rand 0.8.5",
  "rangemap",
@@ -1914,18 +1872,6 @@ dependencies = [
  "serde",
  "serde_cbor",
  "tree-deserializer",
-]
-
-[[package]]
-name = "ic-certification"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e64ee3d8b6e81b51f245716d3e0badb63c283c00f3c9fb5d5219afc30b5bf821"
-dependencies = [
- "hex",
- "serde",
- "serde_bytes",
- "sha2 0.10.9",
 ]
 
 [[package]]
@@ -2337,24 +2283,6 @@ dependencies = [
  "serde",
  "serde_json",
  "slog",
-]
-
-[[package]]
-name = "ic-transport-types"
-version = "0.38.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "894b183f280e87b29aac98e7de0972cf632435e1f0a462969d9f5e0ccacc4d25"
-dependencies = [
- "candid",
- "hex",
- "ic-certification 2.6.0",
- "leb128",
- "serde",
- "serde_bytes",
- "serde_cbor",
- "serde_repr",
- "sha2 0.10.9",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3963,7 +3891,7 @@ dependencies = [
  "once_cell",
  "ring",
  "rustls-pki-types",
- "rustls-webpki 0.103.2",
+ "rustls-webpki",
  "subtle",
  "zeroize",
 ]
@@ -3997,17 +3925,6 @@ checksum = "229a4a4c221013e7e1f1a043678c5cc39fe5171437c88fb47151a21e6f5b5c79"
 dependencies = [
  "web-time",
  "zeroize",
-]
-
-[[package]]
-name = "rustls-webpki"
-version = "0.102.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ca1bc8749bd4cf37b5ce386cc146580777b4e8572c7b97baf22c83f444bee9"
-dependencies = [
- "ring",
- "rustls-pki-types",
- "untrusted",
 ]
 
 [[package]]
@@ -5618,7 +5535,7 @@ dependencies = [
  "candid",
  "candid_parser",
  "convert_case 0.6.0",
- "ic-agent 0.41.0",
+ "ic-agent",
  "prettyplease",
  "proc-macro2",
  "quote",
@@ -5639,7 +5556,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.2.16",
  "hon-worker-common",
- "ic-agent 0.41.0",
+ "ic-agent",
  "k256",
  "log",
  "once_cell",
@@ -5694,7 +5611,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "getrandom 0.2.16",
- "ic-agent 0.41.0",
+ "ic-agent",
  "ic-types",
  "ic-validator-ingress-message",
  "k256",
@@ -5707,31 +5624,31 @@ dependencies = [
 [[package]]
 name = "yral-identity"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-identity.git?rev=156bc0e7a4bc3d9a3b4faab4b9b3048e88a0c701#156bc0e7a4bc3d9a3b4faab4b9b3048e88a0c701"
+source = "git+https://github.com/yral-dapp/yral-common.git?branch=rupansh%2Fbump-ic-agent#741b1627212c647458b0542a70ec2be19c9ad69e"
 dependencies = [
  "candid",
- "ic-agent 0.38.2",
+ "ic-agent",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "web-time",
 ]
 
 [[package]]
 name = "yral-metadata-client"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#9ce1fc1b5dcb31b5a620ec5c1fde886559dcba26"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#257563ffc1a32e58e078243ea869bb594799adae"
 dependencies = [
- "ic-agent 0.38.2",
+ "ic-agent",
  "reqwest",
  "thiserror 1.0.69",
- "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-identity.git?rev=156bc0e7a4bc3d9a3b4faab4b9b3048e88a0c701)",
+ "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-common.git?branch=rupansh%2Fbump-ic-agent)",
  "yral-metadata-types",
 ]
 
 [[package]]
 name = "yral-metadata-types"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#9ce1fc1b5dcb31b5a620ec5c1fde886559dcba26"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#257563ffc1a32e58e078243ea869bb594799adae"
 dependencies = [
  "candid",
  "serde",
@@ -5739,7 +5656,7 @@ dependencies = [
  "thiserror 1.0.69",
  "utoipa",
  "utoipa-swagger-ui",
- "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-identity.git?rev=156bc0e7a4bc3d9a3b4faab4b9b3048e88a0c701)",
+ "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-common.git?branch=rupansh%2Fbump-ic-agent)",
 ]
 
 [[package]]
@@ -5762,7 +5679,7 @@ name = "yral-pump-n-dump-common"
 version = "0.1.0"
 dependencies = [
  "candid",
- "ic-agent 0.41.0",
+ "ic-agent",
  "serde",
  "serde_json",
  "url",
@@ -5784,7 +5701,7 @@ dependencies = [
 name = "yral-types"
 version = "0.1.0"
 dependencies = [
- "ic-agent 0.41.0",
+ "ic-agent",
  "k256",
  "serde",
 ]
