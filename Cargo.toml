@@ -11,7 +11,7 @@ members = [
     "pump-n-dump-common",
     "metrics",
     "ml-feed-cache",
-    "alloydb-client",
+    "alloydb-client", "identity",
 ]
 resolver = "2"
 
@@ -19,8 +19,9 @@ resolver = "2"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_bytes = "0.11.15"
 serde_json = "1.0.128"
-ic-agent = { version = "0.38.1", default-features = false }
+ic-agent = { version = "0.41.0", default-features = false }
 types = { package = "yral-types", path = "types" }
+identity = { package = "yral-identity", path = "identity", default-features = false }
 canisters-client = { package = "yral-canisters-client", path = "canisters-client" }
 limits = { package = "limits", path = "limits" }
 pump-n-dump-common = { package = "yral-pump-n-dump-common", path = "pump-n-dump-common" }
@@ -33,7 +34,6 @@ web-time = "1.0.0"
 thiserror = "2.0.3"
 log = "0.4.22"
 k256 = { version = "0.13.4", default-features = false, features = ["jwk"] }
-yral-identity = { git = "https://github.com/yral-dapp/yral-identity", rev = "adbf4be5cb62a26f2a90032261321bf1df33f08b", default-features = false }
 futures-util = "0.3.31"
 uuid = { version = "1.11.0", features = ["serde"] }
 serde_with = "3.12.0"

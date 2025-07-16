@@ -12,7 +12,7 @@ tokio = { version = "1", features = ["time"] }
 
 [build-dependencies]
 serde.workspace = true
-candid_parser = "0.1.1"
+candid_parser = "0.1.4"
 serde_json.workspace = true
 convert_case = "0.6.0"
 anyhow = "1.0.86"

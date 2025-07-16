@@ -1,7 +1,7 @@
 use candid::{Nat, Principal};
 use canisters_client::individual_user_template::ParticipatedGameInfo;
 use serde::{Deserialize, Serialize};
-use yral_identity::{msg_builder::Message, Signature};
+use identity::{msg_builder::Message, Signature};
 
 use crate::GameDirection;
 
@@ -25,8 +25,8 @@ pub fn claim_msg(amount: Nat) -> Message {
 
 impl ClaimReq {
     #[cfg(feature = "client")]
-    pub fn new(sender: &impl ic_agent::Identity, amount: Nat) -> yral_identity::Result<Self> {
-        use yral_identity::ic_agent::sign_message;
+    pub fn new(sender: &impl ic_agent::Identity, amount: Nat) -> identity::Result<Self> {
+        use identity::ic_agent::sign_message;
         let msg = claim_msg(amount.clone());
         let signature = sign_message(sender, msg)?;
 

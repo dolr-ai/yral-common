@@ -10,7 +10,7 @@ pump-n-dump-common = { workspace = true }
 hon-worker-common = { workspace = true }
 candid.workspace = true
 url.workspace = true
-yral-identity = { workspace = true, default-features = false, features = [
+identity = { workspace = true, default-features = false, features = [
     "ic-agent",
 ] }
 

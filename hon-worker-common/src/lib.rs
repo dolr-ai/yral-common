@@ -6,7 +6,7 @@ use candid::{CandidType, Nat, Principal};
 use num_bigint::{BigInt, BigUint};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
-use yral_identity::{Signature, msg_builder::Message};
+use identity::{Signature, msg_builder::Message};
 
 pub const WORKER_URL: &str = "https://yral-hot-or-not.go-bazzinga.workers.dev/";
 pub type WorkerResponse<T> = Result<T, WorkerError>;
@@ -164,8 +164,8 @@ pub struct HoNGameVoteReq {
     pub signature: Signature,
 }
 
-pub fn hon_game_vote_msg(request: VoteRequest) -> yral_identity::msg_builder::Message {
-    yral_identity::msg_builder::Message::default()
+pub fn hon_game_vote_msg(request: VoteRequest) -> identity::msg_builder::Message {
+    identity::msg_builder::Message::default()
         .method_name("hon_worker_game_vote".into())
         .args((request,))
         .expect("Vote request should serialize")
@@ -175,8 +175,8 @@ pub fn hon_game_vote_msg(request: VoteRequest) -> yral_identity::msg_builder::Me
 pub fn sign_vote_request(
     sender: &impl ic_agent::Identity,
     request: VoteRequest,
-) -> yral_identity::Result<Signature> {
-    use yral_identity::ic_agent::sign_message;
+) -> identity::Result<Signature> {
+    use identity::ic_agent::sign_message;
     let msg = hon_game_vote_msg(request.clone());
     sign_message(sender, msg)
 }
@@ -185,8 +185,8 @@ pub fn sign_vote_request(
 pub fn sign_claim_request(
     sender: &impl ic_agent::Identity,
     request: ClaimRequest,
-) -> yral_identity::Result<Signature> {
-    use yral_identity::ic_agent::sign_message;
+) -> identity::Result<Signature> {
+    use identity::ic_agent::sign_message;
     let msg = verifiable_claim_request_message(request.clone());
     sign_message(sender, msg)
 }
@@ -203,8 +203,8 @@ pub struct HoNGameWithdrawReq {
     pub signature: Signature,
 }
 
-pub fn hon_game_withdraw_msg(request: &WithdrawRequest) -> yral_identity::msg_builder::Message {
-    yral_identity::msg_builder::Message::default()
+pub fn hon_game_withdraw_msg(request: &WithdrawRequest) -> identity::msg_builder::Message {
+    identity::msg_builder::Message::default()
         .method_name("hon_worker_game_withdraw".into())
         .args((request.amount,))
         .expect("Withdraw request should serialize")
@@ -214,8 +214,8 @@ pub fn hon_game_withdraw_msg(request: &WithdrawRequest) -> yral_identity::msg_bu
 pub fn sign_withdraw_request(
     sender: &impl ic_agent::Identity,
     request: WithdrawRequest,
-) -> yral_identity::Result<Signature> {
-    use yral_identity::ic_agent::sign_message;
+) -> identity::Result<Signature> {
+    use identity::ic_agent::sign_message;
     let msg = hon_game_withdraw_msg(&request);
     sign_message(sender, msg)
 }
@@ -247,8 +247,8 @@ pub fn default_referral_amount() -> u64 {
     limits::REFERRAL_REWARD_SATS
 }
 
-pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Message {
-    yral_identity::msg_builder::Message::default()
+pub fn hon_referral_msg(request: ReferralReq) -> identity::msg_builder::Message {
+    identity::msg_builder::Message::default()
         .method_name("hon_worker_referral".into())
         .args((request,))
         .expect("Referral request should serialize")
@@ -258,8 +258,8 @@ pub fn hon_referral_msg(request: ReferralReq) -> yral_identity::msg_builder::Mes
 pub fn sign_referral_request(
     sender: &impl ic_agent::Identity,
     request: ReferralReq,
-) -> yral_identity::Result<Signature> {
-    use yral_identity::ic_agent::sign_message;
+) -> identity::Result<Signature> {
+    use identity::ic_agent::sign_message;
     let msg = hon_referral_msg(request);
     sign_message(sender, msg)
 }
@@ -330,8 +330,8 @@ pub struct VoteRequestV3 {
 pub fn sign_vote_request_v3(
     sender: &impl ic_agent::Identity,
     request: VoteRequestV3,
-) -> yral_identity::Result<Signature> {
-    use yral_identity::ic_agent::sign_message;
+) -> identity::Result<Signature> {
+    use identity::ic_agent::sign_message;
     let msg = hon_game_vote_msg_v3(request.clone());
     sign_message(sender, msg)
 }
@@ -345,8 +345,8 @@ pub struct HoNGameVoteReqV3 {
     pub signature: Signature,
 }
 
-pub fn hon_game_vote_msg_v3(request: VoteRequestV3) -> yral_identity::msg_builder::Message {
-    yral_identity::msg_builder::Message::default()
+pub fn hon_game_vote_msg_v3(request: VoteRequestV3) -> identity::msg_builder::Message {
+    identity::msg_builder::Message::default()
         .method_name("hon_worker_game_vote_v3".into())
         .args((request,))
         .expect("Vote request should serialize")

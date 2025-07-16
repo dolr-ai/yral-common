@@ -1,7 +1,7 @@
 use candid::{Nat, Principal};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use yral_identity::msg_builder::Message;
+use identity::msg_builder::Message;
 
 use crate::{rest::UserBetsResponse, GameDirection};
 
@@ -115,7 +115,7 @@ pub fn websocket_connection_url(
     token_creator_canister: candid::Principal,
     token_root: candid::Principal,
 ) -> Result<url::Url, String> {
-    use yral_identity::ic_agent::sign_message;
+    use identity::ic_agent::sign_message;
 
     let path = format!("ws/{token_creator_canister}/{token_root}");
     let mut new_url = base_url.join(&path).map_err(|e| e.to_string())?;

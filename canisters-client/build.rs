@@ -317,7 +317,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                             Ok(res) => return Ok(res),
                                             Err(e) => {
                                                 match e{
-                                                    ::ic_agent::AgentError::TransportError(_) | ::ic_agent::AgentError::CertifiedReject(_) => {
+                                                    ::ic_agent::AgentError::TransportError(_) | ::ic_agent::AgentError::CertifiedReject { .. } => {
                                                         attempts += 1;
                                                         if attempts > max_retries {
                                                             return Err(e);

@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 candid.workspace = true
 serde.workspace = true
-yral-identity = { workspace = true, default-features = false }
+identity = { workspace = true }
 ic-agent = { workspace = true, optional = true }
 num-bigint.workspace = true
 url.workspace = true
@@ -15,4 +15,4 @@ serde_with.workspace = true
 limits.workspace = true
 
 [features]
-client = ["yral-identity/ic-agent", "dep:ic-agent"]
+client = ["identity/ic-agent", "dep:ic-agent"]
