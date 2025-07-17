@@ -2913,6 +2913,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "utoipa",
+ "yral-types",
 ]
 
 [[package]]
@@ -5703,7 +5704,12 @@ version = "0.1.0"
 dependencies = [
  "ic-agent",
  "k256",
+ "redis 0.29.5",
+ "redis-macros",
  "serde",
+ "serde_json",
+ "utoipa",
+ "utoipa-swagger-ui",
 ]
 
 [[package]]
