@@ -22,6 +22,7 @@ pub type RedisPool = bb8::Pool<bb8_redis::RedisConnectionManager>;
 #[derive(Clone)]
 pub struct MLFeedCacheState {
     pub redis_pool: RedisPool,
+    pub memory_store_pool: RedisPool,
 }
 
 pub async fn init_redis() -> RedisPool {
@@ -33,10 +34,44 @@ pub async fn init_redis() -> RedisPool {
     RedisPool::builder().build(manager).await.unwrap()
 }
 
+pub async fn init_memorystore() -> RedisPool {
+    let memorystore_url = std::env::var("ML_FEED_CACHE_MEMORYSTORE_URL")
+        .expect("ML_FEED_CACHE_MEMORYSTORE_URL must be set");
+
+    let manager = bb8_redis::RedisConnectionManager::new(memorystore_url.clone())
+        .expect("failed to open connection to memorystore_url");
+    RedisPool::builder().build(manager).await.unwrap()
+}
+
 impl MLFeedCacheState {
+    /// Helper method to update memory store pool asynchronously without blocking
+    fn spawn_memory_store_update<F>(&self, key: &str, operation: F)
+    where
+        F: FnOnce(
+                RedisPool,
+                String,
+            ) -> std::pin::Pin<
+                Box<dyn std::future::Future<Output = Result<(), anyhow::Error>> + Send>,
+            > + Send
+            + 'static,
+    {
+        let memory_pool = self.memory_store_pool.clone();
+        let key = key.to_string();
+
+        tokio::spawn(async move {
+            if let Err(e) = operation(memory_pool, key.clone()).await {
+                log::error!("Failed to update memory store for key {}: {}", key, e);
+            }
+        });
+    }
+
     pub async fn new() -> Self {
         let redis_pool = init_redis().await;
-        Self { redis_pool }
+        let memory_store_pool = init_memorystore().await;
+        Self {
+            redis_pool,
+            memory_store_pool,
+        }
     }
 
     #[deprecated(since = "0.2.0", note = "Use add_user_watch_history_items_v2 instead")]
@@ -461,6 +496,47 @@ impl MLFeedCacheState {
             .await?;
         }
 
+        // Update memory store pool asynchronously
+        let items_clone = items.clone();
+        self.spawn_memory_store_update(key, move |pool, key| {
+            Box::pin(async move {
+                let mut conn = match pool.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to get memory store connection: {}", e);
+                        return Ok(());
+                    }
+                };
+
+                for chunk in items_clone.chunks(chunk_size) {
+                    if let Err(e) = conn
+                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV2, ()>(&key, chunk)
+                        .await
+                    {
+                        log::error!("Failed to add items to memory store: {}", e);
+                    }
+                }
+
+                match conn.zcard::<&str, u64>(&key).await {
+                    Ok(num_items) if num_items > MAX_WATCH_HISTORY_CACHE_LEN => {
+                        if let Err(e) = conn
+                            .zremrangebyrank::<&str, ()>(
+                                &key,
+                                0,
+                                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+                            )
+                            .await
+                        {
+                            log::error!("Failed to trim memory store: {}", e);
+                        }
+                    }
+                    Err(e) => log::error!("Failed to get card count from memory store: {}", e),
+                    _ => {}
+                }
+                Ok(())
+            })
+        });
+
         Ok(())
     }
 
@@ -494,6 +570,47 @@ impl MLFeedCacheState {
             )
             .await?;
         }
+
+        // Update memory store pool asynchronously
+        let items_clone = items.clone();
+        self.spawn_memory_store_update(key, move |pool, key| {
+            Box::pin(async move {
+                let mut conn = match pool.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to get memory store connection: {}", e);
+                        return Ok(());
+                    }
+                };
+
+                for chunk in items_clone.chunks(chunk_size) {
+                    if let Err(e) = conn
+                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV2, ()>(&key, chunk)
+                        .await
+                    {
+                        log::error!("Failed to add items to memory store: {}", e);
+                    }
+                }
+
+                match conn.zcard::<&str, u64>(&key).await {
+                    Ok(num_items) if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN => {
+                        if let Err(e) = conn
+                            .zremrangebyrank::<&str, ()>(
+                                &key,
+                                0,
+                                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+                            )
+                            .await
+                        {
+                            log::error!("Failed to trim memory store: {}", e);
+                        }
+                    }
+                    Err(e) => log::error!("Failed to get card count from memory store: {}", e),
+                    _ => {}
+                }
+                Ok(())
+            })
+        });
 
         Ok(())
     }
@@ -755,7 +872,25 @@ impl MLFeedCacheState {
             .collect();
 
         // Delete all keys in one statement
-        conn.del::<Vec<String>, ()>(keys).await?;
+        conn.del::<Vec<String>, ()>(keys.clone()).await?;
+
+        // Update memory store pool asynchronously
+        self.spawn_memory_store_update(key, move |pool, _| {
+            Box::pin(async move {
+                let mut conn = match pool.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to get memory store connection: {}", e);
+                        return Ok(());
+                    }
+                };
+
+                if let Err(e) = conn.del::<Vec<String>, ()>(keys).await {
+                    log::error!("Failed to delete keys from memory store: {}", e);
+                }
+                Ok(())
+            })
+        });
 
         Ok(())
     }
