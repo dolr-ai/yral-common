@@ -23,7 +23,7 @@ ic-agent = { version = "0.41.0", default-features = false }
 types = { package = "yral-types", path = "types" }
 identity = { package = "yral-identity", path = "identity", default-features = false }
 canisters-client = { package = "yral-canisters-client", path = "canisters-client" }
-limits = { package = "limits", path = "limits" }
+global-constants = { package = "global-constants", path = "global-constants" }
 pump-n-dump-common = { package = "yral-pump-n-dump-common", path = "pump-n-dump-common" }
 hon-worker-common = { package = "hon-worker-common", path = "hon-worker-common", features = [
     "client",

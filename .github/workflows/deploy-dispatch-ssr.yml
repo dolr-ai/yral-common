@@ -1,4 +1,4 @@
-name: Deploy hot-or-not-ssr app on limits change
+name: Deploy hot-or-not-ssr app on global-constants change
 permissions:
   contents: read
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - "limits/**"
+      - "global-constants/**"
       - ".github/workflows/deploy-dispatch-ssr.yml"
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
             const result = await github.rest.repos.createDispatchEvent({
               owner: 'dolr-ai',
               repo: 'hot-or-not-web-leptos-ssr',
-              event_type: 'limits-common-change',
+              event_type: 'global-constants-change',
               client_payload: {"commit_hash": "${{ env.SHORT_SHA }}" }
             })
 
@@ -42,6 +42,6 @@ jobs:
             const result = await github.rest.repos.createDispatchEvent({
               owner: 'dolr-ai',
               repo: 'yral-backend-cloudflare-workers',
-              event_type: 'limits-common-change',
+              event_type: 'global-constants-change',
               client_payload: {"commit_hash": "${{ env.SHORT_SHA }}" }
             })
