@@ -244,7 +244,7 @@ pub struct ReferralReq {
 }
 
 pub fn default_referral_amount() -> u64 {
-    limits::REFERRAL_REWARD_SATS
+    global_constants::REFERRAL_REWARD_SATS
 }
 
 pub fn hon_referral_msg(request: ReferralReq) -> identity::msg_builder::Message {
