@@ -2906,6 +2906,7 @@ dependencies = [
  "anyhow",
  "bb8",
  "bb8-redis",
+ "log",
  "redis 0.29.5",
  "redis-macros",
  "serde",
