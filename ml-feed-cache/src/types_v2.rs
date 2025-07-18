@@ -1,7 +1,4 @@
-use std::{
-    hash::{Hash, Hasher},
-    time::SystemTime,
-};
+use std::{hash::Hash, time::SystemTime};
 
 use redis_macros::{FromRedisValue, ToRedisArgs};
 use serde::{Deserialize, Serialize};
@@ -39,41 +36,11 @@ pub fn get_history_item_score(item: &MLFeedCacheHistoryItemV2) -> f64 {
     timestamp_secs + item_type_score + percent_watched_score
 }
 
-
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue, Eq, PartialEq, Hash)]
+#[derive(
+    Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue, Eq, PartialEq, Hash,
+)]
 pub struct PlainPostItemV2 {
-    pub video_id: String
-}
-
-
-
-
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug, ToRedisArgs, FromRedisValue)]
-pub struct PostItemV2 {
-    pub publisher_user_id: String,
-    pub canister_id: String,
-    pub post_id: u64,
     pub video_id: String,
-    pub is_nsfw: bool,
-}
-
-impl Eq for PostItemV2 {}
-
-impl PartialEq for PostItemV2 {
-    fn eq(&self, other: &Self) -> bool {
-        self.video_id == other.video_id
-    }
-}
-
-impl Hash for PostItemV2 {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.video_id.hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
-pub struct FeedResponseV2 {
-    pub posts: Vec<PostItemV2>,
 }
 
 #[derive(Serialize, Deserialize, Clone, ToRedisArgs, FromRedisValue, Debug)]
