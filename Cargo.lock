@@ -1323,6 +1323,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
+name = "global-constants"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "num-bigint",
+ "serde",
+ "serde_with 3.12.0",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "google-cloud-alloydb-v1"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1609,8 +1620,8 @@ name = "hon-worker-common"
 version = "0.1.0"
 dependencies = [
  "candid",
+ "global-constants",
  "ic-agent",
- "limits",
  "num-bigint",
  "serde",
  "serde_with 3.12.0",
@@ -2760,17 +2771,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "172a788537a2221661b480fee8dc5f96c580eb34fa88764d3205dc356c7e4221"
 dependencies = [
  "zlib-rs",
-]
-
-[[package]]
-name = "limits"
-version = "0.1.0"
-dependencies = [
- "candid",
- "num-bigint",
- "serde",
- "serde_with 3.12.0",
- "thiserror 2.0.12",
 ]
 
 [[package]]
