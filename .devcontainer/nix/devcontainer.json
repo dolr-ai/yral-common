@@ -1,6 +1,6 @@
 {
     "name": "Nix dev container",
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-latest",
     "features": {
         "ghcr.io/devcontainers/features/nix:latest": {
             "extraNixConfig": "experimental-features = nix-command flakes",
