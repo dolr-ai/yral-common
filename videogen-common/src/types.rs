@@ -35,7 +35,11 @@ pub enum VideoGenInput {
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct ImageInput {
-    pub data: Vec<u8>,
+    #[schema(
+        example = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    )]
+    pub data: String, // Base64 encoded image data
+    #[schema(example = "image/png")]
     pub mime_type: String,
 }
 
