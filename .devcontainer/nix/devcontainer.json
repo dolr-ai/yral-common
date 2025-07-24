@@ -1,18 +1,35 @@
 {
     "name": "Nix dev container",
-    "image": "mcr.microsoft.com/devcontainers/base:alpine",
-
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
     "features": {
         "ghcr.io/devcontainers/features/nix:1": {
             "extraNixConfig": "experimental-features = nix-command flakes",
             "packages": "nixfmt-unstable,nixd,direnv"
         }
     },
-
+    "postCreateCommand": [
+        "bash",
+        "-c",
+        "echo 'source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' >> ~/.bashrc && echo 'eval \"$(direnv hook bash)\"' >> ~/.bashrc"
+    ],
     "customizations": {
-		"vscode": {
-			"settings": {},
-			"extensions": ["vscodevim.vim", "rust-lang.rust-analyzer", "mkhl.direnv"]
-		}
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "terminal.integrated.profiles.linux": {
+                    "bash": {
+                        "path": "/bin/bash",
+                        "args": [
+                            "-l"
+                        ]
+                    }
+                }
+            },
+            "extensions": [
+                "vscodevim.vim",
+                "rust-lang.rust-analyzer",
+                "mkhl.direnv"
+            ]
+        }
     }
 }
