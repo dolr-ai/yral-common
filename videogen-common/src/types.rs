@@ -53,6 +53,19 @@ pub enum VideoGenInput {
     },
 }
 
+impl VideoGenInput {
+    /// Get the model name for rate limiting purposes
+    pub fn model_name(&self) -> &'static str {
+        match self {
+            VideoGenInput::Veo3 { .. } => "VEO3",
+            VideoGenInput::Veo3Fast { .. } => "VEO3_FAST",
+            VideoGenInput::FalAi { .. } => "FALAI",
+            VideoGenInput::LumaLabs { .. } => "LUMALABS",
+            VideoGenInput::IntTest { .. } => "INTTEST",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct ImageInput {
     #[schema(
