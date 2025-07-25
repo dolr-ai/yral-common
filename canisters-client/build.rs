@@ -50,6 +50,8 @@ static DID_WHITELIST: LazyLock<HashSet<&str>> = LazyLock::new(|| {
     whitelist.insert("rate_limits");
     #[cfg(feature = "user-info-service")]
     whitelist.insert("user_info_service");
+    #[cfg(feature = "user-post-service")]
+    whitelist.insert("user_post_service");
 
     whitelist
 });
