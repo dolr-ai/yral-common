@@ -25,11 +25,27 @@ pub enum VideoGenInput {
         duration_seconds: u8,
         generate_audio: bool,
     },
+    Veo3Fast {
+        prompt: String,
+        negative_prompt: Option<String>,
+        image: Option<ImageInput>,
+        aspect_ratio: Veo3AspectRatio,
+        duration_seconds: u8,
+        generate_audio: bool,
+    },
     FalAi {
         prompt: String,
         model: String,
         seed: Option<u64>,
         num_frames: Option<u32>,
+    },
+    LumaLabs {
+        prompt: String,
+        image: Option<ImageInput>,
+        resolution: LumaLabsResolution,
+        duration: LumaLabsDuration,
+        aspect_ratio: Option<String>,
+        loop_video: bool,
     },
 }
 
@@ -43,12 +59,32 @@ pub struct ImageInput {
     pub mime_type: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema, CandidType)]
 pub enum Veo3AspectRatio {
     #[serde(rename = "16:9")]
     Ratio16x9,
     #[serde(rename = "9:16")]
     Ratio9x16,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema, CandidType)]
+pub enum LumaLabsResolution {
+    #[serde(rename = "540p")]
+    R540p,
+    #[serde(rename = "720p")]
+    R720p,
+    #[serde(rename = "1080p")]
+    R1080p,
+    #[serde(rename = "4k")]
+    R4k,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema, CandidType)]
+pub enum LumaLabsDuration {
+    #[serde(rename = "5s")]
+    D5s,
+    #[serde(rename = "9s")]
+    D9s,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
