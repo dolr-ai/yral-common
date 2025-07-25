@@ -12,6 +12,7 @@ members = [
     "metrics",
     "ml-feed-cache",
     "alloydb-client", "identity",
+    "videogen-common",
 ]
 resolver = "2"
 
