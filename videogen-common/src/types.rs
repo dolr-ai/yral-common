@@ -47,6 +47,10 @@ pub enum VideoGenInput {
         aspect_ratio: Option<String>,
         loop_video: bool,
     },
+    IntTest {
+        prompt: String,
+        image: Option<ImageInput>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]

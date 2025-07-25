@@ -9,6 +9,7 @@ pub enum VideoGenProvider {
     Veo3Fast,
     FalAi,
     LumaLabs,
+    IntTest,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
@@ -98,6 +99,18 @@ impl VideoModel {
                 model_icon: Some("/img/ai-models/bytedance.svg".to_string()),
                 is_available: false,
             },
+            VideoModel {
+                id: "inttest".to_string(),
+                name: "IntTest".to_string(),
+                description: "Test model that always returns the same video".to_string(),
+                cost_sats: 0,
+                supports_image: true,
+                provider: VideoGenProvider::IntTest,
+                max_duration_seconds: 5,
+                supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
+                model_icon: Some("/img/yral/favicon.svg".to_string()),
+                is_available: true,
+            },
         ]
     }
 
@@ -159,6 +172,10 @@ impl VideoModel {
                 },
                 aspect_ratio: Some("16:9".to_string()),
                 loop_video: false,
+            }),
+            VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest {
+                prompt,
+                image,
             }),
         }
     }
