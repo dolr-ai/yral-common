@@ -1,7 +1,12 @@
-use crate::types::{ImageInput, Veo3AspectRatio, VideoGenInput, LumaLabsResolution, LumaLabsDuration};
+use crate::types::{
+    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput,
+};
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+// TODO: segregate models and providers
+// better abstraction for different video generation providers and inputs
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
 pub enum VideoGenProvider {
@@ -124,7 +129,7 @@ impl VideoModel {
         if !self.is_available {
             return Err(format!("Model {} is coming soon", self.name));
         }
-        
+
         // Check if image is provided but model doesn't support it
         if image.is_some() && !self.supports_image {
             return Err(format!("Model {} does not support image input", self.name));
@@ -173,10 +178,7 @@ impl VideoModel {
                 aspect_ratio: Some("16:9".to_string()),
                 loop_video: false,
             }),
-            VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest {
-                prompt,
-                image,
-            }),
+            VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest { prompt, image }),
         }
     }
 
