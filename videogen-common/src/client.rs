@@ -85,26 +85,16 @@ impl VideoGenClient {
 
         let req_builder = self.client.post(url).json(&signed_request);
 
-        let response = req_builder.send().await.map_err(|e| {
-            #[cfg(target_arch = "wasm32")]
-            web_sys::console::error_1(
-                &format!("VideoGenClient: Network error during send: {}", e).into(),
-            );
-            #[cfg(not(target_arch = "wasm32"))]
-            println!("VideoGenClient: Network error during send: {}", e);
-            VideoGenError::NetworkError(e.to_string())
-        })?;
+        let response = req_builder
+            .send()
+            .await
+            .map_err(|e| VideoGenError::NetworkError(e.to_string()))?;
 
         if response.status().is_success() {
-            response.json().await.map_err(|e| {
-                #[cfg(target_arch = "wasm32")]
-                web_sys::console::error_1(
-                    &format!("VideoGenClient: Error parsing success response: {}", e).into(),
-                );
-                #[cfg(not(target_arch = "wasm32"))]
-                println!("VideoGenClient: Error parsing success response: {}", e);
-                VideoGenError::NetworkError(e.to_string())
-            })
+            response
+                .json()
+                .await
+                .map_err(|e| VideoGenError::NetworkError(e.to_string()))
         } else {
             let error_text = response
                 .text()
