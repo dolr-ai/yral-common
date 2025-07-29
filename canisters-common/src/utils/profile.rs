@@ -55,6 +55,14 @@ pub fn propic_from_principal(principal: Principal) -> String {
 }
 
 impl ProfileDetails {
+    pub fn username_or_principal(&self) -> String {
+        self.username.clone().unwrap_or_else(|| self.principal())
+    }
+
+    /// Get the user's username
+    /// or a consistent random username
+    /// WARN: do not use this method for URLs
+    /// use `username_or_principal` instead
     pub fn username_or_fallback(&self) -> String {
         self.username
             .clone()
