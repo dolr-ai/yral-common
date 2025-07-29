@@ -1,9 +1,9 @@
 use candid::{CandidType, Principal};
 use canisters_client::individual_user_template::BettingStatus;
 use hon_worker_common::{GameInfo, GameInfoReq, GameInfoReqV3};
+use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
-use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 
 use crate::{consts::CENTS_IN_E6S, Canisters, Error, HonError, Result};
 

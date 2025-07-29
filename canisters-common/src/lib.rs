@@ -139,9 +139,7 @@ impl Canisters<true> {
     async fn handle_referrer(&self, referrer: Principal) -> Result<()> {
         let user = self.authenticated_user().await;
 
-        let maybe_referrer_canister = self
-            .get_individual_canister_v2(referrer.to_text())
-            .await?;
+        let maybe_referrer_canister = self.get_individual_canister_v2(referrer.to_text()).await?;
         let Some(referrer_canister) = maybe_referrer_canister else {
             return Ok(());
         };
@@ -204,7 +202,7 @@ impl Canisters<true> {
         let profile_details = ProfileDetails::from_canister(
             res.user_canister,
             maybe_meta.map(|meta| meta.user_name),
-            user.get_profile_details_v_2().await?
+            user.get_profile_details_v_2().await?,
         );
         res.profile_details = Some(profile_details);
 
@@ -212,12 +210,15 @@ impl Canisters<true> {
     }
 
     pub async fn set_username(&mut self, new_username: String) -> Result<()> {
-        self.metadata_client.set_user_metadata(
-            self.identity(),
-        SetUserMetadataReqMetadata {
-                user_canister_id: self.user_canister,
-                user_name: new_username.clone(),
-        }).await?;
+        self.metadata_client
+            .set_user_metadata(
+                self.identity(),
+                SetUserMetadataReqMetadata {
+                    user_canister_id: self.user_canister,
+                    user_name: new_username.clone(),
+                },
+            )
+            .await?;
         if let Some(p) = self.profile_details.as_mut() {
             p.username = Some(new_username)
         }
@@ -370,8 +371,8 @@ impl From<Canisters<true>> for CanistersAuthWire {
 }
 
 pub fn yral_auth_login_hint(identity: &impl Identity) -> identity::Result<String> {
-    let msg = identity::msg_builder::Message::default()
-        .method_name("yral_auth_v2_login_hint".into());
+    let msg =
+        identity::msg_builder::Message::default().method_name("yral_auth_v2_login_hint".into());
     let sig = identity::ic_agent::sign_message(identity, msg)?;
 
     #[derive(Serialize)]
