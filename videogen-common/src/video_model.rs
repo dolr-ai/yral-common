@@ -1,21 +1,10 @@
 use crate::types::{
-    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput,
+    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput, VideoGenProvider,
 };
+use crate::models::{Veo3Model, Veo3FastModel, LumaLabsModel, FalAiModel, IntTestModel};
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-
-// TODO: segregate models and providers
-// better abstraction for different video generation providers and inputs
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
-pub enum VideoGenProvider {
-    Veo3,
-    Veo3Fast,
-    FalAi,
-    LumaLabs,
-    IntTest,
-}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
 pub struct VideoModel {
@@ -136,7 +125,7 @@ impl VideoModel {
         }
 
         match self.provider {
-            VideoGenProvider::Veo3 => Ok(VideoGenInput::Veo3 {
+            VideoGenProvider::Veo3 => Ok(VideoGenInput::Veo3(Veo3Model {
                 prompt,
                 negative_prompt: None,
                 image,
@@ -147,8 +136,8 @@ impl VideoModel {
                     .unwrap_or(Veo3AspectRatio::Ratio16x9),
                 duration_seconds: self.max_duration_seconds,
                 generate_audio: true,
-            }),
-            VideoGenProvider::Veo3Fast => Ok(VideoGenInput::Veo3Fast {
+            })),
+            VideoGenProvider::Veo3Fast => Ok(VideoGenInput::Veo3Fast(Veo3FastModel {
                 prompt,
                 negative_prompt: None,
                 image,
@@ -159,14 +148,14 @@ impl VideoModel {
                     .unwrap_or(Veo3AspectRatio::Ratio16x9),
                 duration_seconds: self.max_duration_seconds,
                 generate_audio: true,
-            }),
-            VideoGenProvider::FalAi => Ok(VideoGenInput::FalAi {
+            })),
+            VideoGenProvider::FalAi => Ok(VideoGenInput::FalAi(FalAiModel {
                 prompt,
                 model: self.id.clone(),
                 seed: None,
                 num_frames: Some((self.max_duration_seconds as u32) * 30), // 30 fps
-            }),
-            VideoGenProvider::LumaLabs => Ok(VideoGenInput::LumaLabs {
+            })),
+            VideoGenProvider::LumaLabs => Ok(VideoGenInput::LumaLabs(LumaLabsModel {
                 prompt,
                 image,
                 resolution: LumaLabsResolution::R1080p, // Default to 1080p
@@ -177,8 +166,8 @@ impl VideoModel {
                 },
                 aspect_ratio: Some("16:9".to_string()),
                 loop_video: false,
-            }),
-            VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest { prompt, image }),
+            })),
+            VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest(IntTestModel { prompt, image })),
         }
     }
 

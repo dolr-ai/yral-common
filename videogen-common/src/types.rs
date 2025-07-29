@@ -1,8 +1,39 @@
 use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use enum_dispatch::enum_dispatch;
+use crate::models::{Veo3Model, Veo3FastModel, LumaLabsModel, FalAiModel, IntTestModel};
 #[cfg(feature = "ic")]
 use yral_identity::Signature;
+
+/// Core trait for video generation models
+#[enum_dispatch]
+pub trait VideoGenerator {
+    /// Get the model name for rate limiting and identification
+    fn model_name(&self) -> &'static str;
+    
+    /// Get the provider for this model
+    fn provider(&self) -> VideoGenProvider;
+    
+    /// Validate the input parameters
+    fn validate_input(&self) -> Result<(), VideoGenError>;
+    
+    /// Get the prompt text
+    fn get_prompt(&self) -> &str;
+    
+    /// Get the optional input image
+    fn get_image(&self) -> Option<&ImageInput>;
+    
+    /// Get flow control key for Qstash rate limiting
+    fn flow_control_key(&self) -> String {
+        format!("VIDEOGEN_{}", self.model_name())
+    }
+    
+    /// Get flow control configuration (rate_per_minute, parallelism)
+    fn flow_control_config(&self) -> Option<(u32, u32)> {
+        None // Default: no flow control
+    }
+}
 
 // Request wrapper that includes user_id for rate limiting
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -14,54 +45,36 @@ pub struct VideoGenRequest {
     pub input: VideoGenInput,
 }
 
+#[enum_dispatch(VideoGenerator)]
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 #[serde(tag = "provider", content = "data")]
 pub enum VideoGenInput {
-    Veo3 {
-        prompt: String,
-        negative_prompt: Option<String>,
-        image: Option<ImageInput>,
-        aspect_ratio: Veo3AspectRatio,
-        duration_seconds: u8,
-        generate_audio: bool,
-    },
-    Veo3Fast {
-        prompt: String,
-        negative_prompt: Option<String>,
-        image: Option<ImageInput>,
-        aspect_ratio: Veo3AspectRatio,
-        duration_seconds: u8,
-        generate_audio: bool,
-    },
-    FalAi {
-        prompt: String,
-        model: String,
-        seed: Option<u64>,
-        num_frames: Option<u32>,
-    },
-    LumaLabs {
-        prompt: String,
-        image: Option<ImageInput>,
-        resolution: LumaLabsResolution,
-        duration: LumaLabsDuration,
-        aspect_ratio: Option<String>,
-        loop_video: bool,
-    },
-    IntTest {
-        prompt: String,
-        image: Option<ImageInput>,
-    },
+    Veo3(Veo3Model),
+    Veo3Fast(Veo3FastModel),
+    FalAi(FalAiModel),
+    LumaLabs(LumaLabsModel),
+    IntTest(IntTestModel),
 }
 
-impl VideoGenInput {
-    /// Get the model name for rate limiting purposes
-    pub fn model_name(&self) -> &'static str {
+// VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
+pub enum VideoGenProvider {
+    Veo3,
+    Veo3Fast,
+    FalAi,
+    LumaLabs,
+    IntTest,
+}
+
+impl std::fmt::Display for VideoGenProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VideoGenInput::Veo3 { .. } => "VEO3",
-            VideoGenInput::Veo3Fast { .. } => "VEO3_FAST",
-            VideoGenInput::FalAi { .. } => "FALAI",
-            VideoGenInput::LumaLabs { .. } => "LUMALABS",
-            VideoGenInput::IntTest { .. } => "INTTEST",
+            VideoGenProvider::Veo3 => write!(f, "Veo3"),
+            VideoGenProvider::Veo3Fast => write!(f, "Veo3Fast"),
+            VideoGenProvider::FalAi => write!(f, "FalAi"),
+            VideoGenProvider::LumaLabs => write!(f, "LumaLabs"),
+            VideoGenProvider::IntTest => write!(f, "IntTest"),
         }
     }
 }
@@ -104,11 +117,26 @@ pub enum LumaLabsDuration {
     D9s,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
+pub struct VideoGenRequestKey {
+    #[schema(value_type = String, example = "xkbqi-2qaaa-aaaah-qbpqq-cai")]
+    pub principal: Principal,
+    pub counter: u64,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 pub struct VideoGenResponse {
     pub operation_id: String,
     pub video_url: String,
     pub provider: String,
+}
+
+/// Initial response when video generation is queued
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
+pub struct VideoGenQueuedResponse {
+    pub operation_id: String,
+    pub provider: String,
+    pub request_key: VideoGenRequestKey,
 }
 
 // Request with signature for authentication
