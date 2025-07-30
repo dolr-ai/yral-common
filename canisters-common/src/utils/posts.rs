@@ -5,7 +5,9 @@ use std::{
 
 use candid::Principal;
 use canisters_client::individual_user_template::{PostDetailsForFrontend, PostStatus};
+use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
+use username_gen::random_username_from_principal;
 use web_time::Duration;
 
 use crate::{Canisters, Result};
@@ -79,7 +81,12 @@ impl PostDetails {
             display_name: details
                 .created_by_display_name
                 .or(details.created_by_unique_user_name)
-                .unwrap_or_else(|| details.created_by_user_principal_id.to_text()),
+                .unwrap_or_else(|| {
+                    random_username_from_principal(
+                        details.created_by_user_principal_id,
+                        USERNAME_MAX_LEN,
+                    )
+                }),
             propic_url: details
                 .created_by_profile_photo_url
                 .unwrap_or_else(|| propic_from_principal(details.created_by_user_principal_id)),
@@ -146,8 +153,12 @@ impl<const A: bool> Canisters<A> {
         }
 
         let creator_principal = post_details.created_by_user_principal_id;
-        let creator_meta = self.metadata_client.get_user_metadata_v2(creator_principal.to_text()).await?; 
-        post_details.created_by_unique_user_name = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
+        let creator_meta = self
+            .metadata_client
+            .get_user_metadata_v2(creator_principal.to_text())
+            .await?;
+        post_details.created_by_unique_user_name =
+            creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
             A,

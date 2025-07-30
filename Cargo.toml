@@ -12,7 +12,7 @@ members = [
     "metrics",
     "ml-feed-cache",
     "alloydb-client", "identity",
-    "videogen-common",
+    "videogen-common", "username-gen",
 ]
 resolver = "2"
 
@@ -29,6 +29,7 @@ pump-n-dump-common = { package = "yral-pump-n-dump-common", path = "pump-n-dump-
 hon-worker-common = { package = "hon-worker-common", path = "hon-worker-common", features = [
     "client",
 ] }
+username-gen = { package = "yral-username-gen", path = "username-gen" }
 candid = "0.10.10"
 url = "2.5.4"
 web-time = "1.0.0"

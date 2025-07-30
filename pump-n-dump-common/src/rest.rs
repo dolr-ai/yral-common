@@ -1,7 +1,7 @@
 use candid::{Nat, Principal};
 use canisters_client::individual_user_template::ParticipatedGameInfo;
-use serde::{Deserialize, Serialize};
 use identity::{msg_builder::Message, Signature};
+use serde::{Deserialize, Serialize};
 
 use crate::GameDirection;
 

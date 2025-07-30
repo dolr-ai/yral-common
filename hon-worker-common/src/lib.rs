@@ -3,10 +3,10 @@ mod error;
 pub use error::*;
 
 use candid::{CandidType, Nat, Principal};
+use identity::{Signature, msg_builder::Message};
 use num_bigint::{BigInt, BigUint};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
-use identity::{Signature, msg_builder::Message};
 
 pub const WORKER_URL: &str = "https://yral-hot-or-not.go-bazzinga.workers.dev/";
 pub type WorkerResponse<T> = Result<T, WorkerError>;

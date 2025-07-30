@@ -3532,6 +3532,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_xoshiro"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f703f4665700daf5512dcca5f43afa6af89f09db47fb56be587f80636bda2d41"
+dependencies = [
+ "rand_core 0.9.3",
+]
+
+[[package]]
 name = "rangemap"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5588,6 +5597,7 @@ dependencies = [
  "crc32fast",
  "futures-util",
  "getrandom 0.2.16",
+ "global-constants",
  "hon-worker-common",
  "ic-agent",
  "k256",
@@ -5608,6 +5618,7 @@ dependencies = [
  "yral-metadata-types",
  "yral-pump-n-dump-common",
  "yral-types",
+ "yral-username-gen",
 ]
 
 [[package]]
@@ -5742,6 +5753,15 @@ dependencies = [
  "serde_json",
  "utoipa",
  "utoipa-swagger-ui",
+]
+
+[[package]]
+name = "yral-username-gen"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "rand 0.9.1",
+ "rand_xoshiro",
 ]
 
 [[package]]
