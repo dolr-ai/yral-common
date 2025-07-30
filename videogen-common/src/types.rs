@@ -58,25 +58,13 @@ pub enum VideoGenInput {
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType, strum_macros::Display)]
 pub enum VideoGenProvider {
     Veo3,
     Veo3Fast,
     FalAi,
     LumaLabs,
     IntTest,
-}
-
-impl std::fmt::Display for VideoGenProvider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            VideoGenProvider::Veo3 => write!(f, "Veo3"),
-            VideoGenProvider::Veo3Fast => write!(f, "Veo3Fast"),
-            VideoGenProvider::FalAi => write!(f, "FalAi"),
-            VideoGenProvider::LumaLabs => write!(f, "LumaLabs"),
-            VideoGenProvider::IntTest => write!(f, "IntTest"),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]

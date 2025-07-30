@@ -6,16 +6,21 @@ pub trait FlowControlFromEnv {
         let rate_key = format!("{}_FLOW_CONTROL_RATE", self.env_prefix());
         let parallel_key = format!("{}_FLOW_CONTROL_PARALLELISM", self.env_prefix());
 
-        let rate = std::env::var(&rate_key).ok().and_then(|v| v.parse().ok());
-        let parallel = std::env::var(&parallel_key)
+        let env_rate = std::env::var(&rate_key).ok().and_then(|v| v.parse().ok());
+        let env_parallel = std::env::var(&parallel_key)
             .ok()
             .and_then(|v| v.parse().ok());
 
-        match (rate, parallel) {
-            (Some(r), Some(p)) => Some((r, p)),
-            (Some(r), None) => default.map(|(_, p)| (r, p)),
-            (None, Some(p)) => default.map(|(r, _)| (r, p)),
-            _ => default,
-        }
+        default
+            .map(|(default_rate, default_parallel)| {
+                (
+                    env_rate.unwrap_or(default_rate),
+                    env_parallel.unwrap_or(default_parallel),
+                )
+            })
+            .or(match (env_rate, env_parallel) {
+                (Some(r), Some(p)) => Some((r, p)),
+                _ => None,
+            })
     }
 }
