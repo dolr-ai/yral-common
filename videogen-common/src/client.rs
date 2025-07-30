@@ -1,12 +1,10 @@
-use crate::types::{
-    VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithSignature,
-};
 #[cfg(feature = "client")]
 use crate::types::VideoGenRequestKey;
+use crate::types::{VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithSignature};
+#[cfg(not(feature = "client"))]
+use crate::types::{VideoGenQueuedResponse, VideoGenRequestKey};
 #[cfg(feature = "client")]
 use crate::VideoGenRequestStatus;
-#[cfg(not(feature = "client"))]
-use crate::types::{VideoGenRequestKey, VideoGenQueuedResponse};
 use candid::Principal;
 use reqwest::Url;
 
@@ -121,38 +119,6 @@ impl VideoGenClient {
         }
     }
 
-    /// Poll the video generation status from the rate limits canister
-    #[cfg(feature = "client")]
-    pub async fn poll_video_status(
-        &self,
-        request_key: &VideoGenRequestKey,
-        agent: &::ic_agent::Agent,
-        rate_limits_canister_id: Principal,
-    ) -> Result<VideoGenRequestStatus, VideoGenError> {
-        let rate_limits_client = RateLimits(rate_limits_canister_id, agent);
-        
-        let canister_request_key = yral_canisters_client::rate_limits::VideoGenRequestKey {
-            principal: request_key.principal,
-            counter: request_key.counter,
-        };
-        
-        match rate_limits_client
-            .poll_video_generation_status(canister_request_key)
-            .await
-        {
-            Ok(result) => match result {
-                yral_canisters_client::rate_limits::Result2::Ok(status) => Ok(status),
-                yral_canisters_client::rate_limits::Result2::Err(e) => {
-                    Err(VideoGenError::NetworkError(format!("Rate limits error: {}", e)))
-                }
-            },
-            Err(e) => Err(VideoGenError::NetworkError(format!(
-                "Failed to poll status: {}",
-                e
-            ))),
-        }
-    }
-
     /// Poll the video generation status using a pre-configured RateLimits client
     #[cfg(feature = "client")]
     pub async fn poll_video_status_with_client(
@@ -164,32 +130,16 @@ impl VideoGenClient {
             principal: request_key.principal,
             counter: request_key.counter,
         };
-        
+
         match rate_limits_client
             .poll_video_generation_status(canister_request_key)
             .await
         {
             Ok(result) => match result {
-                yral_canisters_client::rate_limits::Result2::Ok(status) => {
-                    // Convert from canister VideoGenRequestStatus to our VideoGenRequestStatus
-                    match status {
-                        yral_canisters_client::rate_limits::VideoGenRequestStatus::Pending => {
-                            Ok(VideoGenRequestStatus::Pending)
-                        }
-                        yral_canisters_client::rate_limits::VideoGenRequestStatus::Processing => {
-                            Ok(VideoGenRequestStatus::Processing)
-                        }
-                        yral_canisters_client::rate_limits::VideoGenRequestStatus::Complete(url) => {
-                            Ok(VideoGenRequestStatus::Complete(url))
-                        }
-                        yral_canisters_client::rate_limits::VideoGenRequestStatus::Failed(error) => {
-                            Ok(VideoGenRequestStatus::Failed(error))
-                        }
-                    }
-                }
-                yral_canisters_client::rate_limits::Result2::Err(err) => {
-                    Err(VideoGenError::NetworkError(format!("Rate limit error: {}", err)))
-                }
+                yral_canisters_client::rate_limits::Result2::Ok(status) => Ok(status),
+                yral_canisters_client::rate_limits::Result2::Err(err) => Err(
+                    VideoGenError::NetworkError(format!("Rate limit error: {}", err)),
+                ),
             },
             Err(e) => Err(VideoGenError::NetworkError(format!(
                 "Failed to poll status from canister: {}",
