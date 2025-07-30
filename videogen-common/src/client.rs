@@ -35,13 +35,13 @@ impl VideoGenClient {
         let url = self
             .base_url
             .join("api/v1/videogen/generate")
-            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {}", e)))?;
+            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {e}")))?;
 
         let mut req_builder = self.client.post(url).json(&request);
 
         // Add bearer token if available
         if let Some(token) = &self.bearer_token {
-            req_builder = req_builder.header("Authorization", format!("Bearer {}", token));
+            req_builder = req_builder.header("Authorization", format!("Bearer {token}"));
         }
 
         let response = req_builder
@@ -81,7 +81,7 @@ impl VideoGenClient {
         let url = self
             .base_url
             .join("api/v1/videogen/generate_signed")
-            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {}", e)))?;
+            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {e}")))?;
 
         let req_builder = self.client.post(url).json(&signed_request);
 
@@ -105,8 +105,7 @@ impl VideoGenClient {
             match serde_json::from_str::<VideoGenError>(&error_text) {
                 Ok(error) => Err(error),
                 Err(_) => Err(VideoGenError::NetworkError(format!(
-                    "Server error: {}",
-                    error_text
+                    "Server error: {error_text}"
                 ))),
             }
         }

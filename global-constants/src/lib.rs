@@ -64,16 +64,21 @@ impl CoinState {
         }
     }
     pub fn wrapping_next(self) -> Self {
-        BET_COIN_ENABLED_STATES.iter()
+        BET_COIN_ENABLED_STATES
+            .iter()
             .position(|&x| x == self)
             .map(|idx| BET_COIN_ENABLED_STATES[(idx + 1) % BET_COIN_ENABLED_STATES.len()])
             .unwrap_or(DEFAULT_BET_COIN_FOR_LOGGED_OUT)
     }
 
     pub fn wrapping_prev(self) -> Self {
-        BET_COIN_ENABLED_STATES.iter()
+        BET_COIN_ENABLED_STATES
+            .iter()
             .position(|&x| x == self)
-            .map(|idx| BET_COIN_ENABLED_STATES[(idx + BET_COIN_ENABLED_STATES.len() - 1) % BET_COIN_ENABLED_STATES.len()])
+            .map(|idx| {
+                BET_COIN_ENABLED_STATES
+                    [(idx + BET_COIN_ENABLED_STATES.len() - 1) % BET_COIN_ENABLED_STATES.len()]
+            })
             .unwrap_or(DEFAULT_BET_COIN_FOR_LOGGED_OUT)
     }
 }

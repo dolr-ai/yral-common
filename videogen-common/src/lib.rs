@@ -1,10 +1,10 @@
 pub mod client;
-pub mod types;
 pub mod models;
+pub mod types;
 
 pub use client::VideoGenClient;
+pub use models::{VideoGenProvider, VideoModel};
 pub use types::{
-    ImageInput, Veo3AspectRatio, LumaLabsResolution, LumaLabsDuration, VideoGenError, VideoGenInput, VideoGenRequest, VideoGenResponse,
-    VideoGenRequestWithSignature,
+    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenError,
+    VideoGenInput, VideoGenRequest, VideoGenRequestWithSignature, VideoGenResponse,
 };
-pub use models::{VideoModel, VideoGenProvider};

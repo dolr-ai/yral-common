@@ -60,7 +60,7 @@ impl MLFeedCacheState {
 
         tokio::spawn(async move {
             if let Err(e) = operation(memory_pool, key.clone()).await {
-                log::error!("Failed to update memory store for key {}: {}", key, e);
+                log::error!("Failed to update memory store for key {key}: {e}");
             }
         });
     }
@@ -454,7 +454,7 @@ impl MLFeedCacheState {
         // Build all keys with suffixes
         let keys: Vec<String> = suffixes
             .iter()
-            .map(|suffix| format!("{}{}", key, suffix))
+            .map(|suffix| format!("{key}{suffix}"))
             .collect();
 
         // Delete all keys in one statement
@@ -503,7 +503,7 @@ impl MLFeedCacheState {
                 let mut conn = match pool.get().await {
                     Ok(conn) => conn,
                     Err(e) => {
-                        log::error!("Failed to get memory store connection: {}", e);
+                        log::error!("Failed to get memory store connection: {e}");
                         return Ok(());
                     }
                 };
@@ -513,7 +513,7 @@ impl MLFeedCacheState {
                         .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV2, ()>(&key, chunk)
                         .await
                     {
-                        log::error!("Failed to add items to memory store: {}", e);
+                        log::error!("Failed to add items to memory store: {e}");
                     }
                 }
 
@@ -527,10 +527,10 @@ impl MLFeedCacheState {
                             )
                             .await
                         {
-                            log::error!("Failed to trim memory store: {}", e);
+                            log::error!("Failed to trim memory store: {e}");
                         }
                     }
-                    Err(e) => log::error!("Failed to get card count from memory store: {}", e),
+                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
                     _ => {}
                 }
                 Ok(())
@@ -578,7 +578,7 @@ impl MLFeedCacheState {
                 let mut conn = match pool.get().await {
                     Ok(conn) => conn,
                     Err(e) => {
-                        log::error!("Failed to get memory store connection: {}", e);
+                        log::error!("Failed to get memory store connection: {e}");
                         return Ok(());
                     }
                 };
@@ -588,7 +588,7 @@ impl MLFeedCacheState {
                         .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV2, ()>(&key, chunk)
                         .await
                     {
-                        log::error!("Failed to add items to memory store: {}", e);
+                        log::error!("Failed to add items to memory store: {e}");
                     }
                 }
 
@@ -602,10 +602,10 @@ impl MLFeedCacheState {
                             )
                             .await
                         {
-                            log::error!("Failed to trim memory store: {}", e);
+                            log::error!("Failed to trim memory store: {e}");
                         }
                     }
-                    Err(e) => log::error!("Failed to get card count from memory store: {}", e),
+                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
                     _ => {}
                 }
                 Ok(())
@@ -868,7 +868,7 @@ impl MLFeedCacheState {
         // Build all keys with suffixes
         let keys: Vec<String> = suffixes
             .iter()
-            .map(|suffix| format!("{}{}", key, suffix))
+            .map(|suffix| format!("{key}{suffix}"))
             .collect();
 
         // Delete all keys in one statement
@@ -880,13 +880,13 @@ impl MLFeedCacheState {
                 let mut conn = match pool.get().await {
                     Ok(conn) => conn,
                     Err(e) => {
-                        log::error!("Failed to get memory store connection: {}", e);
+                        log::error!("Failed to get memory store connection: {e}");
                         return Ok(());
                     }
                 };
 
                 if let Err(e) = conn.del::<Vec<String>, ()>(keys).await {
-                    log::error!("Failed to delete keys from memory store: {}", e);
+                    log::error!("Failed to delete keys from memory store: {e}");
                 }
                 Ok(())
             })
@@ -1299,9 +1299,9 @@ mod tests {
         ];
 
         for suffix in suffixes {
-            let full_key = format!("{}{}", test_base_key, suffix);
+            let full_key = format!("{test_base_key}{suffix}");
             let exists = conn.exists::<&str, bool>(&full_key).await.unwrap();
-            assert!(!exists, "Key {} should not exist", full_key);
+            assert!(!exists, "Key {full_key} should not exist");
         }
     }
 
@@ -1355,7 +1355,7 @@ mod tests {
 
         // print the items
         for item in items_with_scores {
-            println!("V2 item: {:?}", item);
+            println!("V2 item: {item:?}");
         }
     }
 
@@ -1410,7 +1410,7 @@ mod tests {
 
         // print the items
         for item in items {
-            println!("V2 success item: {:?}", item);
+            println!("V2 success item: {item:?}");
         }
     }
 
@@ -1722,7 +1722,7 @@ mod tests {
 
         // print the items
         for item in retrieved_items.iter() {
-            println!("V2 buffer item: {:?}", item);
+            println!("V2 buffer item: {item:?}");
         }
 
         // Test remove_user_buffer_items_by_timestamp_v2
@@ -1982,9 +1982,9 @@ mod tests {
         ];
 
         for suffix in suffixes {
-            let full_key = format!("{}{}", test_base_key, suffix);
+            let full_key = format!("{test_base_key}{suffix}");
             let exists = conn.exists::<&str, bool>(&full_key).await.unwrap();
-            assert!(!exists, "Key {} should not exist", full_key);
+            assert!(!exists, "Key {full_key} should not exist");
         }
     }
 }

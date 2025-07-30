@@ -125,7 +125,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
     let mut did_mod_contents = String::new();
     let whitelist = DID_WHITELIST.clone();
 
-    eprintln!("cargo:warning=Active DID Whitelist: {:?}", whitelist);
+    eprintln!("cargo:warning=Active DID Whitelist: {whitelist:?}");
     eprintln!("cargo:warning=Reading from ./did directory");
 
     let did_out_path = PathBuf::from(&out_dir).join("did");
@@ -150,7 +150,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
             continue;
         }
 
-        eprintln!("cargo:warning=Processing DID file: {}", file_name);
+        eprintln!("cargo:warning=Processing DID file: {file_name}");
 
         let service_name_pascal = file_name.to_case(Case::Pascal);
         candid_config.set_service_name(service_name_pascal.clone());
@@ -244,10 +244,10 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
         let mut ast_code: syn::File = match syn::parse_str(&original_bindings_str) {
             Ok(parsed_ast) => parsed_ast,
             Err(e) => {
-                eprintln!("cargo:warning=Failed to parse generated bindings for {}: {}. Using original bindings.", file_name, e);
-                let binding_file_path = did_out_path.join(format!("{}.rs", file_name));
+                eprintln!("cargo:warning=Failed to parse generated bindings for {file_name}: {e}. Using original bindings.");
+                let binding_file_path = did_out_path.join(format!("{file_name}.rs"));
                 if let Err(write_err) = fs::write(&binding_file_path, &original_bindings_str) {
-                    eprintln!("cargo:warning=Failed to write original bindings for {} after parse error: {}", file_name, write_err);
+                    eprintln!("cargo:warning=Failed to write original bindings for {file_name} after parse error: {write_err}");
                 }
                 did_mod_contents.push_str(&format!(
                     "#[path = \"{}\"] pub mod {};\n",
@@ -350,7 +350,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                             match syn::parse2::<ImplItem>(new_method_toks) {
                                 Ok(parsed_item) => new_impl_items.push(parsed_item),
                                 Err(e) => {
-                                    eprintln!("cargo:warning=Failed to parse wrapped method for {} in {}: {}. Keeping original.", current_method_name, file_name, e);
+                                    eprintln!("cargo:warning=Failed to parse wrapped method for {current_method_name} in {file_name}: {e}. Keeping original.");
                                     new_impl_items.push(ImplItem::Fn(method_fn.clone()));
                                 }
                             }
@@ -371,7 +371,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
             Err(_) => modified_code_str,
         };
 
-        let binding_file_path = did_out_path.join(format!("{}.rs", file_name));
+        let binding_file_path = did_out_path.join(format!("{file_name}.rs"));
         fs::write(&binding_file_path, pretty_modified_code_str)?;
 
         did_mod_contents.push_str(&format!(
@@ -389,7 +389,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
 
 fn main() -> Result<()> {
     let out_dir = env::var("OUT_DIR").unwrap();
-    println!("cargo:warning=OUT_DIR is: {}", out_dir);
+    println!("cargo:warning=OUT_DIR is: {out_dir}");
 
     build_did_intfs(&out_dir)?;
     build_canister_ids(&out_dir)?;

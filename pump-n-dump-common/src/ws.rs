@@ -1,7 +1,7 @@
 use candid::{Nat, Principal};
+use identity::msg_builder::Message;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use identity::msg_builder::Message;
 
 use crate::{rest::UserBetsResponse, GameDirection};
 
