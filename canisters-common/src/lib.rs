@@ -6,6 +6,7 @@ use canisters_client::{
     individual_user_template::{IndividualUserTemplate, Result15, Result3, UserCanisterDetails},
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
+    rate_limits::RateLimits,
     sns_governance::SnsGovernance,
     sns_index::SnsIndex,
     sns_ledger::SnsLedger,
@@ -14,7 +15,7 @@ use canisters_client::{
     user_index::{Result_, UserIndex},
 };
 use consts::{
-    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID},
+    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID, RATE_LIMITS_ID},
     CDAO_SWAP_TIME_SECS, METADATA_API_BASE,
 };
 use ic_agent::{identity::DelegatedIdentity, Identity};
@@ -331,6 +332,11 @@ impl<const A: bool> Canisters<A> {
     pub async fn sns_swap(&self, canister_id: Principal) -> SnsSwap<'_> {
         let agent = self.agent.get_agent().await;
         SnsSwap(canister_id, agent)
+    }
+
+    pub async fn rate_limits(&self) -> RateLimits<'_> {
+        let agent = self.agent.get_agent().await;
+        RateLimits(RATE_LIMITS_ID, agent)
     }
 
     async fn subnet_indexes(&self) -> Result<Vec<Principal>> {

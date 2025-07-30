@@ -1,8 +1,15 @@
-use crate::types::{
-    VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithSignature, VideoGenResponse,
-};
+#[cfg(feature = "client")]
+use crate::types::VideoGenRequestKey;
+use crate::types::{VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithSignature};
+#[cfg(not(feature = "client"))]
+use crate::types::{VideoGenQueuedResponse, VideoGenRequestKey};
+#[cfg(feature = "client")]
+use crate::VideoGenRequestStatus;
 use candid::Principal;
 use reqwest::Url;
+
+#[cfg(feature = "client")]
+use yral_canisters_client::rate_limits::RateLimits;
 
 pub struct VideoGenClient {
     base_url: Url,
@@ -27,11 +34,11 @@ impl VideoGenClient {
         }
     }
 
-    /// Generate a video with the given request
+    /// Generate a video with the given request (returns queued response)
     pub async fn generate(
         &self,
         request: VideoGenRequest,
-    ) -> Result<VideoGenResponse, VideoGenError> {
+    ) -> Result<crate::types::VideoGenQueuedResponse, VideoGenError> {
         let url = self
             .base_url
             .join("api/v1/videogen/generate")
@@ -68,16 +75,16 @@ impl VideoGenClient {
         &self,
         principal: Principal,
         input: VideoGenInput,
-    ) -> Result<VideoGenResponse, VideoGenError> {
+    ) -> Result<crate::types::VideoGenQueuedResponse, VideoGenError> {
         let request = VideoGenRequest { principal, input };
         self.generate(request).await
     }
 
-    /// Generate a video with a signed request
+    /// Generate a video with a signed request (returns queued response)
     pub async fn generate_with_signature(
         &self,
         signed_request: VideoGenRequestWithSignature,
-    ) -> Result<VideoGenResponse, VideoGenError> {
+    ) -> Result<crate::types::VideoGenQueuedResponse, VideoGenError> {
         let url = self
             .base_url
             .join("api/v1/videogen/generate_signed")
@@ -108,6 +115,35 @@ impl VideoGenClient {
                     "Server error: {error_text}"
                 ))),
             }
+        }
+    }
+
+    /// Poll the video generation status using a pre-configured RateLimits client
+    #[cfg(feature = "client")]
+    pub async fn poll_video_status_with_client(
+        &self,
+        request_key: &VideoGenRequestKey,
+        rate_limits_client: &RateLimits<'_>,
+    ) -> Result<VideoGenRequestStatus, VideoGenError> {
+        let canister_request_key = yral_canisters_client::rate_limits::VideoGenRequestKey {
+            principal: request_key.principal,
+            counter: request_key.counter,
+        };
+
+        match rate_limits_client
+            .poll_video_generation_status(canister_request_key)
+            .await
+        {
+            Ok(result) => match result {
+                yral_canisters_client::rate_limits::Result2::Ok(status) => Ok(status),
+                yral_canisters_client::rate_limits::Result2::Err(err) => Err(
+                    VideoGenError::NetworkError(format!("Rate limit error: {}", err)),
+                ),
+            },
+            Err(e) => Err(VideoGenError::NetworkError(format!(
+                "Failed to poll status from canister: {}",
+                e
+            ))),
         }
     }
 }

@@ -82,3 +82,7 @@ impl CoinState {
             .unwrap_or(DEFAULT_BET_COIN_FOR_LOGGED_OUT)
     }
 }
+
+// VIDEOGEN COMMON CONSTANTS
+
+pub const GLOBAL_VIDEOGEN_RATE_LIMIT_PER_DAY: u64 = 1000; // Total generations allowed per day
