@@ -1,8 +1,8 @@
+use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use candid::{CandidType, Principal};
+use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use enum_dispatch::enum_dispatch;
-use crate::models::{Veo3Model, Veo3FastModel, LumaLabsModel, FalAiModel, IntTestModel};
 #[cfg(feature = "ic")]
 use yral_identity::Signature;
 
@@ -11,24 +11,24 @@ use yral_identity::Signature;
 pub trait VideoGenerator {
     /// Get the model name for rate limiting and identification
     fn model_name(&self) -> &'static str;
-    
+
     /// Get the provider for this model
     fn provider(&self) -> VideoGenProvider;
-    
+
     /// Validate the input parameters
     fn validate_input(&self) -> Result<(), VideoGenError>;
-    
+
     /// Get the prompt text
     fn get_prompt(&self) -> &str;
-    
+
     /// Get the optional input image
     fn get_image(&self) -> Option<&ImageInput>;
-    
+
     /// Get flow control key for Qstash rate limiting
     fn flow_control_key(&self) -> String {
         format!("VIDEOGEN_{}", self.model_name())
     }
-    
+
     /// Get flow control configuration (rate_per_minute, parallelism)
     fn flow_control_config(&self) -> Option<(u32, u32)> {
         None // Default: no flow control
@@ -58,7 +58,9 @@ pub enum VideoGenInput {
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType, strum_macros::Display)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType, strum_macros::Display,
+)]
 pub enum VideoGenProvider {
     Veo3,
     Veo3Fast,

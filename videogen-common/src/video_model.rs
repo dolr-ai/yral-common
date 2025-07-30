@@ -1,7 +1,8 @@
+use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use crate::types::{
-    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput, VideoGenProvider,
+    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput,
+    VideoGenProvider,
 };
-use crate::models::{Veo3Model, Veo3FastModel, LumaLabsModel, FalAiModel, IntTestModel};
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;

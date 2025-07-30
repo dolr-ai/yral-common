@@ -137,12 +137,11 @@ impl VideoGenClient {
             Ok(result) => match result {
                 yral_canisters_client::rate_limits::Result2::Ok(status) => Ok(status),
                 yral_canisters_client::rate_limits::Result2::Err(err) => Err(
-                    VideoGenError::NetworkError(format!("Rate limit error: {}", err)),
+                    VideoGenError::NetworkError(format!("Rate limit error: {err}")),
                 ),
             },
             Err(e) => Err(VideoGenError::NetworkError(format!(
-                "Failed to poll status from canister: {}",
-                e
+                "Failed to poll status from canister: {e}"
             ))),
         }
     }

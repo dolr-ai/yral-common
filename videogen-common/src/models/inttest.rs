@@ -15,27 +15,29 @@ impl VideoGenerator for IntTestModel {
     fn model_name(&self) -> &'static str {
         "INTTEST"
     }
-    
+
     fn provider(&self) -> VideoGenProvider {
         VideoGenProvider::IntTest
     }
-    
+
     fn validate_input(&self) -> Result<(), VideoGenError> {
         if self.prompt.is_empty() {
-            return Err(VideoGenError::InvalidInput("Prompt cannot be empty".to_string()));
+            return Err(VideoGenError::InvalidInput(
+                "Prompt cannot be empty".to_string(),
+            ));
         }
-        
+
         Ok(())
     }
-    
+
     fn get_prompt(&self) -> &str {
         &self.prompt
     }
-    
+
     fn get_image(&self) -> Option<&ImageInput> {
         self.image.as_ref()
     }
-    
+
     fn flow_control_config(&self) -> Option<(u32, u32)> {
         // No flow control for test model
         None

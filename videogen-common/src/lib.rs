@@ -8,8 +8,8 @@ pub use client::VideoGenClient;
 pub use generator::FlowControlFromEnv;
 pub use types::{
     ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenError,
-    VideoGenInput, VideoGenProvider, VideoGenRequest, VideoGenRequestKey, VideoGenRequestWithSignature,
-    VideoGenResponse, VideoGenQueuedResponse, VideoGenerator,
+    VideoGenInput, VideoGenProvider, VideoGenQueuedResponse, VideoGenRequest, VideoGenRequestKey,
+    VideoGenRequestWithSignature, VideoGenResponse, VideoGenerator,
 };
 pub use video_model::VideoModel;
 
