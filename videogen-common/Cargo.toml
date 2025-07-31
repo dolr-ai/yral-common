@@ -19,6 +19,7 @@ yral-canisters-client = { path = "../canisters-client", optional = true }
 ic-agent = { workspace = true, optional = true }
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
+global-constants = { path = "../global-constants" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = ["console"] }

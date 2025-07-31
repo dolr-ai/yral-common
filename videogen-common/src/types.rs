@@ -36,6 +36,18 @@ pub trait VideoGenerator {
 }
 
 // Request wrapper that includes user_id for rate limiting
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType, PartialEq, Eq, Copy, Hash)]
+pub enum TokenType {
+    Sats,
+    Dolr,
+}
+
+impl Default for TokenType {
+    fn default() -> Self {
+        TokenType::Sats
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct VideoGenRequest {
     #[serde(rename = "user_id")]
@@ -43,6 +55,8 @@ pub struct VideoGenRequest {
     pub principal: Principal,
     #[serde(flatten)]
     pub input: VideoGenInput,
+    #[serde(default)]
+    pub token_type: TokenType,
 }
 
 #[enum_dispatch(VideoGenerator)]
