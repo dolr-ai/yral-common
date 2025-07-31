@@ -5668,7 +5668,7 @@ dependencies = [
 [[package]]
 name = "yral-identity"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-common.git?branch=rupansh%2Fbump-ic-agent#741b1627212c647458b0542a70ec2be19c9ad69e"
+source = "git+https://github.com/yral-dapp/yral-common.git?branch=master#0b1d7bf69379114998b561ac7e983bccb53a1794"
 dependencies = [
  "candid",
  "ic-agent",
@@ -5680,19 +5680,19 @@ dependencies = [
 [[package]]
 name = "yral-metadata-client"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#257563ffc1a32e58e078243ea869bb594799adae"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=958-update-kyc-status-on-metadata-service#f8f02555959c269215a4119957b614d757c37945"
 dependencies = [
  "ic-agent",
  "reqwest",
  "thiserror 1.0.69",
- "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-common.git?branch=rupansh%2Fbump-ic-agent)",
+ "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-common.git?branch=master)",
  "yral-metadata-types",
 ]
 
 [[package]]
 name = "yral-metadata-types"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=master#257563ffc1a32e58e078243ea869bb594799adae"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=958-update-kyc-status-on-metadata-service#f8f02555959c269215a4119957b614d757c37945"
 dependencies = [
  "candid",
  "serde",
@@ -5700,7 +5700,7 @@ dependencies = [
  "thiserror 1.0.69",
  "utoipa",
  "utoipa-swagger-ui",
- "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-common.git?branch=rupansh%2Fbump-ic-agent)",
+ "yral-identity 0.1.0 (git+https://github.com/yral-dapp/yral-common.git?branch=master)",
 ]
 
 [[package]]
