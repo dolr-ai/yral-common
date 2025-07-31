@@ -227,6 +227,17 @@ impl Canisters<true> {
         Ok(())
     }
 
+    pub async fn mark_kyc_complete(
+        &mut self,
+        user_principal: Principal,
+        inquiry_id: String,
+    ) -> Result<()> {
+        self.metadata_client
+            .mark_kyc_completed(user_principal, inquiry_id)
+            .await?;
+        Ok(())
+    }
+
     pub fn from_wire(wire: CanistersAuthWire, base: Canisters<false>) -> Result<Self> {
         let id: DelegatedIdentity = wire.id.clone().try_into()?;
         let arc_id = Arc::new(id);

@@ -5680,7 +5680,7 @@ dependencies = [
 [[package]]
 name = "yral-metadata-client"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=958-update-kyc-status-on-metadata-service#f8f02555959c269215a4119957b614d757c37945"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=958-update-kyc-status-on-metadata-service#9cf4b43ffcf85d1ab4f78d4f42a244acf2a40b7f"
 dependencies = [
  "ic-agent",
  "reqwest",
@@ -5692,7 +5692,7 @@ dependencies = [
 [[package]]
 name = "yral-metadata-types"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=958-update-kyc-status-on-metadata-service#f8f02555959c269215a4119957b614d757c37945"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=958-update-kyc-status-on-metadata-service#9cf4b43ffcf85d1ab4f78d4f42a244acf2a40b7f"
 dependencies = [
  "candid",
  "serde",
