@@ -19,17 +19,17 @@ impl Default for ModelCostUSD {
 /// Token conversion rates from USD cents
 #[derive(Clone, Debug)]
 pub struct TokenConversionRates {
-    /// How many SATS per USD cent
+    /// How many SATS per USD cent (in smallest unit)
     pub usd_cents_to_sats: u64,
-    /// How many DOLR per USD cent
+    /// How many DOLR units (e8s) per USD cent
     pub usd_cents_to_dolr: u64,
 }
 
 impl Default for TokenConversionRates {
     fn default() -> Self {
         Self {
-            usd_cents_to_sats: 1, // 1 cent = 1 SATS
-            usd_cents_to_dolr: 1, // 1 cent = 1 DOLR
+            usd_cents_to_sats: 1, // 1 cent = 1 SATS (SATS has 0 decimals)
+            usd_cents_to_dolr: 100_000_000, // 1 cent = 1 DOLR = 10^8 smallest units (DOLR has 8 decimals)
         }
     }
 }
@@ -85,7 +85,7 @@ impl TokenCostConfig {
         self.convert_usd_to_token(usd_cents, token_type)
     }
     
-    /// Convert USD cents to token amount
+    /// Convert USD cents to token amount in smallest unit
     pub fn convert_usd_to_token(&self, usd_cents: u64, token_type: &TokenType) -> u64 {
         match token_type {
             TokenType::Sats => usd_cents * self.conversion_rates.usd_cents_to_sats,
@@ -93,7 +93,7 @@ impl TokenCostConfig {
         }
     }
     
-    /// Convert token amount to USD cents
+    /// Convert token amount (in smallest unit) to USD cents
     pub fn convert_token_to_usd(&self, amount: u64, token_type: &TokenType) -> u64 {
         match token_type {
             TokenType::Sats => amount / self.conversion_rates.usd_cents_to_sats,
