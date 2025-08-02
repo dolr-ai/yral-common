@@ -3,10 +3,15 @@ use std::ops::Range;
 // Creator commission
 pub const CREATOR_COMMISSION_PERCENT: u64 = 10;
 
-// Withdraw limits
+// Withdraw limits NON KYC
 pub const MIN_WITHDRAWAL_PER_TXN_SATS: u64 = 50;
 pub const MAX_WITHDRAWAL_PER_TXN_SATS: u64 = 60;
 pub const MAX_WITHDRAWAL_PER_DAY_SATS: u64 = 60;
+
+// Withdraw limits KYC verified_users
+pub const MIN_WITHDRAWAL_PER_TXN_KYC_SATS: u64 = 50;
+pub const MAX_WITHDRAWAL_PER_TXN_KYC_SATS: u64 = 1000;
+pub const MAX_WITHDRAWAL_PER_DAY_KYC_SATS: u64 = 1000;
 
 // Reward limit
 pub const NEW_USER_SIGNUP_REWARD_SATS: u64 = 25;
