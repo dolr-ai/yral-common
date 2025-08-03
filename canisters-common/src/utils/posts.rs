@@ -22,7 +22,8 @@ pub struct PostDetails {
     pub description: String,
     pub views: u64,
     pub likes: u64,
-    pub display_name: String,
+    pub display_name: Option<String>,
+    pub username: Option<String>,
     pub propic_url: String,
     /// Whether post is liked by the authenticated
     /// user or not, None if unknown
@@ -78,15 +79,8 @@ impl PostDetails {
             description: details.description,
             views: details.total_view_count,
             likes: details.like_count,
-            display_name: details
-                .created_by_display_name
-                .or(details.created_by_unique_user_name)
-                .unwrap_or_else(|| {
-                    random_username_from_principal(
-                        details.created_by_user_principal_id,
-                        USERNAME_MAX_LEN,
-                    )
-                }),
+            display_name: details.created_by_display_name,
+            username: details.created_by_unique_user_name,
             propic_url: details
                 .created_by_profile_photo_url
                 .unwrap_or_else(|| propic_from_principal(details.created_by_user_principal_id)),
@@ -105,6 +99,28 @@ impl PostDetails {
 
     pub fn is_hot_or_not(&self) -> bool {
         self.hot_or_not_feed_ranking_score.is_some()
+    }
+
+    pub fn username_or_principal(&self) -> String {
+        self.username
+            .clone()
+            .unwrap_or_else(|| self.poster_principal.to_text())
+    }
+
+    /// Get the user's username
+    /// or a consistent random username
+    /// WARN: do not use this method for URLs
+    /// use `username_or_principal` instead
+    pub fn username_or_fallback(&self) -> String {
+        self.username.clone().unwrap_or_else(|| {
+            random_username_from_principal(self.poster_principal, USERNAME_MAX_LEN)
+        })
+    }
+
+    pub fn display_name_or_fallback(&self) -> String {
+        self.display_name
+            .clone()
+            .unwrap_or_else(|| self.username_or_fallback())
     }
 }
 
