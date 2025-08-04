@@ -1,16 +1,16 @@
 use candid::Principal;
 use ic_types::{
+    CanisterId, PrincipalId,
     messages::{
         HttpCallContent, HttpCanisterUpdate, HttpRequest, HttpRequestEnvelope, HttpRequestError,
         SignedIngressContent,
     },
-    CanisterId, PrincipalId,
 };
 use ic_validator_ingress_message::{
     HttpRequestVerifier, IngressMessageVerifier, RequestValidationError,
 };
 
-use crate::{msg_builder::Message, Delegation, Error, Result, Signature, SignedDelegation};
+use crate::{Delegation, Error, Result, Signature, SignedDelegation, msg_builder::Message};
 
 impl Signature {
     fn create_request(self, mut message: Message) -> Result<HttpRequest<SignedIngressContent>> {

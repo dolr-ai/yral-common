@@ -1,0 +1,9 @@
+[package]
+name = "yral-username-gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+candid.workspace = true
+rand_xoshiro = { version = "0.7.0", default-features = false }
+rand = { version = "0.9", default-features = false }

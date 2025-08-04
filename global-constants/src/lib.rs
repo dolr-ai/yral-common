@@ -26,6 +26,8 @@ pub const DEFAULT_BET_COIN_FOR_LOGGED_IN: CoinState = CoinState::C5;
 pub const DEFAULT_BET_COIN_FOR_LOGGED_OUT: CoinState = CoinState::C1;
 pub const MAX_BET_AMOUNT_SATS: u64 = 5; // CoinState::C5 is 5
 
+pub const USERNAME_MAX_LEN: usize = 15;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CoinState {
     C1,
@@ -62,16 +64,25 @@ impl CoinState {
         }
     }
     pub fn wrapping_next(self) -> Self {
-        BET_COIN_ENABLED_STATES.iter()
+        BET_COIN_ENABLED_STATES
+            .iter()
             .position(|&x| x == self)
             .map(|idx| BET_COIN_ENABLED_STATES[(idx + 1) % BET_COIN_ENABLED_STATES.len()])
             .unwrap_or(DEFAULT_BET_COIN_FOR_LOGGED_OUT)
     }
 
     pub fn wrapping_prev(self) -> Self {
-        BET_COIN_ENABLED_STATES.iter()
+        BET_COIN_ENABLED_STATES
+            .iter()
             .position(|&x| x == self)
-            .map(|idx| BET_COIN_ENABLED_STATES[(idx + BET_COIN_ENABLED_STATES.len() - 1) % BET_COIN_ENABLED_STATES.len()])
+            .map(|idx| {
+                BET_COIN_ENABLED_STATES
+                    [(idx + BET_COIN_ENABLED_STATES.len() - 1) % BET_COIN_ENABLED_STATES.len()]
+            })
             .unwrap_or(DEFAULT_BET_COIN_FOR_LOGGED_OUT)
     }
 }
+
+// VIDEOGEN COMMON CONSTANTS
+
+pub const GLOBAL_VIDEOGEN_RATE_LIMIT_PER_DAY: u64 = 1000; // Total generations allowed per day

@@ -6,6 +6,7 @@ use canisters_client::{
     individual_user_template::{IndividualUserTemplate, Result15, Result3, UserCanisterDetails},
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
+    rate_limits::RateLimits,
     sns_governance::SnsGovernance,
     sns_index::SnsIndex,
     sns_ledger::SnsLedger,
@@ -14,7 +15,7 @@ use canisters_client::{
     user_index::{Result_, UserIndex},
 };
 use consts::{
-    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID},
+    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID, RATE_LIMITS_ID},
     CDAO_SWAP_TIME_SECS, METADATA_API_BASE,
 };
 use ic_agent::{identity::DelegatedIdentity, Identity};
@@ -139,9 +140,7 @@ impl Canisters<true> {
     async fn handle_referrer(&self, referrer: Principal) -> Result<()> {
         let user = self.authenticated_user().await;
 
-        let maybe_referrer_canister = self
-            .get_individual_canister_v2(referrer.to_text())
-            .await?;
+        let maybe_referrer_canister = self.get_individual_canister_v2(referrer.to_text()).await?;
         let Some(referrer_canister) = maybe_referrer_canister else {
             return Ok(());
         };
@@ -204,7 +203,7 @@ impl Canisters<true> {
         let profile_details = ProfileDetails::from_canister(
             res.user_canister,
             maybe_meta.map(|meta| meta.user_name),
-            user.get_profile_details_v_2().await?
+            user.get_profile_details_v_2().await?,
         );
         res.profile_details = Some(profile_details);
 
@@ -212,12 +211,15 @@ impl Canisters<true> {
     }
 
     pub async fn set_username(&mut self, new_username: String) -> Result<()> {
-        self.metadata_client.set_user_metadata(
-            self.identity(),
-        SetUserMetadataReqMetadata {
-                user_canister_id: self.user_canister,
-                user_name: new_username.clone(),
-        }).await?;
+        self.metadata_client
+            .set_user_metadata(
+                self.identity(),
+                SetUserMetadataReqMetadata {
+                    user_canister_id: self.user_canister,
+                    user_name: new_username.clone(),
+                },
+            )
+            .await?;
         if let Some(p) = self.profile_details.as_mut() {
             p.username = Some(new_username)
         }
@@ -332,6 +334,11 @@ impl<const A: bool> Canisters<A> {
         SnsSwap(canister_id, agent)
     }
 
+    pub async fn rate_limits(&self) -> RateLimits<'_> {
+        let agent = self.agent.get_agent().await;
+        RateLimits(RATE_LIMITS_ID, agent)
+    }
+
     async fn subnet_indexes(&self) -> Result<Vec<Principal>> {
         #[cfg(feature = "local")]
         {
@@ -370,8 +377,8 @@ impl From<Canisters<true>> for CanistersAuthWire {
 }
 
 pub fn yral_auth_login_hint(identity: &impl Identity) -> identity::Result<String> {
-    let msg = identity::msg_builder::Message::default()
-        .method_name("yral_auth_v2_login_hint".into());
+    let msg =
+        identity::msg_builder::Message::default().method_name("yral_auth_v2_login_hint".into());
     let sig = identity::ic_agent::sign_message(identity, msg)?;
 
     #[derive(Serialize)]

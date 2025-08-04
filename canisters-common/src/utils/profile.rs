@@ -1,8 +1,13 @@
 use candid::Principal;
 use canisters_client::individual_user_template::UserProfileDetailsForFrontendV2;
+use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
+use username_gen::random_username_from_principal;
 
-use crate::{consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT}, Canisters, Result};
+use crate::{
+    consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT},
+    Canisters, Result,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ProfileDetails {
@@ -19,7 +24,11 @@ pub struct ProfileDetails {
 }
 
 impl ProfileDetails {
-    pub fn from_canister(user_canister: Principal, username: Option<String>, user: UserProfileDetailsForFrontendV2) -> Self {
+    pub fn from_canister(
+        user_canister: Principal,
+        username: Option<String>,
+        user: UserProfileDetailsForFrontendV2,
+    ) -> Self {
         Self {
             username: username.filter(|u| !u.is_empty()),
             lifetime_earnings: user.lifetime_earnings,
@@ -47,9 +56,17 @@ pub fn propic_from_principal(principal: Principal) -> String {
 
 impl ProfileDetails {
     pub fn username_or_principal(&self) -> String {
+        self.username.clone().unwrap_or_else(|| self.principal())
+    }
+
+    /// Get the user's username
+    /// or a consistent random username
+    /// WARN: do not use this method for URLs
+    /// use `username_or_principal` instead
+    pub fn username_or_fallback(&self) -> String {
         self.username
             .clone()
-            .unwrap_or_else(|| self.principal.to_text())
+            .unwrap_or_else(|| random_username_from_principal(self.principal, USERNAME_MAX_LEN))
     }
 
     pub fn principal(&self) -> String {
@@ -59,7 +76,7 @@ impl ProfileDetails {
     pub fn display_name_or_fallback(&self) -> String {
         self.display_name
             .clone()
-            .unwrap_or_else(|| self.username_or_principal())
+            .unwrap_or_else(|| self.username_or_fallback())
     }
 
     pub fn profile_pic_or_random(&self) -> String {
@@ -73,8 +90,15 @@ impl ProfileDetails {
 }
 
 impl<const A: bool> Canisters<A> {
-    pub async fn get_profile_details(&self, username_or_principal: String) -> Result<Option<ProfileDetails>> {
-        let Some(meta) = self.metadata_client.get_user_metadata_v2(username_or_principal).await? else {
+    pub async fn get_profile_details(
+        &self,
+        username_or_principal: String,
+    ) -> Result<Option<ProfileDetails>> {
+        let Some(meta) = self
+            .metadata_client
+            .get_user_metadata_v2(username_or_principal)
+            .await?
+        else {
             return Ok(None);
         };
         let user_profile = self.individual_user(meta.user_canister_id).await;
@@ -83,7 +107,7 @@ impl<const A: bool> Canisters<A> {
         Ok(Some(ProfileDetails::from_canister(
             meta.user_canister_id,
             Some(meta.user_name),
-            user
+            user,
         )))
     }
 }

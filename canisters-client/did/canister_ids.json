@@ -18,5 +18,17 @@
   "notification_store": {
     "ic": "mlj75-eyaaa-aaaaa-qbn5q-cai",
     "local": "mlj75-eyaaa-aaaaa-qbn5q-cai"
+  },
+  "user_info_service": {
+    "ic": "ivkka-7qaaa-aaaas-qbg3q-cai",
+    "local": "ivkka-7qaaa-aaaas-qbg3q-cai"
+  },
+  "user_post_service": {
+    "ic": "gxhc3-pqaaa-aaaas-qbh3q-cai",
+    "local": "gxhc3-pqaaa-aaaas-qbh3q-cai"
+  },
+  "rate_limits": {
+    "ic": "h2jgv-ayaaa-aaaas-qbh4a-cai",
+    "local": "h2jgv-ayaaa-aaaas-qbh4a-cai"
   }
 }
