@@ -40,11 +40,12 @@ pub trait VideoGenerator {
 pub enum TokenType {
     Sats,
     Dolr,
+    Free,
 }
 
 impl Default for TokenType {
     fn default() -> Self {
-        TokenType::Sats
+        TokenType::Free
     }
 }
 
