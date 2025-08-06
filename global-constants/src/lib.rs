@@ -88,8 +88,8 @@ impl CoinState {
 pub const GLOBAL_VIDEOGEN_RATE_LIMIT_PER_DAY: u64 = 1000; // Total generations allowed per day
 
 // Video Generation Model Costs in USD cents
-pub const VEO3_COST_USD_CENTS: u64 = 50;
-pub const VEO3_FAST_COST_USD_CENTS: u64 = 50;
-pub const RAY2FLASH_COST_USD_CENTS: u64 = 50;
-pub const SEEDANCE_COST_USD_CENTS: u64 = 50;
+pub const VEO3_COST_USD_CENTS: u64 = 1;
+pub const VEO3_FAST_COST_USD_CENTS: u64 = 1;
+pub const RAY2FLASH_COST_USD_CENTS: u64 = 1;
+pub const SEEDANCE_COST_USD_CENTS: u64 = 1;
 pub const INTTEST_COST_USD_CENTS: u64 = 0; // Free for testing

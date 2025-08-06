@@ -11,7 +11,7 @@ pub struct ModelCostUSD {
 impl Default for ModelCostUSD {
     fn default() -> Self {
         Self {
-            usd_cents: 50, // 50 cents default
+            usd_cents: 1, // 1 cent default
         }
     }
 }
@@ -28,8 +28,8 @@ pub struct TokenConversionRates {
 impl Default for TokenConversionRates {
     fn default() -> Self {
         Self {
-            usd_cents_to_sats: 1, // 1 cent = 1 SATS (SATS has 0 decimals)
-            usd_cents_to_dolr: 100_000_000, // 1 cent = 1 DOLR = 10^8 smallest units (DOLR has 8 decimals)
+            usd_cents_to_sats: 1, // 1 cent = 1 SATS (50 cents = 50 SATS)
+            usd_cents_to_dolr: 100_000_000, // 1 cent = 1 DOLR = 10^8 smallest units (50 cents = 50 DOLR)
         }
     }
 }

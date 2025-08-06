@@ -22,7 +22,10 @@ pub trait VideoGenerator {
     fn get_prompt(&self) -> &str;
 
     /// Get the optional input image
-    fn get_image(&self) -> Option<&ImageInput>;
+    fn get_image(&self) -> Option<&ImageData>;
+
+    /// Get mutable reference to the optional input image
+    fn get_image_mut(&mut self) -> Option<&mut ImageData>;
 
     /// Get flow control key for Qstash rate limiting
     fn flow_control_key(&self) -> String {
@@ -92,6 +95,48 @@ pub struct ImageInput {
     pub data: String, // Base64 encoded image data
     #[schema(example = "image/png")]
     pub mime_type: String,
+}
+
+/// Enum to support both base64 encoded images and URL references
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
+#[serde(tag = "type", content = "value")]
+pub enum ImageData {
+    /// Base64 encoded image data (original format for backward compatibility)
+    Base64(ImageInput),
+    /// URL reference to an image stored in cloud storage
+    #[schema(example = "https://storage.googleapis.com/videogen-images/user123/image.png")]
+    Url(String),
+}
+
+impl ImageData {
+    /// Convert to Option<ImageInput> for backward compatibility
+    pub fn to_image_input(&self) -> Option<ImageInput> {
+        match self {
+            ImageData::Base64(input) => Some(input.clone()),
+            ImageData::Url(_) => None, // Will need to be downloaded
+        }
+    }
+
+    /// Get the URL if this is a URL variant
+    pub fn as_url(&self) -> Option<&str> {
+        match self {
+            ImageData::Url(url) => Some(url),
+            ImageData::Base64(_) => None,
+        }
+    }
+
+    /// Check if this is a URL variant
+    pub fn is_url(&self) -> bool {
+        matches!(self, ImageData::Url(_))
+    }
+
+    /// Get size estimate in bytes
+    pub fn size_estimate(&self) -> usize {
+        match self {
+            ImageData::Base64(input) => input.data.len(),
+            ImageData::Url(url) => url.len(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema, CandidType)]

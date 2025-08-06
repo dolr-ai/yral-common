@@ -9,7 +9,7 @@ pub use client::VideoGenClient;
 pub use generator::FlowControlFromEnv;
 pub use token_costs::{ModelCostUSD, TokenConversionRates, TokenCostConfig, TOKEN_COST_CONFIG};
 pub use types::{
-    ImageInput, LumaLabsDuration, LumaLabsResolution, TokenType, Veo3AspectRatio, VideoGenError,
+    ImageData, ImageInput, LumaLabsDuration, LumaLabsResolution, TokenType, Veo3AspectRatio, VideoGenError,
     VideoGenInput, VideoGenProvider, VideoGenQueuedResponse, VideoGenRequest, VideoGenRequestKey,
     VideoGenRequestWithSignature, VideoGenResponse, VideoGenerator,
 };

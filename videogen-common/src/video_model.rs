@@ -1,6 +1,6 @@
 use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use crate::types::{
-    ImageInput, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput,
+    ImageData, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput,
     VideoGenProvider,
 };
 use candid::CandidType;
@@ -117,7 +117,7 @@ impl VideoModel {
     pub fn to_video_gen_input(
         &self,
         prompt: String,
-        image: Option<ImageInput>,
+        image: Option<ImageData>,
     ) -> Result<VideoGenInput, String> {
         // Check if model is available
         if !self.is_available {

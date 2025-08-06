@@ -1,7 +1,8 @@
 use candid::Principal;
 use reqwest::Client;
-use serde::Serialize;
 use url::Url;
+use num_bigint::{BigInt, BigUint, Sign};
+use hon_worker_common::SatsBalanceUpdateRequestV2;
 
 use super::balance::TokenBalance;
 use super::operations::TokenOperations;
@@ -44,24 +45,33 @@ impl TokenOperations for SatsOperations {
     }
 
     async fn deduct_balance(&self, user_principal: Principal, amount: u64) -> Result<u64> {
-        let jwt_token = self.jwt_token.as_ref()
-            .ok_or_else(|| Error::YralCanister("JWT token required for deduct operation".to_string()))?;
+        let jwt_token = self.jwt_token.as_ref().ok_or_else(|| {
+            Error::YralCanister("JWT token required for deduct operation".to_string())
+        })?;
+
+        // First, load the current balance
+        let current_balance = self.load_balance(user_principal).await?;
+        let previous_balance = BigUint::from(current_balance.e8s);
+        
+        // Create negative delta for deduction
+        let delta = BigInt::from_biguint(Sign::Minus, BigUint::from(amount));
 
         let url: Url = hon_worker_common::WORKER_URL.parse().unwrap();
         let deduct_url = url
-            .join(&format!("/balance/{user_principal}/deduct"))
+            .join(&format!("/v2/update_balance/{user_principal}"))
             .expect("Url to be valid");
 
-        #[derive(Serialize)]
-        struct DeductRequest {
-            amount: u64,
-        }
+        let worker_req = SatsBalanceUpdateRequestV2 {
+            previous_balance,
+            delta,
+            is_airdropped: false,
+        };
 
         let res = self
             .client
             .post(deduct_url)
             .header("Authorization", format!("Bearer {}", jwt_token))
-            .json(&DeductRequest { amount })
+            .json(&worker_req)
             .send()
             .await
             .map_err(|e| Error::YralCanister(e.to_string()))?;
@@ -69,32 +79,42 @@ impl TokenOperations for SatsOperations {
         if res.status().is_success() {
             Ok(amount)
         } else {
+            let error_text = res.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             Err(Error::YralCanister(format!(
                 "Failed to deduct balance: {}",
-                res.status()
+                error_text
             )))
         }
     }
 
     async fn add_balance(&self, user_principal: Principal, amount: u64) -> Result<()> {
-        let jwt_token = self.jwt_token.as_ref()
-            .ok_or_else(|| Error::YralCanister("JWT token required for add operation".to_string()))?;
+        let jwt_token = self.jwt_token.as_ref().ok_or_else(|| {
+            Error::YralCanister("JWT token required for add operation".to_string())
+        })?;
+
+        // First, load the current balance
+        let current_balance = self.load_balance(user_principal).await?;
+        let previous_balance = BigUint::from(current_balance.e8s);
+        
+        // Create positive delta for addition
+        let delta = BigInt::from(amount);
 
         let url: Url = hon_worker_common::WORKER_URL.parse().unwrap();
         let add_url = url
-            .join(&format!("/balance/{user_principal}/add"))
+            .join(&format!("/v2/update_balance/{user_principal}"))
             .expect("Url to be valid");
 
-        #[derive(Serialize)]
-        struct AddRequest {
-            amount: u64,
-        }
+        let worker_req = SatsBalanceUpdateRequestV2 {
+            previous_balance,
+            delta,
+            is_airdropped: false,
+        };
 
         let res = self
             .client
             .post(add_url)
             .header("Authorization", format!("Bearer {}", jwt_token))
-            .json(&AddRequest { amount })
+            .json(&worker_req)
             .send()
             .await
             .map_err(|e| Error::YralCanister(e.to_string()))?;
@@ -102,9 +122,10 @@ impl TokenOperations for SatsOperations {
         if res.status().is_success() {
             Ok(())
         } else {
+            let error_text = res.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             Err(Error::YralCanister(format!(
                 "Failed to add balance: {}",
-                res.status()
+                error_text
             )))
         }
     }
