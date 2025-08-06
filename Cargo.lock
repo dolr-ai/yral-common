@@ -5013,6 +5013,7 @@ dependencies = [
  "web-sys",
  "yral-canisters-client",
  "yral-identity 0.1.0",
+ "yral-types",
 ]
 
 [[package]]

@@ -4,12 +4,12 @@ use crate::types::{
     VideoGenProvider,
 };
 use candid::CandidType;
+use global_constants::{
+    INTTEST_COST_USD_CENTS, RAY2FLASH_COST_USD_CENTS, SEEDANCE_COST_USD_CENTS, VEO3_COST_USD_CENTS,
+    VEO3_FAST_COST_USD_CENTS,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use global_constants::{
-    VEO3_COST_USD_CENTS, VEO3_FAST_COST_USD_CENTS, RAY2FLASH_COST_USD_CENTS,
-    SEEDANCE_COST_USD_CENTS, INTTEST_COST_USD_CENTS,
-};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
 pub struct VideoModel {

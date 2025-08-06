@@ -131,12 +131,23 @@ impl TokenOperations for SatsOperations {
 
 #[derive(Clone)]
 pub struct DolrOperations {
-    agent: ic_agent::Agent,
+    admin_agent: ic_agent::Agent,
+    user_agent: Option<ic_agent::Agent>,
 }
 
 impl DolrOperations {
-    pub fn new(agent: ic_agent::Agent) -> Self {
-        Self { agent }
+    pub fn new(admin_agent: ic_agent::Agent) -> Self {
+        Self { 
+            admin_agent,
+            user_agent: None,
+        }
+    }
+    
+    pub fn with_user_agent(admin_agent: ic_agent::Agent, user_agent: ic_agent::Agent) -> Self {
+        Self {
+            admin_agent,
+            user_agent: Some(user_agent),
+        }
     }
 }
 
@@ -145,7 +156,9 @@ impl TokenOperations for DolrOperations {
         let ledger_id = Principal::from_text(DOLR_AI_LEDGER_CANISTER)
             .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-        let ledger = sns_ledger::SnsLedger(ledger_id, &self.agent);
+        // Use user agent if available, otherwise admin agent
+        let agent = self.user_agent.as_ref().unwrap_or(&self.admin_agent);
+        let ledger = sns_ledger::SnsLedger(ledger_id, agent);
 
         let balance = ledger
             .icrc_1_balance_of(LedgerAccount {
@@ -162,38 +175,66 @@ impl TokenOperations for DolrOperations {
         let ledger_id = Principal::from_text(DOLR_AI_LEDGER_CANISTER)
             .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-        let ledger = sns_ledger::SnsLedger(ledger_id, &self.agent);
-
-        // Get the admin principal (the agent's identity)
+        // Get the admin principal (destination for transfers)
         let admin_principal = self
-            .agent
+            .admin_agent
             .get_principal()
             .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-        // Transfer from user to admin
-        let res = ledger
-            .icrc_2_transfer_from(sns_ledger::TransferFromArgs {
-                spender_subaccount: None,
-                from: LedgerAccount {
-                    owner: user_principal,
-                    subaccount: None,
-                },
-                to: LedgerAccount {
-                    owner: admin_principal,
-                    subaccount: None,
-                },
-                amount: amount.into(),
-                fee: None,
-                memo: None,
-                created_at_time: None,
-            })
-            .await
-            .map_err(|e| Error::YralCanister(e.to_string()))?;
+        // If user agent is provided, use direct transfer
+        if let Some(user_agent) = &self.user_agent {
+            let ledger = sns_ledger::SnsLedger(ledger_id, user_agent);
+            
+            // Direct transfer from user's own agent
+            let res = ledger
+                .icrc_1_transfer(sns_ledger::TransferArg {
+                    from_subaccount: None,
+                    to: LedgerAccount {
+                        owner: admin_principal,
+                        subaccount: None,
+                    },
+                    amount: amount.into(),
+                    fee: None,
+                    memo: None,
+                    created_at_time: None,
+                })
+                .await
+                .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-        match res {
-            sns_ledger::TransferFromResult::Ok(_) => Ok(amount),
-            sns_ledger::TransferFromResult::Err(e) => {
-                Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+            match res {
+                sns_ledger::TransferResult::Ok(_) => Ok(amount),
+                sns_ledger::TransferResult::Err(e) => {
+                    Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+                }
+            }
+        } else {
+            // Use transfer_from with admin agent
+            let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
+            
+            let res = ledger
+                .icrc_2_transfer_from(sns_ledger::TransferFromArgs {
+                    spender_subaccount: None,
+                    from: LedgerAccount {
+                        owner: user_principal,
+                        subaccount: None,
+                    },
+                    to: LedgerAccount {
+                        owner: admin_principal,
+                        subaccount: None,
+                    },
+                    amount: amount.into(),
+                    fee: None,
+                    memo: None,
+                    created_at_time: None,
+                })
+                .await
+                .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+            match res {
+                sns_ledger::TransferFromResult::Ok(_) => Ok(amount),
+                sns_ledger::TransferFromResult::Err(e) => {
+                    Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+                }
             }
         }
     }
@@ -202,7 +243,8 @@ impl TokenOperations for DolrOperations {
         let ledger_id = Principal::from_text(DOLR_AI_LEDGER_CANISTER)
             .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-        let ledger = sns_ledger::SnsLedger(ledger_id, &self.agent);
+        // Always use admin agent for adding balance (refunds)
+        let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
 
         // Transfer from admin to user
         let res = ledger
@@ -230,6 +272,7 @@ impl TokenOperations for DolrOperations {
 }
 
 #[enum_dispatch::enum_dispatch(TokenOperations)]
+#[allow(clippy::large_enum_variant)]
 pub enum TokenOperationsProvider {
     Sats(SatsOperations),
     Dolr(DolrOperations),

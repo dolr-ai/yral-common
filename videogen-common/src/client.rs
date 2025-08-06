@@ -1,6 +1,6 @@
 #[cfg(feature = "client")]
 use crate::types::VideoGenRequestKey;
-use crate::types::{VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithSignature};
+use crate::types::{VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithIdentity, VideoGenRequestWithSignature};
 #[cfg(feature = "client")]
 use crate::VideoGenRequestStatus;
 use candid::Principal;
@@ -93,6 +93,44 @@ impl VideoGenClient {
             .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {e}")))?;
 
         let req_builder = self.client.post(url).json(&signed_request);
+
+        let response = req_builder
+            .send()
+            .await
+            .map_err(|e| VideoGenError::NetworkError(e.to_string()))?;
+
+        if response.status().is_success() {
+            response
+                .json()
+                .await
+                .map_err(|e| VideoGenError::NetworkError(e.to_string()))
+        } else {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to get error text".to_string());
+
+            // Try to parse as VideoGenError
+            match serde_json::from_str::<VideoGenError>(&error_text) {
+                Ok(error) => Err(error),
+                Err(_) => Err(VideoGenError::NetworkError(format!(
+                    "Server error: {error_text}"
+                ))),
+            }
+        }
+    }
+
+    /// Generate a video with delegated identity (returns queued response)
+    pub async fn generate_with_identity(
+        &self,
+        identity_request: VideoGenRequestWithIdentity,
+    ) -> Result<crate::types::VideoGenQueuedResponse, VideoGenError> {
+        let url = self
+            .base_url
+            .join("api/v1/videogen/generate_with_identity")
+            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {e}")))?;
+
+        let req_builder = self.client.post(url).json(&identity_request);
 
         let response = req_builder
             .send()

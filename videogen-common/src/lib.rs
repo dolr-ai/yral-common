@@ -11,7 +11,7 @@ pub use token_costs::{ModelCostUSD, TokenConversionRates, TokenCostConfig, TOKEN
 pub use types::{
     ImageData, ImageInput, LumaLabsDuration, LumaLabsResolution, TokenType, Veo3AspectRatio, VideoGenError,
     VideoGenInput, VideoGenProvider, VideoGenQueuedResponse, VideoGenRequest, VideoGenRequestKey,
-    VideoGenRequestWithSignature, VideoGenResponse, VideoGenerator,
+    VideoGenRequestWithIdentity, VideoGenRequestWithSignature, VideoGenResponse, VideoGenerator,
 };
 pub use video_model::VideoModel;
 

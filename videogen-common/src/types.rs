@@ -2,6 +2,7 @@ use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
+use yral_types::delegated_identity::DelegatedIdentityWire;
 use utoipa::ToSchema;
 #[cfg(feature = "ic")]
 use yral_identity::Signature;
@@ -39,7 +40,9 @@ pub trait VideoGenerator {
 }
 
 // Request wrapper that includes user_id for rate limiting
-#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType, PartialEq, Eq, Copy, Hash, Default)]
+#[derive(
+    Serialize, Deserialize, Clone, Debug, ToSchema, CandidType, PartialEq, Eq, Copy, Hash, Default,
+)]
 pub enum TokenType {
     Sats,
     Dolr,
@@ -184,7 +187,15 @@ pub struct VideoGenQueuedResponse {
     pub request_key: VideoGenRequestKey,
 }
 
-// Request with signature for authentication
+// Request with delegated identity for authentication
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
+pub struct VideoGenRequestWithIdentity {
+    pub request: VideoGenRequest,
+    #[schema(value_type = Object)]
+    pub delegated_identity: DelegatedIdentityWire,
+}
+
+// Request with signature for authentication (deprecated)
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 pub struct VideoGenRequestWithSignature {
     pub request: VideoGenRequest,
