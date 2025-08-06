@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use crate::{TokenType, VideoModel};
+use global_constants::{VIDEOGEN_USD_CENTS_TO_SATS, VIDEOGEN_USD_CENTS_TO_DOLR_E8S};
 
 /// Model cost in USD cents (to avoid floating point)
 #[derive(Clone, Debug)]
@@ -11,7 +12,7 @@ pub struct ModelCostUSD {
 impl Default for ModelCostUSD {
     fn default() -> Self {
         Self {
-            usd_cents: 1, // 1 cent default
+            usd_cents: 50, // 50 cents ($0.5) default
         }
     }
 }
@@ -28,8 +29,8 @@ pub struct TokenConversionRates {
 impl Default for TokenConversionRates {
     fn default() -> Self {
         Self {
-            usd_cents_to_sats: 1, // 1 cent = 1 SATS (50 cents = 50 SATS)
-            usd_cents_to_dolr: 100_000_000, // 1 cent = 1 DOLR = 10^8 smallest units (50 cents = 50 DOLR)
+            usd_cents_to_sats: VIDEOGEN_USD_CENTS_TO_SATS, // 1 cent = 10 SATS (50 cents = 500 SATS)
+            usd_cents_to_dolr: VIDEOGEN_USD_CENTS_TO_DOLR_E8S, // 1 cent = 2 DOLR = 2×10^8 e8s (50 cents = 100 DOLR)
         }
     }
 }
