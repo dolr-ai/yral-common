@@ -39,17 +39,12 @@ pub trait VideoGenerator {
 }
 
 // Request wrapper that includes user_id for rate limiting
-#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType, PartialEq, Eq, Copy, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType, PartialEq, Eq, Copy, Hash, Default)]
 pub enum TokenType {
     Sats,
     Dolr,
+    #[default]
     Free,
-}
-
-impl Default for TokenType {
-    fn default() -> Self {
-        TokenType::Free
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
