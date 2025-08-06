@@ -319,6 +319,7 @@ pub struct PaginatedGamesResV3 {
     pub next: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PaginatedGamesResV4 {
     pub games: Vec<GameResV4>,
     pub next: Option<String>,
