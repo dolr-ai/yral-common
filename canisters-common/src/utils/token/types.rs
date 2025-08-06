@@ -70,7 +70,7 @@ impl TokenOperations for SatsOperations {
         let res = self
             .client
             .post(deduct_url)
-            .header("Authorization", format!("Bearer {}", jwt_token))
+            .header("Authorization", format!("Bearer {jwt_token}"))
             .json(&worker_req)
             .send()
             .await
@@ -81,8 +81,7 @@ impl TokenOperations for SatsOperations {
         } else {
             let error_text = res.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             Err(Error::YralCanister(format!(
-                "Failed to deduct balance: {}",
-                error_text
+                "Failed to deduct balance: {error_text}"
             )))
         }
     }
@@ -113,7 +112,7 @@ impl TokenOperations for SatsOperations {
         let res = self
             .client
             .post(add_url)
-            .header("Authorization", format!("Bearer {}", jwt_token))
+            .header("Authorization", format!("Bearer {jwt_token}"))
             .json(&worker_req)
             .send()
             .await
@@ -124,8 +123,7 @@ impl TokenOperations for SatsOperations {
         } else {
             let error_text = res.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             Err(Error::YralCanister(format!(
-                "Failed to add balance: {}",
-                error_text
+                "Failed to add balance: {error_text}"
             )))
         }
     }
@@ -195,7 +193,7 @@ impl TokenOperations for DolrOperations {
         match res {
             sns_ledger::TransferFromResult::Ok(_) => Ok(amount),
             sns_ledger::TransferFromResult::Err(e) => {
-                Err(Error::YralCanister(format!("Transfer failed: {:?}", e)))
+                Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
             }
         }
     }
@@ -225,7 +223,7 @@ impl TokenOperations for DolrOperations {
         match res {
             sns_ledger::TransferResult::Ok(_) => Ok(()),
             sns_ledger::TransferResult::Err(e) => {
-                Err(Error::YralCanister(format!("Transfer failed: {:?}", e)))
+                Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
             }
         }
     }
