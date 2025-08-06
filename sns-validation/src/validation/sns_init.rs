@@ -1511,6 +1511,7 @@ impl SnsInitPayload {
         Ok(())
     }
 
+    #[allow(clippy::doc_overindented_list_items)]
     /// Validates that swap participation-related parameters<sup>*</sup> pass the following checks:
     /// (1) All participation-related parameters are set.
     /// (2) All participation-related parameters are within expected constant lower/upper bounds.
