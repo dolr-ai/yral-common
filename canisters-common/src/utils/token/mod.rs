@@ -27,7 +27,7 @@ pub mod operations;
 pub mod types;
 
 pub use operations::TokenOperations;
-pub use types::{SatsOperations, DolrOperations, TokenOperationsProvider};
+pub use types::{DolrOperations, SatsOperations, TokenOperationsProvider};
 
 use canisters_client::individual_user_template::ClaimStatus;
 use canisters_client::sns_root::ListSnsCanistersResponse;
@@ -115,14 +115,12 @@ pub async fn load_sats_balance(
     Ok(res)
 }
 
-pub async fn load_sats_balance_ops(
-    user_principal: Principal,
-) -> Result<SatsBalanceInfo> {
+pub async fn load_sats_balance_ops(user_principal: Principal) -> Result<SatsBalanceInfo> {
     let ops = types::SatsOperations::new(None);
     let balance = ops.load_balance(user_principal).await?;
-    
+
     use std::str::FromStr;
-    
+
     Ok(SatsBalanceInfo {
         balance: num_bigint::BigUint::from_str(&balance.e8s.0.to_string()).unwrap_or_default(),
         airdropped: num_bigint::BigUint::from(0u32),
@@ -135,7 +133,7 @@ pub async fn load_dolr_balance_with_agent(
 ) -> Result<TokenBalance> {
     let ops = types::DolrOperations::new(agent.clone());
     let balance = ops.load_balance(user_principal).await?;
-    
+
     Ok(balance)
 }
 
