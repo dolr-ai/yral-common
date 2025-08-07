@@ -1,7 +1,7 @@
+use crate::{TokenType, VideoModel};
+use global_constants::{VIDEOGEN_USD_CENTS_TO_DOLR_E8S, VIDEOGEN_USD_CENTS_TO_SATS};
 use std::collections::HashMap;
 use std::sync::LazyLock;
-use crate::{TokenType, VideoModel};
-use global_constants::{VIDEOGEN_USD_CENTS_TO_SATS, VIDEOGEN_USD_CENTS_TO_DOLR_E8S};
 
 /// Model cost in USD cents (to avoid floating point)
 #[derive(Clone, Debug)]
@@ -49,7 +49,7 @@ pub struct TokenCostConfig {
 impl Default for TokenCostConfig {
     fn default() -> Self {
         let mut model_costs_usd = HashMap::new();
-        
+
         // Load costs from VideoModel definitions
         for model in VideoModel::get_models() {
             model_costs_usd.insert(
@@ -59,10 +59,10 @@ impl Default for TokenCostConfig {
                 },
             );
         }
-        
+
         // Default cost for models not in the list
         let default_cost = ModelCostUSD::default();
-        
+
         Self {
             model_costs_usd,
             conversion_rates: TokenConversionRates::default(),
@@ -79,13 +79,13 @@ impl TokenCostConfig {
             .map(|cost| cost.usd_cents)
             .unwrap_or(self.default_cost_usd.usd_cents)
     }
-    
+
     /// Get the cost for a specific model in the requested token type
     pub fn get_model_cost(&self, model_name: &str, token_type: &TokenType) -> u64 {
         let usd_cents = self.get_model_cost_usd(model_name);
         self.convert_usd_to_token(usd_cents, token_type)
     }
-    
+
     /// Convert USD cents to token amount in smallest unit
     pub fn convert_usd_to_token(&self, usd_cents: u64, token_type: &TokenType) -> u64 {
         match token_type {
@@ -94,7 +94,7 @@ impl TokenCostConfig {
             TokenType::Free => 0, // Free requests have no cost
         }
     }
-    
+
     /// Convert token amount (in smallest unit) to USD cents
     pub fn convert_token_to_usd(&self, amount: u64, token_type: &TokenType) -> u64 {
         match token_type {
@@ -103,12 +103,13 @@ impl TokenCostConfig {
             TokenType::Free => 0, // Free requests have no USD value
         }
     }
-    
+
     /// Update the cost for a specific model in USD cents
     pub fn set_model_cost_usd(&mut self, model_name: String, usd_cents: u64) {
-        self.model_costs_usd.insert(model_name, ModelCostUSD { usd_cents });
+        self.model_costs_usd
+            .insert(model_name, ModelCostUSD { usd_cents });
     }
-    
+
     /// Update the conversion rates
     pub fn set_conversion_rates(&mut self, rates: TokenConversionRates) {
         self.conversion_rates = rates;
