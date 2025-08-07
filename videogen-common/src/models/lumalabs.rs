@@ -1,6 +1,6 @@
 use crate::generator::FlowControlFromEnv;
 use crate::types::{
-    ImageInput, LumaLabsDuration, LumaLabsResolution, VideoGenProvider, VideoGenerator,
+    ImageData, LumaLabsDuration, LumaLabsResolution, VideoGenProvider, VideoGenerator,
 };
 use crate::VideoGenError;
 use candid::CandidType;
@@ -10,7 +10,7 @@ use utoipa::ToSchema;
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct LumaLabsModel {
     pub prompt: String,
-    pub image: Option<ImageInput>,
+    pub image: Option<ImageData>,
     pub resolution: LumaLabsResolution,
     pub duration: LumaLabsDuration,
     pub aspect_ratio: Option<String>,
@@ -49,8 +49,12 @@ impl VideoGenerator for LumaLabsModel {
         &self.prompt
     }
 
-    fn get_image(&self) -> Option<&ImageInput> {
+    fn get_image(&self) -> Option<&ImageData> {
         self.image.as_ref()
+    }
+    
+    fn get_image_mut(&mut self) -> Option<&mut ImageData> {
+        self.image.as_mut()
     }
 
     fn flow_control_config(&self) -> Option<(u32, u32)> {

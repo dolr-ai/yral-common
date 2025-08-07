@@ -14,11 +14,13 @@ reqwest = { version = "0.12", features = [
 ], default-features = false }
 utoipa = "5.3.1"
 yral-identity = { path = "../identity", optional = true }
+yral-types = { path = "../types" }
 enum_dispatch = "0.3"
 yral-canisters-client = { path = "../canisters-client", optional = true }
 ic-agent = { workspace = true, optional = true }
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
+global-constants = { path = "../global-constants" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = ["console"] }

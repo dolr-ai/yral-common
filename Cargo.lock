@@ -5001,6 +5001,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "enum_dispatch",
+ "global-constants",
  "ic-agent",
  "reqwest",
  "serde",
@@ -5012,6 +5013,7 @@ dependencies = [
  "web-sys",
  "yral-canisters-client",
  "yral-identity 0.1.0",
+ "yral-types",
 ]
 
 [[package]]
@@ -5592,9 +5594,11 @@ dependencies = [
 name = "yral-canisters-common"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "candid",
  "ciborium",
  "crc32fast",
+ "enum_dispatch",
  "futures-util",
  "getrandom 0.2.16",
  "global-constants",
@@ -5602,6 +5606,7 @@ dependencies = [
  "ic-agent",
  "k256",
  "log",
+ "num-bigint",
  "once_cell",
  "reqwest",
  "rust_decimal",
