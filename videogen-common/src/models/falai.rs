@@ -1,5 +1,5 @@
 use crate::generator::FlowControlFromEnv;
-use crate::types::{ImageInput, VideoGenProvider, VideoGenerator};
+use crate::types::{ImageData, VideoGenProvider, VideoGenerator};
 use crate::VideoGenError;
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,11 @@ impl VideoGenerator for FalAiModel {
         &self.prompt
     }
 
-    fn get_image(&self) -> Option<&ImageInput> {
+    fn get_image(&self) -> Option<&ImageData> {
+        None // FalAi doesn't support image input yet
+    }
+    
+    fn get_image_mut(&mut self) -> Option<&mut ImageData> {
         None // FalAi doesn't support image input yet
     }
 
