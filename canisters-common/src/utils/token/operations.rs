@@ -1,6 +1,6 @@
-use candid::Principal;
 use super::balance::TokenBalance;
 use crate::Result;
+use candid::Principal;
 
 #[enum_dispatch::enum_dispatch]
 #[allow(async_fn_in_trait)]

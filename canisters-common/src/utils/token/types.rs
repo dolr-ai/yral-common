@@ -70,7 +70,7 @@ impl TokenOperations for SatsOperations {
         let res = self
             .client
             .post(deduct_url)
-            .header("Authorization", format!("Bearer {jwt_token}"))
+            .bearer_auth(jwt_token)
             .json(&worker_req)
             .send()
             .await
@@ -112,7 +112,7 @@ impl TokenOperations for SatsOperations {
         let res = self
             .client
             .post(add_url)
-            .header("Authorization", format!("Bearer {jwt_token}"))
+            .bearer_auth(jwt_token)
             .json(&worker_req)
             .send()
             .await
@@ -181,59 +181,61 @@ impl TokenOperations for DolrOperations {
             .get_principal()
             .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-        // If user agent is provided, use direct transfer
-        if let Some(user_agent) = &self.user_agent {
-            let ledger = sns_ledger::SnsLedger(ledger_id, user_agent);
-            
-            // Direct transfer from user's own agent
-            let res = ledger
-                .icrc_1_transfer(sns_ledger::TransferArg {
-                    from_subaccount: None,
-                    to: LedgerAccount {
-                        owner: admin_principal,
-                        subaccount: None,
-                    },
-                    amount: amount.into(),
-                    fee: None,
-                    memo: None,
-                    created_at_time: None,
-                })
-                .await
-                .map_err(|e| Error::YralCanister(e.to_string()))?;
+        match &self.user_agent {
+            Some(user_agent) => {
+                // Direct transfer from user's own agent
+                let ledger = sns_ledger::SnsLedger(ledger_id, user_agent);
+                
+                let res = ledger
+                    .icrc_1_transfer(sns_ledger::TransferArg {
+                        from_subaccount: None,
+                        to: LedgerAccount {
+                            owner: admin_principal,
+                            subaccount: None,
+                        },
+                        amount: amount.into(),
+                        fee: None,
+                        memo: None,
+                        created_at_time: None,
+                    })
+                    .await
+                    .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-            match res {
-                sns_ledger::TransferResult::Ok(_) => Ok(amount),
-                sns_ledger::TransferResult::Err(e) => {
-                    Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+                match res {
+                    sns_ledger::TransferResult::Ok(_) => Ok(amount),
+                    sns_ledger::TransferResult::Err(e) => {
+                        Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+                    }
                 }
             }
-        } else {
-            // Use transfer_from with admin agent
-            let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
-            
-            let res = ledger
-                .icrc_2_transfer_from(sns_ledger::TransferFromArgs {
-                    spender_subaccount: None,
-                    from: LedgerAccount {
-                        owner: user_principal,
-                        subaccount: None,
-                    },
-                    to: LedgerAccount {
-                        owner: admin_principal,
-                        subaccount: None,
-                    },
-                    amount: amount.into(),
-                    fee: None,
-                    memo: None,
-                    created_at_time: None,
-                })
-                .await
-                .map_err(|e| Error::YralCanister(e.to_string()))?;
+            None => {
+                // Use transfer_from with admin agent
+                let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
+                
+                let res = ledger
+                    .icrc_2_transfer_from(sns_ledger::TransferFromArgs {
+                        spender_subaccount: None,
+                        from: LedgerAccount {
+                            owner: user_principal,
+                            subaccount: None,
+                        },
+                        to: LedgerAccount {
+                            owner: admin_principal,
+                            subaccount: None,
+                        },
+                        amount: amount.into(),
+                        fee: None,
+                        memo: None,
+                        created_at_time: None,
+                    })
+                    .await
+                    .map_err(|e| Error::YralCanister(e.to_string()))?;
 
-            match res {
-                sns_ledger::TransferFromResult::Ok(_) => Ok(amount),
-                sns_ledger::TransferFromResult::Err(e) => {
-                    Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+                match res {
+                    sns_ledger::TransferFromResult::Ok(_) => Ok(amount),
+                    sns_ledger::TransferFromResult::Err(e) => {
+                        Err(Error::YralCanister(format!("Transfer failed: {e:?}")))
+                    }
                 }
             }
         }
