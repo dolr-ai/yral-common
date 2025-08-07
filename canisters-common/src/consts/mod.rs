@@ -23,4 +23,6 @@ pub const CKBTC_INDEX: &str = "n5wcd-faaaa-aaaar-qaaea-cai";
 pub const CKUSDC_LEDGER: &str = "xevnm-gaaaa-aaaar-qafnq-cai";
 pub const CKUSDC_INDEX: &str = "xrs4b-hiaaa-aaaar-qafoa-cai";
 
+pub const DOLR_AI_LEDGER_CANISTER: &str = "6rdgd-kyaaa-aaaaq-aaavq-cai";
+
 pub const SUPPORTED_NON_YRAL_TOKENS_ROOT: &[&str] = &["67bll-riaaa-aaaaq-aaauq-cai"];

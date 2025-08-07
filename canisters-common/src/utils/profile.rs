@@ -3,7 +3,9 @@ use canisters_client::{
     individual_user_template::UserProfileDetailsForFrontendV2,
     user_info_service::UserProfileDetailsForFrontendV3,
 };
+use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
+use username_gen::random_username_from_principal;
 
 use crate::{
     consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT},
@@ -76,9 +78,17 @@ pub fn propic_from_principal(principal: Principal) -> String {
 
 impl ProfileDetails {
     pub fn username_or_principal(&self) -> String {
+        self.username.clone().unwrap_or_else(|| self.principal())
+    }
+
+    /// Get the user's username
+    /// or a consistent random username
+    /// WARN: do not use this method for URLs
+    /// use `username_or_principal` instead
+    pub fn username_or_fallback(&self) -> String {
         self.username
             .clone()
-            .unwrap_or_else(|| self.principal.to_text())
+            .unwrap_or_else(|| random_username_from_principal(self.principal, USERNAME_MAX_LEN))
     }
 
     pub fn principal(&self) -> String {
@@ -88,7 +98,7 @@ impl ProfileDetails {
     pub fn display_name_or_fallback(&self) -> String {
         self.display_name
             .clone()
-            .unwrap_or_else(|| self.username_or_principal())
+            .unwrap_or_else(|| self.username_or_fallback())
     }
 
     pub fn profile_pic_or_random(&self) -> String {

@@ -10,6 +10,7 @@ use canisters_client::{
     local::USER_INFO_SERVICE_ID,
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
+    rate_limits::RateLimits,
     sns_governance::SnsGovernance,
     sns_index::SnsIndex,
     sns_ledger::{self, Account as LedgerAccount, SnsLedger},
@@ -22,7 +23,7 @@ use canisters_client::{
     user_post_service::{Result2 as PostDetailsResultOfServiceCansiter, UserPostService},
 };
 use consts::{
-    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID},
+    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID, RATE_LIMITS_ID},
     CDAO_SWAP_TIME_SECS, METADATA_API_BASE,
 };
 use ic_agent::{identity::DelegatedIdentity, Agent, Identity};
@@ -268,7 +269,44 @@ impl Canisters<true> {
             }
         };
 
+        //TODO: update last access time
+
         Ok(canisters)
+    }
+
+    pub async fn set_username(&mut self, new_username: String) -> Result<()> {
+        self.metadata_client
+            .set_user_metadata(
+                self.identity(),
+                SetUserMetadataReqMetadata {
+                    user_canister_id: self.user_canister,
+                    user_name: new_username.clone(),
+                },
+            )
+            .await?;
+        if let Some(p) = self.profile_details.as_mut() {
+            p.username = Some(new_username)
+        }
+
+        Ok(())
+    }
+
+    pub fn from_wire(wire: CanistersAuthWire, base: Canisters<false>) -> Result<Self> {
+        let id: DelegatedIdentity = wire.id.clone().try_into()?;
+        let arc_id = Arc::new(id);
+
+        let mut agent = base.agent.clone();
+        agent.set_arc_id(arc_id.clone());
+
+        Ok(Self {
+            agent,
+            id: Some(arc_id),
+            id_wire: Some(Arc::new(wire.id)),
+            metadata_client: base.metadata_client,
+            user_canister: wire.user_canister,
+            expiry: wire.expiry,
+            profile_details: Some(wire.profile_details),
+        })
     }
 }
 
@@ -363,6 +401,11 @@ impl<const A: bool> Canisters<A> {
     pub async fn sns_swap(&self, canister_id: Principal) -> SnsSwap<'_> {
         let agent = self.agent.get_agent().await;
         SnsSwap(canister_id, agent)
+    }
+
+    pub async fn rate_limits(&self) -> RateLimits<'_> {
+        let agent = self.agent.get_agent().await;
+        RateLimits(RATE_LIMITS_ID, agent)
     }
 
     async fn subnet_indexes(&self) -> Result<Vec<Principal>> {

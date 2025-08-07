@@ -34,8 +34,14 @@ sns-ledger = []
 sns-root = []
 sns-swap = []
 sns-index = []
-services = ["notification-store", "dedup-index"]
+services = [
+    "notification-store",
+    "dedup-index",
+    "rate-limits",
+    "user-info-service",
+]
 notification-store = []
 dedup-index = []
+rate-limits = []
 user-info-service = []
 user-post-service = []
