@@ -1,8 +1,14 @@
 use candid::Principal;
-use canisters_client::individual_user_template::UserProfileDetailsForFrontendV2;
+use canisters_client::{
+    individual_user_template::UserProfileDetailsForFrontendV2,
+    user_info_service::UserProfileDetailsForFrontendV3,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::{consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT}, Canisters, Result};
+use crate::{
+    consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT},
+    Canisters, Result,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ProfileDetails {
@@ -19,7 +25,11 @@ pub struct ProfileDetails {
 }
 
 impl ProfileDetails {
-    pub fn from_canister(user_canister: Principal, username: Option<String>, user: UserProfileDetailsForFrontendV2) -> Self {
+    pub fn from_canister(
+        user_canister: Principal,
+        username: Option<String>,
+        user: UserProfileDetailsForFrontendV2,
+    ) -> Self {
         Self {
             username: username.filter(|u| !u.is_empty()),
             lifetime_earnings: user.lifetime_earnings,
@@ -31,6 +41,25 @@ impl ProfileDetails {
             user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
+        }
+    }
+
+    pub fn from_service_canister(
+        user_principal: Principal,
+        username: Option<String>,
+        profile_details: UserProfileDetailsForFrontendV3,
+    ) -> Self {
+        Self {
+            username: username.clone().filter(|u| !u.is_empty()),
+            lifetime_earnings: 0,
+            followers_cnt: 0,
+            following_cnt: 0,
+            profile_pic: profile_details.profile_picture_url,
+            display_name: username,
+            principal: user_principal,
+            user_canister: user_principal,
+            hots: 0,
+            nots: 0,
         }
     }
 }
@@ -73,8 +102,15 @@ impl ProfileDetails {
 }
 
 impl<const A: bool> Canisters<A> {
-    pub async fn get_profile_details(&self, username_or_principal: String) -> Result<Option<ProfileDetails>> {
-        let Some(meta) = self.metadata_client.get_user_metadata_v2(username_or_principal).await? else {
+    pub async fn get_profile_details(
+        &self,
+        username_or_principal: String,
+    ) -> Result<Option<ProfileDetails>> {
+        let Some(meta) = self
+            .metadata_client
+            .get_user_metadata_v2(username_or_principal)
+            .await?
+        else {
             return Ok(None);
         };
         let user_profile = self.individual_user(meta.user_canister_id).await;
@@ -83,7 +119,7 @@ impl<const A: bool> Canisters<A> {
         Ok(Some(ProfileDetails::from_canister(
             meta.user_canister_id,
             Some(meta.user_name),
-            user
+            user,
         )))
     }
 }

@@ -1,9 +1,9 @@
 use candid::{CandidType, Principal};
 use canisters_client::individual_user_template::BettingStatus;
 use hon_worker_common::{GameInfo, GameInfoReq, GameInfoReqV3};
+use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
-use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 
 use crate::{consts::CENTS_IN_E6S, Canisters, Error, HonError, Result};
 
@@ -131,46 +131,46 @@ impl Canisters<true> {
 
         Ok(betting_status)
     }
+}
 
-    pub async fn fetch_game_with_sats_info(
-        &self,
-        cloudflare_url: reqwest::Url,
-        request: GameInfoReq,
-    ) -> Result<Option<GameInfo>> {
-        let path = format!("/game_info/{}", self.user_principal());
-        let url = cloudflare_url.join(&path)?;
+pub async fn fetch_game_with_sats_info(
+    user_principal: Principal,
+    cloudflare_url: reqwest::Url,
+    request: GameInfoReq,
+) -> Result<Option<GameInfo>> {
+    let path = format!("/game_info/{}", user_principal);
+    let url = cloudflare_url.join(&path)?;
 
-        let client = reqwest::Client::new();
-        let res = client.post(url).json(&request).send().await?;
+    let client = reqwest::Client::new();
+    let res = client.post(url).json(&request).send().await?;
 
-        if !res.status().is_success() {
-            let err = res.text().await?;
-            return Err(Error::Hon(HonError::Backend(err)));
-        }
-
-        let info = res.json().await?;
-
-        Ok(info)
+    if !res.status().is_success() {
+        let err = res.text().await?;
+        return Err(Error::Hon(HonError::Backend(err)));
     }
 
-    pub async fn fetch_game_with_sats_info_v3(
-        &self,
-        cloudflare_url: reqwest::Url,
-        request: GameInfoReqV3,
-    ) -> Result<Option<GameInfo>> {
-        let path = format!("/v3/game_info/{}", self.user_principal());
-        let url = cloudflare_url.join(&path)?;
+    let info = res.json().await?;
 
-        let client = reqwest::Client::new();
-        let res = client.post(url).json(&request).send().await?;
+    Ok(info)
+}
 
-        if !res.status().is_success() {
-            let err = res.text().await?;
-            return Err(Error::Hon(HonError::Backend(err)));
-        }
+pub async fn fetch_game_with_sats_info_v3(
+    user_principal: Principal,
+    cloudflare_url: reqwest::Url,
+    request: GameInfoReqV3,
+) -> Result<Option<GameInfo>> {
+    let path = format!("/v3/game_info/{}", user_principal);
+    let url = cloudflare_url.join(&path)?;
 
-        let info = res.json().await?;
+    let client = reqwest::Client::new();
+    let res = client.post(url).json(&request).send().await?;
 
-        Ok(info)
+    if !res.status().is_success() {
+        let err = res.text().await?;
+        return Err(Error::Hon(HonError::Backend(err)));
     }
+
+    let info = res.json().await?;
+
+    Ok(info)
 }

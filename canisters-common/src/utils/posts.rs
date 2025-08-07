@@ -4,7 +4,11 @@ use std::{
 };
 
 use candid::Principal;
-use canisters_client::individual_user_template::{PostDetailsForFrontend, PostStatus};
+use canisters_client::user_post_service::PostDetailsForFrontend as PostServicePostDetailsForFrontend;
+use canisters_client::{
+    individual_user_template::{Post, PostDetailsForFrontend, PostStatus},
+    user_info_service::UserProfileDetailsForFrontendV3,
+};
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
 
@@ -15,7 +19,7 @@ use super::profile::propic_from_principal;
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PostDetails {
     pub canister_id: Principal, // canister id of the publishing canister.
-    pub post_id: u64,
+    pub post_id: String,
     pub uid: String,
     pub description: String,
     pub views: u64,
@@ -63,6 +67,35 @@ impl PostDetails {
         Self::from_canister_post_with_nsfw_info(authenticated, canister_id, details, 0.0)
     }
 
+    pub fn from_service_post(
+        canister_id: Principal,
+        user_details: UserProfileDetailsForFrontendV3,
+        post_details: PostServicePostDetailsForFrontend,
+    ) -> Self {
+        Self {
+            canister_id,
+            post_id: post_details.id,
+            uid: post_details.video_uid,
+            description: post_details.description,
+            views: post_details.total_view_count,
+            likes: post_details.like_count,
+            display_name: user_details.principal_id.to_text(),
+            propic_url: user_details.profile_picture_url.unwrap_or_else(|| {
+                propic_from_principal(post_details.created_by_user_principal_id)
+            }),
+            liked_by_user: Some(post_details.liked_by_me),
+            poster_principal: post_details.creator_principal,
+            hastags: post_details.hashtags,
+            is_nsfw: false,
+            hot_or_not_feed_ranking_score: Some(0),
+            created_at: Duration::new(
+                post_details.created_at.secs_since_epoch,
+                post_details.created_at.nanos_since_epoch,
+            ),
+            nsfw_probability: 0.0,
+        }
+    }
+
     pub fn from_canister_post_with_nsfw_info(
         authenticated: bool,
         canister_id: Principal,
@@ -71,7 +104,7 @@ impl PostDetails {
     ) -> Self {
         Self {
             canister_id,
-            post_id: details.id,
+            post_id: details.id.to_string(),
             uid: details.video_uid,
             description: details.description,
             views: details.total_view_count,
@@ -146,8 +179,12 @@ impl<const A: bool> Canisters<A> {
         }
 
         let creator_principal = post_details.created_by_user_principal_id;
-        let creator_meta = self.metadata_client.get_user_metadata_v2(creator_principal.to_text()).await?; 
-        post_details.created_by_unique_user_name = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
+        let creator_meta = self
+            .metadata_client
+            .get_user_metadata_v2(creator_principal.to_text())
+            .await?;
+        post_details.created_by_unique_user_name =
+            creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
             A,
@@ -156,9 +193,7 @@ impl<const A: bool> Canisters<A> {
             nsfw_probability,
         )))
     }
-}
 
-impl Canisters<true> {
     pub async fn post_like_info(
         &self,
         post_canister: Principal,

@@ -19,6 +19,8 @@
                             curl
                             openssl
                             pkg-config
+                            gcc
+                            mold
                         ];
                     };
                 }
