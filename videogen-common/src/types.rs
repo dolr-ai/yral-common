@@ -1,17 +1,18 @@
 use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+use crate::video_model::VideoModel;
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
-use yral_types::delegated_identity::DelegatedIdentityWire;
 use utoipa::ToSchema;
 #[cfg(feature = "ic")]
 use yral_identity::Signature;
+use yral_types::delegated_identity::DelegatedIdentityWire;
 
 /// Core trait for video generation models
 #[enum_dispatch]
 pub trait VideoGenerator {
     /// Get the model name for rate limiting and identification
-    fn model_name(&self) -> &'static str;
+    fn model_id(&self) -> &'static str;
 
     /// Get the provider for this model
     fn provider(&self) -> VideoGenProvider;
@@ -30,13 +31,19 @@ pub trait VideoGenerator {
 
     /// Get flow control key for Qstash rate limiting
     fn flow_control_key(&self) -> String {
-        format!("VIDEOGEN_{}", self.model_name())
+        format!("VIDEOGEN_{}", self.model_id())
     }
 
     /// Get flow control configuration (rate_per_minute, parallelism)
     fn flow_control_config(&self) -> Option<(u32, u32)> {
         None // Default: no flow control
     }
+}
+
+/// Trait for associating model implementations with their metadata
+pub trait ModelMetadata {
+    /// Get the VideoModel metadata for this model type
+    fn model_info() -> &'static VideoModel;
 }
 
 // Request wrapper that includes user_id for rate limiting

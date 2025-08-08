@@ -1,6 +1,9 @@
 #[cfg(feature = "client")]
 use crate::types::VideoGenRequestKey;
-use crate::types::{VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithIdentity, VideoGenRequestWithSignature};
+use crate::types::{
+    VideoGenError, VideoGenInput, VideoGenRequest, VideoGenRequestWithIdentity,
+    VideoGenRequestWithSignature,
+};
 #[cfg(feature = "client")]
 use crate::VideoGenRequestStatus;
 use candid::Principal;
@@ -74,8 +77,8 @@ impl VideoGenClient {
         principal: Principal,
         input: VideoGenInput,
     ) -> Result<crate::types::VideoGenQueuedResponse, VideoGenError> {
-        let request = VideoGenRequest { 
-            principal, 
+        let request = VideoGenRequest {
+            principal,
             input,
             token_type: Default::default(),
         };
