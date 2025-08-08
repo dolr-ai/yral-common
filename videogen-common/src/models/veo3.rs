@@ -1,8 +1,12 @@
 use crate::generator::FlowControlFromEnv;
-use crate::types::{ImageData, Veo3AspectRatio, VideoGenProvider, VideoGenerator};
+use crate::types::{ImageData, ModelMetadata, Veo3AspectRatio, VideoGenProvider, VideoGenerator};
+use crate::video_model::VideoModel;
 use crate::VideoGenError;
 use candid::CandidType;
+use global_constants::VEO3_COST_USD_CENTS;
+use global_constants::VEO3_FAST_COST_USD_CENTS;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -16,8 +20,8 @@ pub struct Veo3Model {
 }
 
 impl VideoGenerator for Veo3Model {
-    fn model_name(&self) -> &'static str {
-        "VEO3"
+    fn model_id(&self) -> &'static str {
+        &Self::model_info().id
     }
 
     fn provider(&self) -> VideoGenProvider {
@@ -47,7 +51,7 @@ impl VideoGenerator for Veo3Model {
     fn get_image(&self) -> Option<&ImageData> {
         self.image.as_ref()
     }
-    
+
     fn get_image_mut(&mut self) -> Option<&mut ImageData> {
         self.image.as_mut()
     }
@@ -64,6 +68,25 @@ impl FlowControlFromEnv for Veo3Model {
     }
 }
 
+static VEO3_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
+    id: "veo3".to_string(),
+    name: "Veo3".to_string(),
+    description: "Google's advanced video generation model".to_string(),
+    cost_usd_cents: VEO3_COST_USD_CENTS,
+    supports_image: false,
+    provider: VideoGenProvider::Veo3,
+    max_duration_seconds: 8,
+    supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9, Veo3AspectRatio::Ratio9x16],
+    model_icon: Some("/img/ai-models/veo3.svg".to_string()),
+    is_available: true,
+});
+
+impl ModelMetadata for Veo3Model {
+    fn model_info() -> &'static VideoModel {
+        &VEO3_MODEL_INFO
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct Veo3FastModel {
     pub prompt: String,
@@ -75,8 +98,8 @@ pub struct Veo3FastModel {
 }
 
 impl VideoGenerator for Veo3FastModel {
-    fn model_name(&self) -> &'static str {
-        "VEO3_FAST"
+    fn model_id(&self) -> &'static str {
+        &Self::model_info().id
     }
 
     fn provider(&self) -> VideoGenProvider {
@@ -106,7 +129,7 @@ impl VideoGenerator for Veo3FastModel {
     fn get_image(&self) -> Option<&ImageData> {
         self.image.as_ref()
     }
-    
+
     fn get_image_mut(&mut self) -> Option<&mut ImageData> {
         self.image.as_mut()
     }
@@ -120,5 +143,24 @@ impl VideoGenerator for Veo3FastModel {
 impl FlowControlFromEnv for Veo3FastModel {
     fn env_prefix(&self) -> &'static str {
         "VEO3_FAST"
+    }
+}
+
+static VEO3_FAST_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
+    id: "veo3_fast".to_string(),
+    name: "Veo3 Fast".to_string(),
+    description: "Google Veo3 Faster and cheaper".to_string(),
+    cost_usd_cents: VEO3_FAST_COST_USD_CENTS,
+    supports_image: false,
+    provider: VideoGenProvider::Veo3Fast,
+    max_duration_seconds: 8,
+    supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
+    model_icon: Some("/img/ai-models/veo3.svg".to_string()),
+    is_available: true,
+});
+
+impl ModelMetadata for Veo3FastModel {
+    fn model_info() -> &'static VideoModel {
+        &VEO3_FAST_MODEL_INFO
     }
 }

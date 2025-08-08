@@ -73,16 +73,16 @@ impl Default for TokenCostConfig {
 
 impl TokenCostConfig {
     /// Get the cost for a specific model in USD cents
-    pub fn get_model_cost_usd(&self, model_name: &str) -> u64 {
+    pub fn get_model_cost_usd(&self, model_id: &str) -> u64 {
         self.model_costs_usd
-            .get(model_name)
+            .get(model_id)
             .map(|cost| cost.usd_cents)
             .unwrap_or(self.default_cost_usd.usd_cents)
     }
 
     /// Get the cost for a specific model in the requested token type
-    pub fn get_model_cost(&self, model_name: &str, token_type: &TokenType) -> u64 {
-        let usd_cents = self.get_model_cost_usd(model_name);
+    pub fn get_model_cost(&self, model_id: &str, token_type: &TokenType) -> u64 {
+        let usd_cents = self.get_model_cost_usd(model_id);
         self.convert_usd_to_token(usd_cents, token_type)
     }
 
@@ -105,9 +105,9 @@ impl TokenCostConfig {
     }
 
     /// Update the cost for a specific model in USD cents
-    pub fn set_model_cost_usd(&mut self, model_name: String, usd_cents: u64) {
+    pub fn set_model_cost_usd(&mut self, model_id: String, usd_cents: u64) {
         self.model_costs_usd
-            .insert(model_name, ModelCostUSD { usd_cents });
+            .insert(model_id, ModelCostUSD { usd_cents });
     }
 
     /// Update the conversion rates

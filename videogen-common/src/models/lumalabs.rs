@@ -1,10 +1,14 @@
 use crate::generator::FlowControlFromEnv;
 use crate::types::{
-    ImageData, LumaLabsDuration, LumaLabsResolution, VideoGenProvider, VideoGenerator,
+    ImageData, LumaLabsDuration, LumaLabsResolution, ModelMetadata, Veo3AspectRatio,
+    VideoGenProvider, VideoGenerator,
 };
+use crate::video_model::VideoModel;
 use crate::VideoGenError;
 use candid::CandidType;
+use global_constants::RAY2FLASH_COST_USD_CENTS;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -18,8 +22,8 @@ pub struct LumaLabsModel {
 }
 
 impl VideoGenerator for LumaLabsModel {
-    fn model_name(&self) -> &'static str {
-        "LUMALABS"
+    fn model_id(&self) -> &'static str {
+        &Self::model_info().id
     }
 
     fn provider(&self) -> VideoGenProvider {
@@ -52,7 +56,7 @@ impl VideoGenerator for LumaLabsModel {
     fn get_image(&self) -> Option<&ImageData> {
         self.image.as_ref()
     }
-    
+
     fn get_image_mut(&mut self) -> Option<&mut ImageData> {
         self.image.as_mut()
     }
@@ -66,5 +70,24 @@ impl VideoGenerator for LumaLabsModel {
 impl FlowControlFromEnv for LumaLabsModel {
     fn env_prefix(&self) -> &'static str {
         "LUMALABS"
+    }
+}
+
+static LUMALABS_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
+    id: "ray2flash".to_string(),
+    name: "Ray2Flash".to_string(),
+    description: "LumaLabs' fast AI video generation model".to_string(),
+    cost_usd_cents: RAY2FLASH_COST_USD_CENTS,
+    supports_image: true,
+    provider: VideoGenProvider::LumaLabs,
+    max_duration_seconds: 9,
+    supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
+    model_icon: Some("/img/ai-models/lumalabs.png".to_string()),
+    is_available: true,
+});
+
+impl ModelMetadata for LumaLabsModel {
+    fn model_info() -> &'static VideoModel {
+        &LUMALABS_MODEL_INFO
     }
 }
