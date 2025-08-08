@@ -159,15 +159,6 @@ impl<const A: bool> Canisters<A> {
             return Ok(None);
         }
 
-        let post_uuid = &post_details.video_uid;
-        let req_url = format!(
-            "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{post_uuid}/manifest/video.m3u8",
-        );
-        let res = reqwest::Client::default().head(req_url).send().await;
-        if res.is_err() || (res.is_ok() && res.unwrap().status() != 200) {
-            return Ok(None);
-        }
-
         let creator_principal = post_details.created_by_user_principal_id;
         let creator_meta = self
             .metadata_client
