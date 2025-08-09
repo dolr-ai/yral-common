@@ -131,46 +131,46 @@ impl Canisters<true> {
 
         Ok(betting_status)
     }
-}
 
-pub async fn fetch_game_with_sats_info(
-    user_principal: Principal,
-    cloudflare_url: reqwest::Url,
-    request: GameInfoReq,
-) -> Result<Option<GameInfo>> {
-    let path = format!("/game_info/{}", user_principal);
-    let url = cloudflare_url.join(&path)?;
+    pub async fn fetch_game_with_sats_info(
+        &self,
+        cloudflare_url: reqwest::Url,
+        request: GameInfoReq,
+    ) -> Result<Option<GameInfo>> {
+        let path = format!("/game_info/{}", self.user_principal());
+        let url = cloudflare_url.join(&path)?;
 
-    let client = reqwest::Client::new();
-    let res = client.post(url).json(&request).send().await?;
+        let client = reqwest::Client::new();
+        let res = client.post(url).json(&request).send().await?;
 
-    if !res.status().is_success() {
-        let err = res.text().await?;
-        return Err(Error::Hon(HonError::Backend(err)));
+        if !res.status().is_success() {
+            let err = res.text().await?;
+            return Err(Error::Hon(HonError::Backend(err)));
+        }
+
+        let info = res.json().await?;
+
+        Ok(info)
     }
 
-    let info = res.json().await?;
+    pub async fn fetch_game_with_sats_info_v3(
+        &self,
+        cloudflare_url: reqwest::Url,
+        request: GameInfoReqV3,
+    ) -> Result<Option<GameInfo>> {
+        let path = format!("/v3/game_info/{}", self.user_principal());
+        let url = cloudflare_url.join(&path)?;
 
-    Ok(info)
-}
+        let client = reqwest::Client::new();
+        let res = client.post(url).json(&request).send().await?;
 
-pub async fn fetch_game_with_sats_info_v3(
-    user_principal: Principal,
-    cloudflare_url: reqwest::Url,
-    request: GameInfoReqV3,
-) -> Result<Option<GameInfo>> {
-    let path = format!("/v3/game_info/{}", user_principal);
-    let url = cloudflare_url.join(&path)?;
+        if !res.status().is_success() {
+            let err = res.text().await?;
+            return Err(Error::Hon(HonError::Backend(err)));
+        }
 
-    let client = reqwest::Client::new();
-    let res = client.post(url).json(&request).send().await?;
+        let info = res.json().await?;
 
-    if !res.status().is_success() {
-        let err = res.text().await?;
-        return Err(Error::Hon(HonError::Backend(err)));
+        Ok(info)
     }
-
-    let info = res.json().await?;
-
-    Ok(info)
 }

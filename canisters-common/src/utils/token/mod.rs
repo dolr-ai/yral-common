@@ -1,3 +1,4 @@
+use canisters_client::ic::USER_INFO_SERVICE_ID;
 use canisters_client::sns_swap::GetInitArg;
 use hon_worker_common::SatsBalanceInfo;
 use hon_worker_common::WithdrawalState;
@@ -27,7 +28,7 @@ pub mod operations;
 pub mod types;
 
 pub use operations::TokenOperations;
-pub use types::{SatsOperations, DolrOperations, TokenOperationsProvider};
+pub use types::{DolrOperations, SatsOperations, TokenOperationsProvider};
 
 use canisters_client::individual_user_template::ClaimStatus;
 use canisters_client::sns_root::ListSnsCanistersResponse;
@@ -115,14 +116,12 @@ pub async fn load_sats_balance(
     Ok(res)
 }
 
-pub async fn load_sats_balance_ops(
-    user_principal: Principal,
-) -> Result<SatsBalanceInfo> {
+pub async fn load_sats_balance_ops(user_principal: Principal) -> Result<SatsBalanceInfo> {
     let ops = types::SatsOperations::new(None);
     let balance = ops.load_balance(user_principal).await?;
-    
+
     use std::str::FromStr;
-    
+
     Ok(SatsBalanceInfo {
         balance: num_bigint::BigUint::from_str(&balance.e8s.0.to_string()).unwrap_or_default(),
         airdropped: num_bigint::BigUint::from(0u32),
@@ -135,7 +134,7 @@ pub async fn load_dolr_balance_with_agent(
 ) -> Result<TokenBalance> {
     let ops = types::DolrOperations::new(agent.clone());
     let balance = ops.load_balance(user_principal).await?;
-    
+
     Ok(balance)
 }
 
@@ -507,7 +506,7 @@ impl<const A: bool> Canisters<A> {
         let is_non_yral_token = SUPPORTED_NON_YRAL_TOKENS_ROOT
             .iter()
             .any(|&token_root| token_root == root_id.to_text());
-        if is_non_yral_token {
+        if is_non_yral_token || destination_canister_id == USER_INFO_SERVICE_ID {
             return Ok(());
         }
 
