@@ -160,6 +160,80 @@ impl VideoGenClient {
             }
         }
     }
+    
+    /// Get all available providers (V2 API)
+    pub async fn get_providers(&self) -> Result<crate::types_v2::ProvidersResponse, VideoGenError> {
+        let url = self
+            .base_url
+            .join("api/v2/videogen/providers")
+            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {e}")))?;
+
+        let mut req_builder = self.client.get(url);
+
+        // Add bearer token if available
+        if let Some(token) = &self.bearer_token {
+            req_builder = req_builder.header("Authorization", format!("Bearer {token}"));
+        }
+
+        let response = req_builder
+            .send()
+            .await
+            .map_err(|e| VideoGenError::NetworkError(e.to_string()))?;
+
+        if response.status().is_success() {
+            response
+                .json()
+                .await
+                .map_err(|e| VideoGenError::NetworkError(e.to_string()))
+        } else {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to get error text".to_string());
+            
+            Err(VideoGenError::NetworkError(format!(
+                "Failed to get providers: {error_text}"
+            )))
+        }
+    }
+    
+    /// Generate a video with unified request structure (V2 API)
+    pub async fn generate_with_identity_v2(
+        &self,
+        identity_request: crate::types_v2::VideoGenRequestWithIdentityV2,
+    ) -> Result<crate::types_v2::VideoGenQueuedResponseV2, VideoGenError> {
+        let url = self
+            .base_url
+            .join("api/v2/videogen/generate_with_identity")
+            .map_err(|e| VideoGenError::NetworkError(format!("Invalid URL: {e}")))?;
+
+        let req_builder = self.client.post(url).json(&identity_request);
+
+        let response = req_builder
+            .send()
+            .await
+            .map_err(|e| VideoGenError::NetworkError(e.to_string()))?;
+
+        if response.status().is_success() {
+            response
+                .json()
+                .await
+                .map_err(|e| VideoGenError::NetworkError(e.to_string()))
+        } else {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to get error text".to_string());
+
+            // Try to parse as VideoGenError
+            match serde_json::from_str::<VideoGenError>(&error_text) {
+                Ok(error) => Err(error),
+                Err(_) => Err(VideoGenError::NetworkError(format!(
+                    "Server error: {error_text}"
+                ))),
+            }
+        }
+    }
 
     /// Poll the video generation status using a pre-configured RateLimits client
     #[cfg(feature = "client")]
