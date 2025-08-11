@@ -9,7 +9,7 @@ pub const MAX_WITHDRAWAL_PER_TXN_SATS: u64 = 60;
 pub const MAX_WITHDRAWAL_PER_DAY_SATS: u64 = 60;
 
 // Reward limit
-pub const NEW_USER_SIGNUP_REWARD_SATS: u64 = 25;
+pub const NEW_USER_SIGNUP_REWARD_SATS: u64 = 30;
 pub const REFERRAL_REWARD_SATS: u64 = 5;
 pub const SATS_AIRDROP_LIMIT_RANGE_SATS: Range<u64> = 25..30;
 pub const AIRDROP_REWARD_SATS: u64 = 1000;
