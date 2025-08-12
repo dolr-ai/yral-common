@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use ::types::post::PostItemV2;
+use ::types::post::{PostItemV2, PostItemV3};
 use consts::{
     MAX_GLOBAL_CACHE_LEN, MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN, MAX_SUCCESS_HISTORY_CACHE_LEN,
     MAX_USER_CACHE_LEN, MAX_WATCH_HISTORY_CACHE_LEN, USER_HOTORNOT_BUFFER_KEY,
@@ -12,10 +12,16 @@ use types_v2::{
     get_history_item_score as get_history_item_score_v2, BufferItemV2, MLFeedCacheHistoryItemV2,
     PlainPostItemV2,
 };
+use types_v3::{
+    get_history_item_score as get_history_item_score_v3, BufferItemV3, MLFeedCacheHistoryItemV3,
+    PlainPostItemV3,
+};
 
 pub mod consts;
+pub mod mixed_type_compat;
 pub mod types;
 pub mod types_v2;
+pub mod types_v3;
 
 pub type RedisPool = bb8::Pool<bb8_redis::RedisConnectionManager>;
 
@@ -893,6 +899,715 @@ impl MLFeedCacheState {
         });
 
         Ok(())
+    }
+
+    // V3 API Methods with String post_id
+    
+    pub async fn add_user_watch_history_items_v3(
+        &self,
+        key: &str,
+        items: Vec<MLFeedCacheHistoryItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let items = items
+            .iter()
+            .map(|item| (get_history_item_score_v3(item), item.clone()))
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
+                .await?;
+        }
+
+        // Trim to max length
+        let num_items = conn.zcard::<&str, u64>(key).await?;
+        if num_items > MAX_WATCH_HISTORY_CACHE_LEN {
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+            )
+            .await?;
+        }
+
+        // Update memory store pool asynchronously
+        let items_clone = items.clone();
+        self.spawn_memory_store_update(key, move |pool, key| {
+            Box::pin(async move {
+                let mut conn = match pool.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to get memory store connection: {e}");
+                        return Ok(());
+                    }
+                };
+
+                for chunk in items_clone.chunks(chunk_size) {
+                    if let Err(e) = conn
+                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key, chunk)
+                        .await
+                    {
+                        log::error!("Failed to add items to memory store: {e}");
+                    }
+                }
+
+                match conn.zcard::<&str, u64>(&key).await {
+                    Ok(num_items) if num_items > MAX_WATCH_HISTORY_CACHE_LEN => {
+                        if let Err(e) = conn
+                            .zremrangebyrank::<&str, ()>(
+                                &key,
+                                0,
+                                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+                            )
+                            .await
+                        {
+                            log::error!("Failed to trim memory store: {e}");
+                        }
+                    }
+                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
+                    _ => {}
+                }
+                Ok(())
+            })
+        });
+
+        Ok(())
+    }
+
+    pub async fn add_user_success_history_items_v3(
+        &self,
+        key: &str,
+        items: Vec<MLFeedCacheHistoryItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let items = items
+            .iter()
+            .map(|item| (get_history_item_score_v3(item), item.clone()))
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
+                .await?;
+        }
+
+        // get num items in the list
+        let num_items = conn.zcard::<&str, u64>(key).await?;
+
+        if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN {
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+            )
+            .await?;
+        }
+
+        // Update memory store pool asynchronously
+        let items_clone = items.clone();
+        self.spawn_memory_store_update(key, move |pool, key| {
+            Box::pin(async move {
+                let mut conn = match pool.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to get memory store connection: {e}");
+                        return Ok(());
+                    }
+                };
+
+                for chunk in items_clone.chunks(chunk_size) {
+                    if let Err(e) = conn
+                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key, chunk)
+                        .await
+                    {
+                        log::error!("Failed to add items to memory store: {e}");
+                    }
+                }
+
+                match conn.zcard::<&str, u64>(&key).await {
+                    Ok(num_items) if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN => {
+                        if let Err(e) = conn
+                            .zremrangebyrank::<&str, ()>(
+                                &key,
+                                0,
+                                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+                            )
+                            .await
+                        {
+                            log::error!("Failed to trim memory store: {e}");
+                        }
+                    }
+                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
+                    _ => {}
+                }
+                Ok(())
+            })
+        });
+
+        Ok(())
+    }
+
+    pub async fn get_history_items_v3(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<MLFeedCacheHistoryItemV3>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let items = conn
+            .zrevrange::<&str, Vec<MLFeedCacheHistoryItemV3>>(key, start as isize, end as isize)
+            .await?;
+
+        Ok(items)
+    }
+
+    pub async fn add_user_cache_items_v3(
+        &self,
+        key: &str,
+        items: Vec<PostItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let timestamp_secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as f64;
+
+        let items = items
+            .iter()
+            .enumerate()
+            .map(|(i, item)| (timestamp_secs + i as f64, item.clone()))
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, f64, PostItemV3, ()>(key, chunk)
+                .await?;
+        }
+
+        // Trim to max length
+        let num_items = conn.zcard::<&str, u64>(key).await?;
+        if num_items > MAX_USER_CACHE_LEN {
+            conn.zremrangebyrank::<&str, ()>(key, 0, (num_items - MAX_USER_CACHE_LEN - 1) as isize)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn add_global_cache_items_v3(
+        &self,
+        key: &str,
+        items: Vec<PostItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let timestamp_secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as f64;
+
+        let items = items
+            .iter()
+            .enumerate()
+            .map(|(i, item)| (timestamp_secs + i as f64, item.clone()))
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, f64, PostItemV3, ()>(key, chunk)
+                .await?;
+        }
+
+        // Trim to max length
+        let num_items = conn.zcard::<&str, u64>(key).await?;
+        if num_items > MAX_GLOBAL_CACHE_LEN {
+            conn.zremrangebyrank::<&str, ()>(key, 0, (num_items - MAX_GLOBAL_CACHE_LEN - 1) as isize)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_cache_items_v3(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<PostItemV3>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        let items = conn
+            .zrevrange::<&str, Vec<PostItemV3>>(key, start as isize, end as isize)
+            .await?;
+        Ok(items)
+    }
+
+    pub async fn add_user_history_plain_items_v3(
+        &self,
+        key: &str,
+        items: Vec<MLFeedCacheHistoryItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let items = items
+            .iter()
+            .map(|item| {
+                (
+                    item.timestamp
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                    PlainPostItemV3 {
+                        video_id: item.video_id.clone(),
+                        post_id: item.post_id.clone(),
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, u64, PlainPostItemV3, ()>(key, chunk)
+                .await?;
+        }
+
+        // get num items in the list
+        let num_items = conn.zcard::<&str, u64>(key).await?;
+
+        // if num items is greater than MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN, remove the oldest items
+        if num_items > MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN {
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - (MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN + 1)) as isize,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn is_user_history_plain_item_exists_v3(
+        &self,
+        key: &str,
+        item: PlainPostItemV3,
+    ) -> Result<bool, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let res = conn
+            .zscore::<&str, PlainPostItemV3, Option<f64>>(key, item)
+            .await?;
+
+        Ok(res.is_some())
+    }
+
+    pub async fn add_user_buffer_items_v3(
+        &self,
+        items: Vec<BufferItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let items = items
+            .iter()
+            .map(|item| {
+                let timestamp_secs =
+                    item.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() as f64;
+                (timestamp_secs, item.clone())
+            })
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, f64, BufferItemV3, ()>(consts::USER_HOTORNOT_BUFFER_KEY_V2, chunk)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn add_success_history_plain_post_items_v3(
+        &self,
+        key: &str,
+        items: Vec<PlainPostItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        let timestamp_secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as f64;
+
+        let items = items
+            .iter()
+            .enumerate()
+            .map(|(i, item)| (timestamp_secs + i as f64, item.clone()))
+            .collect::<Vec<_>>();
+
+        // zadd_multiple in groups of 1000
+        let chunk_size = 1000;
+        for chunk in items.chunks(chunk_size) {
+            conn.zadd_multiple::<&str, f64, PlainPostItemV3, ()>(key, chunk)
+                .await?;
+        }
+
+        // Trim to max length
+        let num_items = conn.zcard::<&str, u64>(key).await?;
+        if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN {
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - MAX_SUCCESS_HISTORY_CACHE_LEN - 1) as isize,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_plain_post_items_v3(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<PlainPostItemV3>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        let items = conn
+            .zrevrange::<&str, Vec<PlainPostItemV3>>(key, start as isize, end as isize)
+            .await?;
+        Ok(items)
+    }
+
+    pub async fn get_user_buffer_items_by_timestamp_v3(
+        &self,
+        timestamp_secs: u64,
+    ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
+        self.get_user_buffer_items_by_timestamp_impl_v3(consts::USER_HOTORNOT_BUFFER_KEY_V2, timestamp_secs)
+            .await
+    }
+
+    async fn get_user_buffer_items_by_timestamp_impl_v3(
+        &self,
+        key: &str,
+        timestamp_secs: u64,
+    ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        let items = conn
+            .zrangebyscore::<&str, u64, u64, Vec<BufferItemV3>>(key, 0, timestamp_secs)
+            .await?;
+        Ok(items)
+    }
+
+    pub async fn remove_user_buffer_items_by_timestamp_v3(
+        &self,
+        timestamp_secs: u64,
+    ) -> Result<u64, anyhow::Error> {
+        self.remove_user_buffer_items_by_timestamp_impl_v3(
+            consts::USER_HOTORNOT_BUFFER_KEY_V2,
+            timestamp_secs,
+        )
+        .await
+    }
+
+    async fn remove_user_buffer_items_by_timestamp_impl_v3(
+        &self,
+        key: &str,
+        timestamp_secs: u64,
+    ) -> Result<u64, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        let res = conn
+            .zrembyscore::<&str, u64, u64, u64>(key, 0, timestamp_secs)
+            .await?;
+        Ok(res)
+    }
+
+    pub async fn delete_user_caches_v3(&self, key: &str) -> Result<(), anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        // Use V2 suffixes - V3 functions operate on the same keys
+        #[allow(clippy::useless_vec)]
+        let suffixes = vec![
+            consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2,
+            consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX_V2,
+            consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2,
+            consts::USER_SUCCESS_HISTORY_NSFW_SUFFIX_V2,
+            consts::USER_WATCH_HISTORY_PLAIN_POST_ITEM_SUFFIX_V2,
+            consts::USER_LIKE_HISTORY_PLAIN_POST_ITEM_SUFFIX_V2,
+            consts::USER_CACHE_CLEAN_SUFFIX_V2,
+            consts::USER_CACHE_NSFW_SUFFIX_V2,
+            consts::USER_CACHE_MIXED_SUFFIX_V2,
+        ];
+
+        // Build all keys with suffixes
+        let keys: Vec<String> = suffixes
+            .iter()
+            .map(|suffix| format!("{key}{suffix}"))
+            .collect();
+
+        // Delete all keys in one statement
+        conn.del::<Vec<String>, ()>(keys.clone()).await?;
+
+        // Update memory store pool asynchronously
+        self.spawn_memory_store_update(key, move |pool, _| {
+            Box::pin(async move {
+                let mut conn = match pool.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to get memory store connection: {e}");
+                        return Ok(());
+                    }
+                };
+
+                if let Err(e) = conn.del::<Vec<String>, ()>(keys).await {
+                    log::error!("Failed to delete keys from memory store: {e}");
+                }
+                Ok(())
+            })
+        });
+
+        Ok(())
+    }
+
+    // Backward compatibility helper functions
+    
+    /// Convert V2 PostItem to V3 PostItem
+    pub fn convert_post_item_v2_to_v3(item: &PostItemV2) -> PostItemV3 {
+        PostItemV3 {
+            publisher_user_id: item.publisher_user_id.clone(),
+            canister_id: item.canister_id.clone(),
+            post_id: item.post_id.to_string(),
+            video_id: item.video_id.clone(),
+            is_nsfw: item.is_nsfw,
+        }
+    }
+
+    /// Try to convert V3 PostItem to V2 PostItem (fails if post_id is not numeric)
+    pub fn try_convert_post_item_v3_to_v2(item: &PostItemV3) -> Option<PostItemV2> {
+        item.post_id.parse::<u64>().ok().map(|post_id| PostItemV2 {
+            publisher_user_id: item.publisher_user_id.clone(),
+            canister_id: item.canister_id.clone(),
+            post_id,
+            video_id: item.video_id.clone(),
+            is_nsfw: item.is_nsfw,
+        })
+    }
+
+    /// Convert V2 history item to V3
+    pub fn convert_history_item_v2_to_v3(item: &MLFeedCacheHistoryItemV2) -> MLFeedCacheHistoryItemV3 {
+        MLFeedCacheHistoryItemV3 {
+            publisher_user_id: item.publisher_user_id.clone(),
+            canister_id: item.canister_id.clone(),
+            post_id: item.post_id.to_string(),
+            video_id: item.video_id.clone(),
+            item_type: item.item_type.clone(),
+            timestamp: item.timestamp,
+            percent_watched: item.percent_watched,
+        }
+    }
+
+    /// Try to convert V3 history item to V2 (fails if post_id is not numeric)
+    pub fn try_convert_history_item_v3_to_v2(item: &MLFeedCacheHistoryItemV3) -> Option<MLFeedCacheHistoryItemV2> {
+        item.post_id.parse::<u64>().ok().map(|post_id| MLFeedCacheHistoryItemV2 {
+            publisher_user_id: item.publisher_user_id.clone(),
+            canister_id: item.canister_id.clone(),
+            post_id,
+            video_id: item.video_id.clone(),
+            item_type: item.item_type.clone(),
+            timestamp: item.timestamp,
+            percent_watched: item.percent_watched,
+        })
+    }
+
+    /// Convert V2 buffer item to V3
+    pub fn convert_buffer_item_v2_to_v3(item: &BufferItemV2) -> BufferItemV3 {
+        BufferItemV3 {
+            publisher_user_id: item.publisher_user_id.clone(),
+            post_id: item.post_id.to_string(),
+            video_id: item.video_id.clone(),
+            item_type: item.item_type.clone(),
+            percent_watched: item.percent_watched,
+            user_id: item.user_id.clone(),
+            timestamp: item.timestamp,
+        }
+    }
+
+    /// Try to convert V3 buffer item to V2 (fails if post_id is not numeric)
+    pub fn try_convert_buffer_item_v3_to_v2(item: &BufferItemV3) -> Option<BufferItemV2> {
+        item.post_id.parse::<u64>().ok().map(|post_id| BufferItemV2 {
+            publisher_user_id: item.publisher_user_id.clone(),
+            post_id,
+            video_id: item.video_id.clone(),
+            item_type: item.item_type.clone(),
+            percent_watched: item.percent_watched,
+            user_id: item.user_id.clone(),
+            timestamp: item.timestamp,
+        })
+    }
+
+    /// Read legacy V2 data and convert to V3
+    pub async fn read_legacy_as_v3(&self, key: &str) -> Result<Vec<PostItemV3>, anyhow::Error> {
+        let v2_items = self.get_cache_items_v2(key, 0, u64::MAX).await?;
+        Ok(v2_items.iter().map(|item| Self::convert_post_item_v2_to_v3(item)).collect())
+    }
+
+    /// Helper to parse String post_id back to u64 for legacy systems
+    pub fn try_parse_legacy_post_id(post_id: &str) -> Option<u64> {
+        post_id.parse().ok()
+    }
+
+    // Resilient read methods that handle mixed u64/String post_ids in Redis
+    
+    /// Get cache items V2 with resilience to String post_ids
+    /// Filters out items with non-numeric String post_ids
+    pub async fn get_cache_items_v2_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<PostItemV2>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn
+            .zrevrange(key, start as isize, end as isize)
+            .await?;
+        
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v2_resilient(&value) {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized or have non-numeric post_ids
+        }
+        
+        Ok(items)
+    }
+
+    /// Get cache items V1 with resilience to String post_ids
+    /// Filters out items with non-numeric String post_ids
+    pub async fn get_cache_items_v1_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<PostItem>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn
+            .zrevrange(key, start as isize, end as isize)
+            .await?;
+        
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v1_resilient(&value) {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized or have non-numeric post_ids
+        }
+        
+        Ok(items)
+    }
+
+    /// Get watch history items V2 with resilience to String post_ids
+    pub async fn get_watch_history_items_v2_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<MLFeedCacheHistoryItemV2>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn
+            .zrevrange(key, start as isize, end as isize)
+            .await?;
+        
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v2_resilient(&value) {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized or have non-numeric post_ids
+        }
+        
+        Ok(items)
+    }
+
+    /// Get buffer items V2 with resilience to String post_ids
+    pub async fn get_buffer_items_v2_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<BufferItemV2>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn
+            .zrevrange(key, start as isize, end as isize)
+            .await?;
+        
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v2_resilient(&value) {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized or have non-numeric post_ids
+        }
+        
+        Ok(items)
+    }
+
+    // V3 Resilient Methods
+    
+    pub async fn get_cache_items_v3_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<PostItemV3>, anyhow::Error> {
+        // V3 already handles String post_ids, so no special resilience needed
+        self.get_cache_items_v3(key, start, end).await
+    }
+
+    pub async fn get_watch_history_items_v3_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<MLFeedCacheHistoryItemV3>, anyhow::Error> {
+        // V3 already handles String post_ids, so no special resilience needed
+        self.get_history_items_v3(key, start, end).await
+    }
+
+    pub async fn get_buffer_items_v3_resilient(
+        &self,
+        key: &str,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
+        let mut conn = self.redis_pool.get().await.unwrap();
+        
+        // Get buffer items directly - V3 already uses String post_ids
+        let items = conn
+            .zrevrange::<&str, Vec<BufferItemV3>>(key, start as isize, end as isize)
+            .await?;
+        
+        Ok(items)
     }
 }
 
@@ -1986,5 +2701,199 @@ mod tests {
             let exists = conn.exists::<&str, bool>(&full_key).await.unwrap();
             assert!(!exists, "Key {full_key} should not exist");
         }
+    }
+
+    #[tokio::test]
+    async fn test_v3_types_with_string_post_id() {
+        let state = MLFeedCacheState::new().await;
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let test_key = "test_v3_types";
+        
+        // Clean up
+        let _res = conn.del::<&str, ()>(test_key).await;
+        
+        // Test PostItemV3 with string post_ids
+        let items = vec![
+            PostItemV3 {
+                publisher_user_id: "user1".to_string(),
+                canister_id: "canister1".to_string(),
+                post_id: "123".to_string(), // Numeric string
+                video_id: "video1".to_string(),
+                is_nsfw: false,
+            },
+            PostItemV3 {
+                publisher_user_id: "user2".to_string(),
+                canister_id: "canister2".to_string(),
+                post_id: "abc-456-def".to_string(), // Non-numeric string
+                video_id: "video2".to_string(),
+                is_nsfw: true,
+            },
+        ];
+        
+        // Add V3 items to cache
+        let res = state.add_user_cache_items_v3(test_key, items.clone()).await;
+        assert!(res.is_ok());
+        
+        // Retrieve V3 items
+        let retrieved = state.get_cache_items_v3(test_key, 0, 10).await.unwrap();
+        assert_eq!(retrieved.len(), 2);
+        
+        // Verify post_ids are strings
+        assert!(retrieved.iter().any(|item| item.post_id == "123"));
+        assert!(retrieved.iter().any(|item| item.post_id == "abc-456-def"));
+        
+        // Clean up
+        conn.del::<&str, ()>(test_key).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_v3_history_items() {
+        let state = MLFeedCacheState::new().await;
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let test_key = "test_v3_history";
+        
+        // Clean up
+        let _res = conn.del::<&str, ()>(test_key).await;
+        
+        // Test MLFeedCacheHistoryItemV3
+        let items = vec![
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub1".to_string(),
+                canister_id: "can1".to_string(),
+                post_id: "post-id-string".to_string(),
+                video_id: "vid1".to_string(),
+                item_type: "view".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 0.75,
+            },
+        ];
+        
+        let res = state.add_user_watch_history_items_v3(test_key, items).await;
+        assert!(res.is_ok());
+        
+        // Clean up
+        conn.del::<&str, ()>(test_key).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_v3_buffer_items() {
+        let state = MLFeedCacheState::new().await;
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let test_key = format!("{}_v3", USER_HOTORNOT_BUFFER_KEY_V2);
+        
+        // Clean up
+        let _res = conn.del::<&str, ()>(&test_key).await;
+        
+        // Test BufferItemV3
+        let items = vec![
+            BufferItemV3 {
+                publisher_user_id: "pub1".to_string(),
+                post_id: "unique-post-id-123".to_string(),
+                video_id: "vid1".to_string(),
+                item_type: "like".to_string(),
+                percent_watched: 1.0,
+                user_id: "user1".to_string(),
+                timestamp: SystemTime::now(),
+            },
+        ];
+        
+        let res = state.add_user_buffer_items_v3(items).await;
+        assert!(res.is_ok());
+        
+        // Verify item was added
+        let num_items = conn.zcard::<&str, u64>(&test_key).await.unwrap();
+        assert_eq!(num_items, 1);
+        
+        // Clean up
+        conn.del::<&str, ()>(&test_key).await.unwrap();
+    }
+
+    #[test]
+    fn test_v2_to_v3_conversion() {
+        // Test PostItemV2 to PostItemV3 conversion
+        let v2_item = PostItemV2 {
+            publisher_user_id: "user1".to_string(),
+            canister_id: "can1".to_string(),
+            post_id: 12345u64,
+            video_id: "vid1".to_string(),
+            is_nsfw: false,
+        };
+        
+        let v3_item = MLFeedCacheState::convert_post_item_v2_to_v3(&v2_item);
+        assert_eq!(v3_item.post_id, "12345");
+        assert_eq!(v3_item.publisher_user_id, v2_item.publisher_user_id);
+        assert_eq!(v3_item.video_id, v2_item.video_id);
+        
+        // Test V3 to V2 conversion (should succeed for numeric strings)
+        let result = MLFeedCacheState::try_convert_post_item_v3_to_v2(&v3_item);
+        assert!(result.is_some());
+        let v2_back = result.unwrap();
+        assert_eq!(v2_back.post_id, 12345u64);
+        
+        // Test V3 to V2 conversion with non-numeric string (should fail)
+        let v3_non_numeric = PostItemV3 {
+            publisher_user_id: "user1".to_string(),
+            canister_id: "can1".to_string(),
+            post_id: "not-a-number".to_string(),
+            video_id: "vid1".to_string(),
+            is_nsfw: false,
+        };
+        
+        let result = MLFeedCacheState::try_convert_post_item_v3_to_v2(&v3_non_numeric);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_history_item_conversions() {
+        let v2_item = MLFeedCacheHistoryItemV2 {
+            publisher_user_id: "pub1".to_string(),
+            canister_id: "can1".to_string(),
+            post_id: 999u64,
+            video_id: "vid1".to_string(),
+            item_type: "view".to_string(),
+            timestamp: SystemTime::now(),
+            percent_watched: 0.5,
+        };
+        
+        let v3_item = MLFeedCacheState::convert_history_item_v2_to_v3(&v2_item);
+        assert_eq!(v3_item.post_id, "999");
+        
+        let v2_back = MLFeedCacheState::try_convert_history_item_v3_to_v2(&v3_item);
+        assert!(v2_back.is_some());
+        assert_eq!(v2_back.unwrap().post_id, 999u64);
+    }
+
+    #[test]
+    fn test_buffer_item_conversions() {
+        let v2_item = BufferItemV2 {
+            publisher_user_id: "pub1".to_string(),
+            post_id: 777u64,
+            video_id: "vid1".to_string(),
+            item_type: "like".to_string(),
+            percent_watched: 1.0,
+            user_id: "user1".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        
+        let v3_item = MLFeedCacheState::convert_buffer_item_v2_to_v3(&v2_item);
+        assert_eq!(v3_item.post_id, "777");
+        
+        let v2_back = MLFeedCacheState::try_convert_buffer_item_v3_to_v2(&v3_item);
+        assert!(v2_back.is_some());
+        assert_eq!(v2_back.unwrap().post_id, 777u64);
+    }
+
+    #[test]
+    fn test_legacy_post_id_parsing() {
+        // Test valid numeric strings
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("123"), Some(123u64));
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("0"), Some(0u64));
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("999999"), Some(999999u64));
+        
+        // Test invalid strings
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("abc"), None);
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("123-456"), None);
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id(""), None);
+        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("12.34"), None);
     }
 }
