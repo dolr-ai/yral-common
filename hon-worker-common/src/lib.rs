@@ -306,9 +306,22 @@ pub struct GameResV3 {
     pub game_info: GameInfo,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameResV4 {
+    pub publisher_principal: Principal,
+    pub post_id: String,
+    pub game_info: GameInfo,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PaginatedGamesResV3 {
     pub games: Vec<GameResV3>,
+    pub next: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PaginatedGamesResV4 {
+    pub games: Vec<GameResV4>,
     pub next: Option<String>,
 }
 
@@ -319,9 +332,23 @@ pub struct GameInfoReqV3 {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
+pub struct GameInfoReqV4 {
+    pub publisher_principal: Principal,
+    pub post_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
 pub struct VoteRequestV3 {
     pub publisher_principal: Principal,
     pub post_id: u64,
+    pub vote_amount: u128,
+    pub direction: HotOrNot,
+}
+
+#[derive(Serialize, Deserialize, Clone, CandidType, Debug)]
+pub struct VoteRequestV4 {
+    pub publisher_principal: Principal,
+    pub post_id: String,
     pub vote_amount: u128,
     pub direction: HotOrNot,
 }
@@ -336,6 +363,17 @@ pub fn sign_vote_request_v3(
     sign_message(sender, msg)
 }
 
+#[cfg(feature = "client")]
+pub fn sign_vote_request_v4(
+    sender: &impl ic_agent::Identity,
+    request: VoteRequestV4,
+) -> identity::Result<Signature> {
+    use identity::ic_agent::sign_message;
+
+    let msg = hon_game_vote_msg_v4(request.clone());
+    sign_message(sender, msg)
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HoNGameVoteReqV3 {
     pub request: VoteRequestV3,
@@ -345,9 +383,24 @@ pub struct HoNGameVoteReqV3 {
     pub signature: Signature,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HoNGameVoteReqV4 {
+    pub request: VoteRequestV4,
+    pub fetched_sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+    pub signature: Signature,
+}
+
 pub fn hon_game_vote_msg_v3(request: VoteRequestV3) -> identity::msg_builder::Message {
     identity::msg_builder::Message::default()
         .method_name("hon_worker_game_vote_v3".into())
+        .args((request,))
+        .expect("Vote request should serialize")
+}
+
+pub fn hon_game_vote_msg_v4(request: VoteRequestV4) -> identity::msg_builder::Message {
+    identity::msg_builder::Message::default()
+        .method_name("hon_worker_game_vote_v4".into())
         .args((request,))
         .expect("Vote request should serialize")
 }
@@ -362,6 +415,13 @@ pub struct VoteRequestWithSentiment {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VoteRequestWithSentimentV3 {
     pub request: VoteRequestV3,
+    pub sentiment: HotOrNot,
+    pub post_creator: Option<Principal>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VoteRequestWithSentimentV4 {
+    pub request: VoteRequestV4,
     pub sentiment: HotOrNot,
     pub post_creator: Option<Principal>,
 }
