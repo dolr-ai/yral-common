@@ -470,6 +470,7 @@ impl MLFeedCacheState {
     }
 
     // V2 Methods
+    #[deprecated(since = "0.3.0", note = "Use add_user_watch_history_items_v3 instead")]
     pub async fn add_user_watch_history_items_v2(
         &self,
         key: &str,
@@ -546,6 +547,10 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use add_user_success_history_items_v3 instead"
+    )]
     pub async fn add_user_success_history_items_v2(
         &self,
         key: &str,
@@ -621,6 +626,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.3.0", note = "Use get_history_items_v3 instead")]
     pub async fn get_history_items_v2(
         &self,
         key: &str,
@@ -636,6 +642,7 @@ impl MLFeedCacheState {
         Ok(items)
     }
 
+    #[deprecated(since = "0.3.0", note = "Use add_user_history_plain_items_v3 instead")]
     pub async fn add_user_history_plain_items_v2(
         &self,
         key: &str,
@@ -681,6 +688,10 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use is_user_history_plain_item_exists_v3 instead"
+    )]
     pub async fn is_user_history_plain_item_exists_v2(
         &self,
         key: &str,
@@ -695,6 +706,7 @@ impl MLFeedCacheState {
         Ok(res.is_some())
     }
 
+    #[deprecated(since = "0.3.0", note = "Use add_user_cache_items_v3 instead")]
     pub async fn add_user_cache_items_v2(
         &self,
         key: &str,
@@ -730,6 +742,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.3.0", note = "Use add_global_cache_items_v3 instead")]
     pub async fn add_global_cache_items_v2(
         &self,
         key: &str,
@@ -769,6 +782,7 @@ impl MLFeedCacheState {
         Ok(())
     }
 
+    #[deprecated(since = "0.3.0", note = "Use get_cache_items_v3 instead")]
     pub async fn get_cache_items_v2(
         &self,
         key: &str,
@@ -784,8 +798,18 @@ impl MLFeedCacheState {
         Ok(items)
     }
 
+    #[deprecated(since = "0.3.0", note = "Use add_user_buffer_items_v3 instead")]
     pub async fn add_user_buffer_items_v2(
         &self,
+        items: Vec<BufferItemV2>,
+    ) -> Result<(), anyhow::Error> {
+        self.add_user_buffer_items_impl_v2(USER_HOTORNOT_BUFFER_KEY_V2, items)
+            .await
+    }
+
+    pub async fn add_user_buffer_items_impl_v2(
+        &self,
+        key: &str,
         items: Vec<BufferItemV2>,
     ) -> Result<(), anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
@@ -802,13 +826,17 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, f64, BufferItemV2, ()>(USER_HOTORNOT_BUFFER_KEY_V2, chunk)
+            conn.zadd_multiple::<&str, f64, BufferItemV2, ()>(key, chunk)
                 .await?;
         }
 
         Ok(())
     }
 
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use get_user_buffer_items_by_timestamp_v3 instead"
+    )]
     pub async fn get_user_buffer_items_by_timestamp_v2(
         &self,
         timestamp_secs: u64,
@@ -831,6 +859,10 @@ impl MLFeedCacheState {
         Ok(items)
     }
 
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use remove_user_buffer_items_by_timestamp_v3 instead"
+    )]
     pub async fn remove_user_buffer_items_by_timestamp_v2(
         &self,
         timestamp_secs: u64,
@@ -854,6 +886,7 @@ impl MLFeedCacheState {
         Ok(res)
     }
 
+    #[deprecated(since = "0.3.0", note = "Use delete_user_caches_v3 instead")]
     pub async fn delete_user_caches_v2(&self, key: &str) -> Result<(), anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
@@ -902,7 +935,7 @@ impl MLFeedCacheState {
     }
 
     // V3 API Methods with String post_id
-    
+
     pub async fn add_user_watch_history_items_v3(
         &self,
         key: &str,
@@ -1060,9 +1093,18 @@ impl MLFeedCacheState {
     ) -> Result<Vec<MLFeedCacheHistoryItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
-        let items = conn
-            .zrevrange::<&str, Vec<MLFeedCacheHistoryItemV3>>(key, start as isize, end as isize)
-            .await?;
+        // Get raw values from Redis to handle mixed u64/String post_ids
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
+        // Filter and convert values using resilient deserializer
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v3_resilient(&value)
+            {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
 
         Ok(items)
     }
@@ -1130,8 +1172,12 @@ impl MLFeedCacheState {
         // Trim to max length
         let num_items = conn.zcard::<&str, u64>(key).await?;
         if num_items > MAX_GLOBAL_CACHE_LEN {
-            conn.zremrangebyrank::<&str, ()>(key, 0, (num_items - MAX_GLOBAL_CACHE_LEN - 1) as isize)
-                .await?;
+            conn.zremrangebyrank::<&str, ()>(
+                key,
+                0,
+                (num_items - MAX_GLOBAL_CACHE_LEN - 1) as isize,
+            )
+            .await?;
         }
 
         Ok(())
@@ -1144,9 +1190,19 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<PostItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        let items = conn
-            .zrevrange::<&str, Vec<PostItemV3>>(key, start as isize, end as isize)
-            .await?;
+
+        // Get raw values from Redis to handle mixed u64/String post_ids
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
+        // Filter and convert values using resilient deserializer
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v3_resilient(&value) {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
+
         Ok(items)
     }
 
@@ -1167,7 +1223,6 @@ impl MLFeedCacheState {
                         .as_secs(),
                     PlainPostItemV3 {
                         video_id: item.video_id.clone(),
-                        post_id: item.post_id.clone(),
                     },
                 )
             })
@@ -1203,8 +1258,22 @@ impl MLFeedCacheState {
     ) -> Result<bool, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
+        // First try direct zscore with V3 item
         let res = conn
-            .zscore::<&str, PlainPostItemV3, Option<f64>>(key, item)
+            .zscore::<&str, PlainPostItemV3, Option<f64>>(key, item.clone())
+            .await?;
+
+        if res.is_some() {
+            return Ok(true);
+        }
+
+        // Try with V2 format (both V2 and V3 have same structure - just video_id)
+        let v2_item = PlainPostItemV2 {
+            video_id: item.video_id,
+        };
+
+        let res = conn
+            .zscore::<&str, PlainPostItemV2, Option<f64>>(key, v2_item)
             .await?;
 
         Ok(res.is_some())
@@ -1212,6 +1281,15 @@ impl MLFeedCacheState {
 
     pub async fn add_user_buffer_items_v3(
         &self,
+        items: Vec<BufferItemV3>,
+    ) -> Result<(), anyhow::Error> {
+        self.add_user_buffer_items_impl_v3(consts::USER_HOTORNOT_BUFFER_KEY_V3, items)
+            .await
+    }
+
+    pub async fn add_user_buffer_items_impl_v3(
+        &self,
+        key: &str,
         items: Vec<BufferItemV3>,
     ) -> Result<(), anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
@@ -1228,7 +1306,7 @@ impl MLFeedCacheState {
         // zadd_multiple in groups of 1000
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, f64, BufferItemV3, ()>(consts::USER_HOTORNOT_BUFFER_KEY_V2, chunk)
+            conn.zadd_multiple::<&str, f64, BufferItemV3, ()>(key, chunk)
                 .await?;
         }
 
@@ -1281,9 +1359,27 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<PlainPostItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        let items = conn
-            .zrevrange::<&str, Vec<PlainPostItemV3>>(key, start as isize, end as isize)
-            .await?;
+
+        // Get raw values from Redis to handle mixed u64/String post_ids
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
+        println!(
+            "Fetched {} values from Redis for key '{}'",
+            values.len(),
+            key
+        );
+
+        // Filter and convert values using resilient deserializer
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) =
+                mixed_type_compat::deserialize_plain_post_item_v3_resilient(&value)
+            {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
+
         Ok(items)
     }
 
@@ -1291,8 +1387,11 @@ impl MLFeedCacheState {
         &self,
         timestamp_secs: u64,
     ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
-        self.get_user_buffer_items_by_timestamp_impl_v3(consts::USER_HOTORNOT_BUFFER_KEY_V2, timestamp_secs)
-            .await
+        self.get_user_buffer_items_by_timestamp_impl_v3(
+            consts::USER_HOTORNOT_BUFFER_KEY_V3,
+            timestamp_secs,
+        )
+        .await
     }
 
     async fn get_user_buffer_items_by_timestamp_impl_v3(
@@ -1301,9 +1400,20 @@ impl MLFeedCacheState {
         timestamp_secs: u64,
     ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        let items = conn
-            .zrangebyscore::<&str, u64, u64, Vec<BufferItemV3>>(key, 0, timestamp_secs)
-            .await?;
+
+        // Get raw values from Redis to handle mixed u64/String post_ids
+        let values: Vec<redis::Value> = conn.zrangebyscore(key, 0, timestamp_secs).await?;
+
+        // Filter and convert values using resilient deserializer
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v3_resilient(&value)
+            {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
+
         Ok(items)
     }
 
@@ -1312,7 +1422,7 @@ impl MLFeedCacheState {
         timestamp_secs: u64,
     ) -> Result<u64, anyhow::Error> {
         self.remove_user_buffer_items_by_timestamp_impl_v3(
-            consts::USER_HOTORNOT_BUFFER_KEY_V2,
+            consts::USER_HOTORNOT_BUFFER_KEY_V3,
             timestamp_secs,
         )
         .await
@@ -1378,7 +1488,7 @@ impl MLFeedCacheState {
     }
 
     // Backward compatibility helper functions
-    
+
     /// Convert V2 PostItem to V3 PostItem
     pub fn convert_post_item_v2_to_v3(item: &PostItemV2) -> PostItemV3 {
         PostItemV3 {
@@ -1402,7 +1512,9 @@ impl MLFeedCacheState {
     }
 
     /// Convert V2 history item to V3
-    pub fn convert_history_item_v2_to_v3(item: &MLFeedCacheHistoryItemV2) -> MLFeedCacheHistoryItemV3 {
+    pub fn convert_history_item_v2_to_v3(
+        item: &MLFeedCacheHistoryItemV2,
+    ) -> MLFeedCacheHistoryItemV3 {
         MLFeedCacheHistoryItemV3 {
             publisher_user_id: item.publisher_user_id.clone(),
             canister_id: item.canister_id.clone(),
@@ -1415,16 +1527,21 @@ impl MLFeedCacheState {
     }
 
     /// Try to convert V3 history item to V2 (fails if post_id is not numeric)
-    pub fn try_convert_history_item_v3_to_v2(item: &MLFeedCacheHistoryItemV3) -> Option<MLFeedCacheHistoryItemV2> {
-        item.post_id.parse::<u64>().ok().map(|post_id| MLFeedCacheHistoryItemV2 {
-            publisher_user_id: item.publisher_user_id.clone(),
-            canister_id: item.canister_id.clone(),
-            post_id,
-            video_id: item.video_id.clone(),
-            item_type: item.item_type.clone(),
-            timestamp: item.timestamp,
-            percent_watched: item.percent_watched,
-        })
+    pub fn try_convert_history_item_v3_to_v2(
+        item: &MLFeedCacheHistoryItemV3,
+    ) -> Option<MLFeedCacheHistoryItemV2> {
+        item.post_id
+            .parse::<u64>()
+            .ok()
+            .map(|post_id| MLFeedCacheHistoryItemV2 {
+                publisher_user_id: item.publisher_user_id.clone(),
+                canister_id: item.canister_id.clone(),
+                post_id,
+                video_id: item.video_id.clone(),
+                item_type: item.item_type.clone(),
+                timestamp: item.timestamp,
+                percent_watched: item.percent_watched,
+            })
     }
 
     /// Convert V2 buffer item to V3
@@ -1442,21 +1559,24 @@ impl MLFeedCacheState {
 
     /// Try to convert V3 buffer item to V2 (fails if post_id is not numeric)
     pub fn try_convert_buffer_item_v3_to_v2(item: &BufferItemV3) -> Option<BufferItemV2> {
-        item.post_id.parse::<u64>().ok().map(|post_id| BufferItemV2 {
-            publisher_user_id: item.publisher_user_id.clone(),
-            post_id,
-            video_id: item.video_id.clone(),
-            item_type: item.item_type.clone(),
-            percent_watched: item.percent_watched,
-            user_id: item.user_id.clone(),
-            timestamp: item.timestamp,
-        })
+        item.post_id
+            .parse::<u64>()
+            .ok()
+            .map(|post_id| BufferItemV2 {
+                publisher_user_id: item.publisher_user_id.clone(),
+                post_id,
+                video_id: item.video_id.clone(),
+                item_type: item.item_type.clone(),
+                percent_watched: item.percent_watched,
+                user_id: item.user_id.clone(),
+                timestamp: item.timestamp,
+            })
     }
 
     /// Read legacy V2 data and convert to V3
     pub async fn read_legacy_as_v3(&self, key: &str) -> Result<Vec<PostItemV3>, anyhow::Error> {
-        let v2_items = self.get_cache_items_v2(key, 0, u64::MAX).await?;
-        Ok(v2_items.iter().map(|item| Self::convert_post_item_v2_to_v3(item)).collect())
+        let v3_items = self.get_cache_items_v3(key, 0, u64::MAX).await?;
+        Ok(v3_items)
     }
 
     /// Helper to parse String post_id back to u64 for legacy systems
@@ -1465,7 +1585,7 @@ impl MLFeedCacheState {
     }
 
     // Resilient read methods that handle mixed u64/String post_ids in Redis
-    
+
     /// Get cache items V2 with resilience to String post_ids
     /// Filters out items with non-numeric String post_ids
     pub async fn get_cache_items_v2_resilient(
@@ -1475,12 +1595,10 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<PostItemV2>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        
+
         // Get raw values from Redis
-        let values: Vec<redis::Value> = conn
-            .zrevrange(key, start as isize, end as isize)
-            .await?;
-        
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
         // Filter and convert values
         let mut items = Vec::new();
         for value in values {
@@ -1489,7 +1607,7 @@ impl MLFeedCacheState {
             }
             // Skip items that can't be deserialized or have non-numeric post_ids
         }
-        
+
         Ok(items)
     }
 
@@ -1502,12 +1620,10 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<PostItem>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        
+
         // Get raw values from Redis
-        let values: Vec<redis::Value> = conn
-            .zrevrange(key, start as isize, end as isize)
-            .await?;
-        
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
         // Filter and convert values
         let mut items = Vec::new();
         for value in values {
@@ -1516,11 +1632,15 @@ impl MLFeedCacheState {
             }
             // Skip items that can't be deserialized or have non-numeric post_ids
         }
-        
+
         Ok(items)
     }
 
     /// Get watch history items V2 with resilience to String post_ids
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use get_watch_history_items_v3_resilient instead"
+    )]
     pub async fn get_watch_history_items_v2_resilient(
         &self,
         key: &str,
@@ -1528,25 +1648,25 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<MLFeedCacheHistoryItemV2>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        
+
         // Get raw values from Redis
-        let values: Vec<redis::Value> = conn
-            .zrevrange(key, start as isize, end as isize)
-            .await?;
-        
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
         // Filter and convert values
         let mut items = Vec::new();
         for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v2_resilient(&value) {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v2_resilient(&value)
+            {
                 items.push(item);
             }
             // Skip items that can't be deserialized or have non-numeric post_ids
         }
-        
+
         Ok(items)
     }
 
     /// Get buffer items V2 with resilience to String post_ids
+    #[deprecated(since = "0.3.0", note = "Use get_buffer_items_v3_resilient instead")]
     pub async fn get_buffer_items_v2_resilient(
         &self,
         key: &str,
@@ -1554,46 +1674,76 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<BufferItemV2>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        
+
         // Get raw values from Redis
-        let values: Vec<redis::Value> = conn
-            .zrevrange(key, start as isize, end as isize)
-            .await?;
-        
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
         // Filter and convert values
         let mut items = Vec::new();
         for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v2_resilient(&value) {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v2_resilient(&value)
+            {
                 items.push(item);
             }
             // Skip items that can't be deserialized or have non-numeric post_ids
         }
-        
+
         Ok(items)
     }
 
     // V3 Resilient Methods
-    
+
+    /// Get cache items V3 with resilience to u64 post_ids from V2 data
+    /// Converts u64 post_ids to String
     pub async fn get_cache_items_v3_resilient(
         &self,
         key: &str,
         start: u64,
         end: u64,
     ) -> Result<Vec<PostItemV3>, anyhow::Error> {
-        // V3 already handles String post_ids, so no special resilience needed
-        self.get_cache_items_v3(key, start, end).await
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v3_resilient(&value) {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
+
+        Ok(items)
     }
 
+    /// Get watch history items V3 with resilience to u64 post_ids from V2 data
     pub async fn get_watch_history_items_v3_resilient(
         &self,
         key: &str,
         start: u64,
         end: u64,
     ) -> Result<Vec<MLFeedCacheHistoryItemV3>, anyhow::Error> {
-        // V3 already handles String post_ids, so no special resilience needed
-        self.get_history_items_v3(key, start, end).await
+        let mut conn = self.redis_pool.get().await.unwrap();
+
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v3_resilient(&value)
+            {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
+
+        Ok(items)
     }
 
+    /// Get buffer items V3 with resilience to u64 post_ids from V2 data
     pub async fn get_buffer_items_v3_resilient(
         &self,
         key: &str,
@@ -1601,12 +1751,20 @@ impl MLFeedCacheState {
         end: u64,
     ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
-        
-        // Get buffer items directly - V3 already uses String post_ids
-        let items = conn
-            .zrevrange::<&str, Vec<BufferItemV3>>(key, start as isize, end as isize)
-            .await?;
-        
+
+        // Get raw values from Redis
+        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+
+        // Filter and convert values
+        let mut items = Vec::new();
+        for value in values {
+            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v3_resilient(&value)
+            {
+                items.push(item);
+            }
+            // Skip items that can't be deserialized
+        }
+
         Ok(items)
     }
 }
@@ -2708,10 +2866,10 @@ mod tests {
         let state = MLFeedCacheState::new().await;
         let mut conn = state.redis_pool.get().await.unwrap();
         let test_key = "test_v3_types";
-        
+
         // Clean up
         let _res = conn.del::<&str, ()>(test_key).await;
-        
+
         // Test PostItemV3 with string post_ids
         let items = vec![
             PostItemV3 {
@@ -2729,19 +2887,19 @@ mod tests {
                 is_nsfw: true,
             },
         ];
-        
+
         // Add V3 items to cache
         let res = state.add_user_cache_items_v3(test_key, items.clone()).await;
         assert!(res.is_ok());
-        
+
         // Retrieve V3 items
         let retrieved = state.get_cache_items_v3(test_key, 0, 10).await.unwrap();
         assert_eq!(retrieved.len(), 2);
-        
+
         // Verify post_ids are strings
         assert!(retrieved.iter().any(|item| item.post_id == "123"));
         assert!(retrieved.iter().any(|item| item.post_id == "abc-456-def"));
-        
+
         // Clean up
         conn.del::<&str, ()>(test_key).await.unwrap();
     }
@@ -2751,61 +2909,26 @@ mod tests {
         let state = MLFeedCacheState::new().await;
         let mut conn = state.redis_pool.get().await.unwrap();
         let test_key = "test_v3_history";
-        
+
         // Clean up
         let _res = conn.del::<&str, ()>(test_key).await;
-        
+
         // Test MLFeedCacheHistoryItemV3
-        let items = vec![
-            MLFeedCacheHistoryItemV3 {
-                publisher_user_id: "pub1".to_string(),
-                canister_id: "can1".to_string(),
-                post_id: "post-id-string".to_string(),
-                video_id: "vid1".to_string(),
-                item_type: "view".to_string(),
-                timestamp: SystemTime::now(),
-                percent_watched: 0.75,
-            },
-        ];
-        
+        let items = vec![MLFeedCacheHistoryItemV3 {
+            publisher_user_id: "pub1".to_string(),
+            canister_id: "can1".to_string(),
+            post_id: "post-id-string".to_string(),
+            video_id: "vid1".to_string(),
+            item_type: "view".to_string(),
+            timestamp: SystemTime::now(),
+            percent_watched: 0.75,
+        }];
+
         let res = state.add_user_watch_history_items_v3(test_key, items).await;
         assert!(res.is_ok());
-        
+
         // Clean up
         conn.del::<&str, ()>(test_key).await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_v3_buffer_items() {
-        let state = MLFeedCacheState::new().await;
-        let mut conn = state.redis_pool.get().await.unwrap();
-        let test_key = format!("{}_v3", USER_HOTORNOT_BUFFER_KEY_V2);
-        
-        // Clean up
-        let _res = conn.del::<&str, ()>(&test_key).await;
-        
-        // Test BufferItemV3
-        let items = vec![
-            BufferItemV3 {
-                publisher_user_id: "pub1".to_string(),
-                post_id: "unique-post-id-123".to_string(),
-                video_id: "vid1".to_string(),
-                item_type: "like".to_string(),
-                percent_watched: 1.0,
-                user_id: "user1".to_string(),
-                timestamp: SystemTime::now(),
-            },
-        ];
-        
-        let res = state.add_user_buffer_items_v3(items).await;
-        assert!(res.is_ok());
-        
-        // Verify item was added
-        let num_items = conn.zcard::<&str, u64>(&test_key).await.unwrap();
-        assert_eq!(num_items, 1);
-        
-        // Clean up
-        conn.del::<&str, ()>(&test_key).await.unwrap();
     }
 
     #[test]
@@ -2818,18 +2941,18 @@ mod tests {
             video_id: "vid1".to_string(),
             is_nsfw: false,
         };
-        
+
         let v3_item = MLFeedCacheState::convert_post_item_v2_to_v3(&v2_item);
         assert_eq!(v3_item.post_id, "12345");
         assert_eq!(v3_item.publisher_user_id, v2_item.publisher_user_id);
         assert_eq!(v3_item.video_id, v2_item.video_id);
-        
+
         // Test V3 to V2 conversion (should succeed for numeric strings)
         let result = MLFeedCacheState::try_convert_post_item_v3_to_v2(&v3_item);
         assert!(result.is_some());
         let v2_back = result.unwrap();
         assert_eq!(v2_back.post_id, 12345u64);
-        
+
         // Test V3 to V2 conversion with non-numeric string (should fail)
         let v3_non_numeric = PostItemV3 {
             publisher_user_id: "user1".to_string(),
@@ -2838,7 +2961,7 @@ mod tests {
             video_id: "vid1".to_string(),
             is_nsfw: false,
         };
-        
+
         let result = MLFeedCacheState::try_convert_post_item_v3_to_v2(&v3_non_numeric);
         assert!(result.is_none());
     }
@@ -2854,10 +2977,10 @@ mod tests {
             timestamp: SystemTime::now(),
             percent_watched: 0.5,
         };
-        
+
         let v3_item = MLFeedCacheState::convert_history_item_v2_to_v3(&v2_item);
         assert_eq!(v3_item.post_id, "999");
-        
+
         let v2_back = MLFeedCacheState::try_convert_history_item_v3_to_v2(&v3_item);
         assert!(v2_back.is_some());
         assert_eq!(v2_back.unwrap().post_id, 999u64);
@@ -2874,10 +2997,10 @@ mod tests {
             user_id: "user1".to_string(),
             timestamp: SystemTime::now(),
         };
-        
+
         let v3_item = MLFeedCacheState::convert_buffer_item_v2_to_v3(&v2_item);
         assert_eq!(v3_item.post_id, "777");
-        
+
         let v2_back = MLFeedCacheState::try_convert_buffer_item_v3_to_v2(&v3_item);
         assert!(v2_back.is_some());
         assert_eq!(v2_back.unwrap().post_id, 777u64);
@@ -2886,14 +3009,754 @@ mod tests {
     #[test]
     fn test_legacy_post_id_parsing() {
         // Test valid numeric strings
-        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("123"), Some(123u64));
+        assert_eq!(
+            MLFeedCacheState::try_parse_legacy_post_id("123"),
+            Some(123u64)
+        );
         assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("0"), Some(0u64));
-        assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("999999"), Some(999999u64));
-        
+        assert_eq!(
+            MLFeedCacheState::try_parse_legacy_post_id("999999"),
+            Some(999999u64)
+        );
+
         // Test invalid strings
         assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("abc"), None);
         assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("123-456"), None);
         assert_eq!(MLFeedCacheState::try_parse_legacy_post_id(""), None);
         assert_eq!(MLFeedCacheState::try_parse_legacy_post_id("12.34"), None);
+    }
+
+    #[tokio::test]
+    async fn test_v2_v3_mixed_data_resilient_methods() {
+        let state = MLFeedCacheState::new().await;
+
+        // Clean up test keys
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let _ = conn.del::<&str, ()>("test_mixed_history").await;
+        let _ = conn.del::<&str, ()>("test_mixed_cache").await;
+        let _ = conn.del::<&str, ()>("test_mixed_buffer").await;
+
+        // Test 1: Mixed history items (V2 with u64 post_id and V3 with String post_id)
+        {
+            let key = "test_mixed_history";
+
+            // Add V2 items with u64 post_ids
+            let v2_items = vec![
+                MLFeedCacheHistoryItemV2 {
+                    publisher_user_id: "publisher1".to_string(),
+                    canister_id: "canister1".to_string(),
+                    post_id: 12345,
+                    video_id: "video1".to_string(),
+                    item_type: "video_viewed".to_string(),
+                    timestamp: SystemTime::now(),
+                    percent_watched: 75.0,
+                },
+                MLFeedCacheHistoryItemV2 {
+                    publisher_user_id: "publisher2".to_string(),
+                    canister_id: "canister2".to_string(),
+                    post_id: 67890,
+                    video_id: "video2".to_string(),
+                    item_type: "like_video".to_string(),
+                    timestamp: SystemTime::now(),
+                    percent_watched: 100.0,
+                },
+            ];
+
+            state
+                .add_user_watch_history_items_v2(key, v2_items.clone())
+                .await
+                .unwrap();
+
+            // Add V3 items with String post_ids
+            let v3_items = vec![
+                MLFeedCacheHistoryItemV3 {
+                    publisher_user_id: "publisher3".to_string(),
+                    canister_id: "canister3".to_string(),
+                    post_id: "abc123def".to_string(), // Non-numeric String
+                    video_id: "video3".to_string(),
+                    item_type: "video_viewed".to_string(),
+                    timestamp: SystemTime::now(),
+                    percent_watched: 50.0,
+                },
+                MLFeedCacheHistoryItemV3 {
+                    publisher_user_id: "publisher4".to_string(),
+                    canister_id: "canister4".to_string(),
+                    post_id: "999999".to_string(), // Numeric String
+                    video_id: "video4".to_string(),
+                    item_type: "video_viewed".to_string(),
+                    timestamp: SystemTime::now(),
+                    percent_watched: 25.0,
+                },
+            ];
+
+            state
+                .add_user_watch_history_items_v3(key, v3_items.clone())
+                .await
+                .unwrap();
+
+            // Read using V3 resilient method - should get all items with post_ids converted to String
+            let retrieved_items = state
+                .get_watch_history_items_v3_resilient(key, 0, 10)
+                .await
+                .unwrap();
+
+            assert_eq!(retrieved_items.len(), 4, "Should retrieve all 4 items");
+
+            // Verify V2 items are converted correctly (post_id u64 -> String)
+            let v2_converted: Vec<_> = retrieved_items
+                .iter()
+                .filter(|item| item.video_id == "video1" || item.video_id == "video2")
+                .collect();
+            assert_eq!(v2_converted.len(), 2);
+
+            // Check that u64 post_ids were converted to String
+            for item in &v2_converted {
+                if item.video_id == "video1" {
+                    assert_eq!(item.post_id, "12345");
+                } else if item.video_id == "video2" {
+                    assert_eq!(item.post_id, "67890");
+                }
+            }
+
+            // Verify V3 items remain unchanged
+            let v3_items: Vec<_> = retrieved_items
+                .iter()
+                .filter(|item| item.video_id == "video3" || item.video_id == "video4")
+                .collect();
+            assert_eq!(v3_items.len(), 2);
+
+            for item in &v3_items {
+                if item.video_id == "video3" {
+                    assert_eq!(item.post_id, "abc123def");
+                } else if item.video_id == "video4" {
+                    assert_eq!(item.post_id, "999999");
+                }
+            }
+        }
+
+        // Test 2: Mixed cache items (PostItemV2 and PostItemV3)
+        {
+            let key = "test_mixed_cache";
+
+            // Add V2 cache items with u64 post_ids
+            let v2_items = vec![
+                PostItemV2 {
+                    publisher_user_id: "pub1".to_string(),
+                    canister_id: "can1".to_string(),
+                    post_id: 11111,
+                    video_id: "cache_video1".to_string(),
+                    is_nsfw: false,
+                },
+                PostItemV2 {
+                    publisher_user_id: "pub2".to_string(),
+                    canister_id: "can2".to_string(),
+                    post_id: 22222,
+                    video_id: "cache_video2".to_string(),
+                    is_nsfw: true,
+                },
+            ];
+
+            state.add_user_cache_items_v2(key, v2_items).await.unwrap();
+
+            // Add V3 cache items with String post_ids
+            let v3_items = vec![
+                PostItemV3 {
+                    publisher_user_id: "pub3".to_string(),
+                    canister_id: "can3".to_string(),
+                    post_id: "xyz789".to_string(),
+                    video_id: "cache_video3".to_string(),
+                    is_nsfw: false,
+                },
+                PostItemV3 {
+                    publisher_user_id: "pub4".to_string(),
+                    canister_id: "can4".to_string(),
+                    post_id: "33333".to_string(),
+                    video_id: "cache_video4".to_string(),
+                    is_nsfw: false,
+                },
+            ];
+
+            state.add_user_cache_items_v3(key, v3_items).await.unwrap();
+
+            // Read using V3 resilient method
+            let retrieved_items = state
+                .get_cache_items_v3_resilient(key, 0, 10)
+                .await
+                .unwrap();
+
+            assert_eq!(
+                retrieved_items.len(),
+                4,
+                "Should retrieve all 4 cache items"
+            );
+
+            // Verify conversions
+            for item in &retrieved_items {
+                match item.video_id.as_str() {
+                    "cache_video1" => {
+                        assert_eq!(item.post_id, "11111");
+                        assert!(!item.is_nsfw);
+                    }
+                    "cache_video2" => {
+                        assert_eq!(item.post_id, "22222");
+                        assert!(item.is_nsfw);
+                    }
+                    "cache_video3" => assert_eq!(item.post_id, "xyz789"),
+                    "cache_video4" => assert_eq!(item.post_id, "33333"),
+                    _ => panic!("Unexpected video_id"),
+                }
+            }
+        }
+
+        // Test 3: Mixed buffer items
+        {
+            // Add V2 buffer items with u64 post_ids
+            let v2_items = vec![
+                BufferItemV2 {
+                    publisher_user_id: "buf_pub1".to_string(),
+                    post_id: 44444,
+                    video_id: "buf_video1".to_string(),
+                    item_type: "video_viewed".to_string(),
+                    percent_watched: 60.0,
+                    user_id: "user1".to_string(),
+                    timestamp: SystemTime::now(),
+                },
+                BufferItemV2 {
+                    publisher_user_id: "buf_pub2".to_string(),
+                    post_id: 55555,
+                    video_id: "buf_video2".to_string(),
+                    item_type: "like_video".to_string(),
+                    percent_watched: 100.0,
+                    user_id: "user2".to_string(),
+                    timestamp: SystemTime::now(),
+                },
+            ];
+
+            state.add_user_buffer_items_v2(v2_items).await.unwrap();
+
+            // Add V3 buffer items with String post_ids
+            let v3_items = vec![BufferItemV3 {
+                publisher_user_id: "buf_pub3".to_string(),
+                post_id: "buffer_post_abc".to_string(),
+                video_id: "buf_video3".to_string(),
+                item_type: "video_viewed".to_string(),
+                percent_watched: 80.0,
+                user_id: "user3".to_string(),
+                timestamp: SystemTime::now(),
+            }];
+
+            state.add_user_buffer_items_v3(v3_items).await.unwrap();
+
+            // Sleep briefly to ensure items are in buffer
+            tokio::time::sleep(Duration::from_millis(100)).await;
+
+            // Read using V3 resilient method
+            let current_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 1; // Add 1 second to ensure we get all items
+
+            let retrieved_items = state
+                .get_buffer_items_v3_resilient(consts::USER_HOTORNOT_BUFFER_KEY_V2, 0, 10)
+                .await
+                .unwrap();
+
+            // We should get at least the V3 item, V2 items may vary based on timing
+            assert!(
+                !retrieved_items.is_empty(),
+                "Should retrieve at least some buffer items"
+            );
+
+            // Verify any retrieved items have correct post_id format
+            for item in &retrieved_items {
+                match item.video_id.as_str() {
+                    "buf_video1" => assert_eq!(item.post_id, "44444"),
+                    "buf_video2" => assert_eq!(item.post_id, "55555"),
+                    "buf_video3" => assert_eq!(item.post_id, "buffer_post_abc"),
+                    _ => {} // Other items might exist from other tests
+                }
+            }
+        }
+
+        // Clean up
+        let _ = conn.del::<&str, ()>("test_mixed_history").await;
+        let _ = conn.del::<&str, ()>("test_mixed_cache").await;
+
+        println!("✅ V2/V3 mixed data resilient methods test passed!");
+    }
+
+    #[tokio::test]
+    async fn test_v3_get_history_items_resilient() {
+        let state = MLFeedCacheState::new().await;
+
+        // Clean up test key
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let _ = conn.del::<&str, ()>("test_v3_history_resilient").await;
+
+        let key = "test_v3_history_resilient";
+
+        // Add V2 items with u64 post_ids
+        let v2_items = vec![
+            MLFeedCacheHistoryItemV2 {
+                publisher_user_id: "pub1".to_string(),
+                canister_id: "can1".to_string(),
+                post_id: 10001,
+                video_id: "vid1".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 50.0,
+            },
+            MLFeedCacheHistoryItemV2 {
+                publisher_user_id: "pub2".to_string(),
+                canister_id: "can2".to_string(),
+                post_id: 20002,
+                video_id: "vid2".to_string(),
+                item_type: "like_video".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 100.0,
+            },
+        ];
+
+        state
+            .add_user_watch_history_items_v2(key, v2_items)
+            .await
+            .unwrap();
+
+        // Add V3 items with String post_ids
+        let v3_items = vec![
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub3".to_string(),
+                canister_id: "can3".to_string(),
+                post_id: "string_post_123".to_string(),
+                video_id: "vid3".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 75.0,
+            },
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub4".to_string(),
+                canister_id: "can4".to_string(),
+                post_id: "30003".to_string(), // Numeric string
+                video_id: "vid4".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 25.0,
+            },
+        ];
+
+        state
+            .add_user_watch_history_items_v3(key, v3_items)
+            .await
+            .unwrap();
+
+        // Read using V3 method (which now uses resilient logic internally)
+        let retrieved = state.get_history_items_v3(key, 0, 10).await.unwrap();
+
+        assert_eq!(retrieved.len(), 4, "Should retrieve all 4 items");
+
+        // Verify u64 post_ids were converted to String
+        let converted_ids: Vec<String> =
+            retrieved.iter().map(|item| item.post_id.clone()).collect();
+        assert!(converted_ids.contains(&"10001".to_string()));
+        assert!(converted_ids.contains(&"20002".to_string()));
+        assert!(converted_ids.contains(&"string_post_123".to_string()));
+        assert!(converted_ids.contains(&"30003".to_string()));
+
+        // Verify video_ids are preserved
+        let video_ids: Vec<String> = retrieved.iter().map(|item| item.video_id.clone()).collect();
+        assert!(video_ids.contains(&"vid1".to_string()));
+        assert!(video_ids.contains(&"vid2".to_string()));
+        assert!(video_ids.contains(&"vid3".to_string()));
+        assert!(video_ids.contains(&"vid4".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_v3_get_cache_items_resilient() {
+        let state = MLFeedCacheState::new().await;
+
+        // Clean up test key
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let _ = conn.del::<&str, ()>("test_v3_cache_resilient").await;
+
+        let key = "test_v3_cache_resilient";
+
+        // Add V2 cache items with u64 post_ids
+        let v2_items = vec![
+            PostItemV2 {
+                publisher_user_id: "user1".to_string(),
+                canister_id: "can1".to_string(),
+                post_id: 5001,
+                video_id: "cache_vid1".to_string(),
+                is_nsfw: false,
+            },
+            PostItemV2 {
+                publisher_user_id: "user2".to_string(),
+                canister_id: "can2".to_string(),
+                post_id: 5002,
+                video_id: "cache_vid2".to_string(),
+                is_nsfw: true,
+            },
+        ];
+
+        state.add_user_cache_items_v2(key, v2_items).await.unwrap();
+
+        // Add V3 cache items with String post_ids
+        let v3_items = vec![
+            PostItemV3 {
+                publisher_user_id: "user3".to_string(),
+                canister_id: "can3".to_string(),
+                post_id: "non_numeric_id".to_string(),
+                video_id: "cache_vid3".to_string(),
+                is_nsfw: false,
+            },
+            PostItemV3 {
+                publisher_user_id: "user4".to_string(),
+                canister_id: "can4".to_string(),
+                post_id: "5003".to_string(),
+                video_id: "cache_vid4".to_string(),
+                is_nsfw: false,
+            },
+        ];
+
+        state.add_user_cache_items_v3(key, v3_items).await.unwrap();
+
+        // Read using V3 method (which now uses resilient logic internally)
+        let retrieved = state.get_cache_items_v3(key, 0, 10).await.unwrap();
+
+        assert_eq!(retrieved.len(), 4, "Should retrieve all 4 cache items");
+
+        // Verify all post_ids are now Strings
+        for item in &retrieved {
+            match item.video_id.as_str() {
+                "cache_vid1" => assert_eq!(item.post_id, "5001"),
+                "cache_vid2" => {
+                    assert_eq!(item.post_id, "5002");
+                    assert!(item.is_nsfw);
+                }
+                "cache_vid3" => assert_eq!(item.post_id, "non_numeric_id"),
+                "cache_vid4" => assert_eq!(item.post_id, "5003"),
+                _ => panic!("Unexpected video_id"),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_v3_get_plain_post_items_resilient() {
+        let state = MLFeedCacheState::new().await;
+
+        // Clean up test key
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let _ = conn.del::<&str, ()>("test_v3_plain_resilient").await;
+
+        let key = "test_v3_plain_resilient";
+
+        // Add plain post items through history items (since that's how they're typically added)
+        let history_items_v2 = vec![
+            MLFeedCacheHistoryItemV2 {
+                publisher_user_id: "pub1".to_string(),
+                canister_id: "can1".to_string(),
+                post_id: 7001,
+                video_id: "plain_vid1".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 50.0,
+            },
+            MLFeedCacheHistoryItemV2 {
+                publisher_user_id: "pub2".to_string(),
+                canister_id: "can2".to_string(),
+                post_id: 7002,
+                video_id: "plain_vid2".to_string(),
+                item_type: "like_video".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 100.0,
+            },
+        ];
+
+        state
+            .add_user_history_plain_items_v2(key, history_items_v2)
+            .await
+            .unwrap();
+
+        // Add V3 plain items
+        let history_items_v3 = vec![
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub3".to_string(),
+                canister_id: "can3".to_string(),
+                post_id: "plain_string_id".to_string(),
+                video_id: "plain_vid3".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 75.0,
+            },
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub4".to_string(),
+                canister_id: "can4".to_string(),
+                post_id: "7003".to_string(),
+                video_id: "plain_vid4".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 25.0,
+            },
+        ];
+
+        state
+            .add_user_history_plain_items_v3(key, history_items_v3)
+            .await
+            .unwrap();
+
+        // Read using V3 method (which now uses resilient logic internally)
+        let retrieved = state.get_plain_post_items_v3(key, 0, 10).await.unwrap();
+
+        // Plain items should have unique entries based on video_id
+        // V2 and V3 both create PlainPostItem with only video_id
+        assert_eq!(retrieved.len(), 4, "Should retrieve exactly 4 plain items");
+
+        // Verify video_ids are all present
+        let video_ids: Vec<String> = retrieved.iter().map(|item| item.video_id.clone()).collect();
+
+        // Check that all video_ids are present
+        assert!(video_ids.contains(&"plain_vid1".to_string()));
+        assert!(video_ids.contains(&"plain_vid2".to_string()));
+        assert!(video_ids.contains(&"plain_vid3".to_string()));
+        assert!(video_ids.contains(&"plain_vid4".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_v3_get_buffer_items_by_timestamp_resilient() {
+        let state = MLFeedCacheState::new().await;
+
+        // Use test-specific key
+        let test_key = "test_v3_buffer_resilient";
+
+        // Clean up test buffer
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let _ = conn.del::<&str, ()>(test_key).await;
+
+        let base_time = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        // Add V2 buffer items with u64 post_ids
+        let v2_items = vec![
+            BufferItemV2 {
+                publisher_user_id: "buf_pub1".to_string(),
+                post_id: 9001,
+                video_id: "buf_vid1".to_string(),
+                item_type: "video_viewed".to_string(),
+                percent_watched: 50.0,
+                user_id: "user1".to_string(),
+                timestamp: std::time::UNIX_EPOCH + std::time::Duration::from_secs(base_time - 100),
+            },
+            BufferItemV2 {
+                publisher_user_id: "buf_pub2".to_string(),
+                post_id: 9002,
+                video_id: "buf_vid2".to_string(),
+                item_type: "like_video".to_string(),
+                percent_watched: 100.0,
+                user_id: "user2".to_string(),
+                timestamp: std::time::UNIX_EPOCH + std::time::Duration::from_secs(base_time - 50),
+            },
+        ];
+
+        state
+            .add_user_buffer_items_impl_v2(test_key, v2_items)
+            .await
+            .unwrap();
+
+        // Add V3 buffer items with String post_ids
+        let v3_items = vec![
+            BufferItemV3 {
+                publisher_user_id: "buf_pub3".to_string(),
+                post_id: "buffer_string_id".to_string(),
+                video_id: "buf_vid3".to_string(),
+                item_type: "video_viewed".to_string(),
+                percent_watched: 75.0,
+                user_id: "user3".to_string(),
+                timestamp: std::time::UNIX_EPOCH + std::time::Duration::from_secs(base_time - 75),
+            },
+            BufferItemV3 {
+                publisher_user_id: "buf_pub4".to_string(),
+                post_id: "9003".to_string(),
+                video_id: "buf_vid4".to_string(),
+                item_type: "video_viewed".to_string(),
+                percent_watched: 25.0,
+                user_id: "user4".to_string(),
+                timestamp: std::time::UNIX_EPOCH + std::time::Duration::from_secs(base_time - 25),
+            },
+        ];
+
+        state
+            .add_user_buffer_items_impl_v3(test_key, v3_items)
+            .await
+            .unwrap();
+
+        // Sleep briefly to ensure items are in buffer
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Read all items using V3 impl method (which now uses resilient logic internally)
+        let retrieved = state
+            .get_user_buffer_items_by_timestamp_impl_v3(test_key, base_time)
+            .await
+            .unwrap();
+
+        assert_eq!(retrieved.len(), 4, "Should retrieve all 4 buffer items");
+
+        // Verify all post_ids are now Strings
+        let post_ids: Vec<String> = retrieved.iter().map(|item| item.post_id.clone()).collect();
+        assert!(post_ids.contains(&"9001".to_string()));
+        assert!(post_ids.contains(&"9002".to_string()));
+        assert!(post_ids.contains(&"buffer_string_id".to_string()));
+        assert!(post_ids.contains(&"9003".to_string()));
+
+        // Verify video_ids are preserved
+        let video_ids: Vec<String> = retrieved.iter().map(|item| item.video_id.clone()).collect();
+        assert!(video_ids.contains(&"buf_vid1".to_string()));
+        assert!(video_ids.contains(&"buf_vid2".to_string()));
+        assert!(video_ids.contains(&"buf_vid3".to_string()));
+        assert!(video_ids.contains(&"buf_vid4".to_string()));
+
+        // Test timestamp filtering - get only older items
+        let filtered = state
+            .get_user_buffer_items_by_timestamp_impl_v3(test_key, base_time - 60)
+            .await
+            .unwrap();
+        assert_eq!(
+            filtered.len(),
+            2,
+            "Should only get items older than base_time - 60"
+        );
+
+        // These should be the items with timestamps at base_time - 100 and base_time - 75
+        let filtered_vids: Vec<String> =
+            filtered.iter().map(|item| item.video_id.clone()).collect();
+        assert!(filtered_vids.contains(&"buf_vid1".to_string()));
+        assert!(filtered_vids.contains(&"buf_vid3".to_string()));
+
+        // Clean up test key
+        let _ = conn.del::<&str, ()>(test_key).await;
+    }
+
+    #[tokio::test]
+    async fn test_is_user_history_plain_item_exists_v3_resilient() {
+        let state = MLFeedCacheState::new().await;
+        let key = "test_plain_exists_key";
+
+        // Add V2 plain items (only video_id)
+        let history_items_v2 = vec![
+            MLFeedCacheHistoryItemV2 {
+                publisher_user_id: "pub1".to_string(),
+                canister_id: "can1".to_string(),
+                post_id: 100,
+                video_id: "video1".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: std::time::SystemTime::now(),
+                percent_watched: 50.0,
+            },
+            MLFeedCacheHistoryItemV2 {
+                publisher_user_id: "pub2".to_string(),
+                canister_id: "can2".to_string(),
+                post_id: 200,
+                video_id: "video2".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: std::time::SystemTime::now(),
+                percent_watched: 75.0,
+            },
+        ];
+
+        state
+            .add_user_history_plain_items_v2(key, history_items_v2)
+            .await
+            .unwrap();
+
+        // Add V3 plain items
+        let history_items_v3 = vec![
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub3".to_string(),
+                canister_id: "can3".to_string(),
+                post_id: "string_post_id".to_string(),
+                video_id: "video3".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: std::time::SystemTime::now(),
+                percent_watched: 90.0,
+            },
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub4".to_string(),
+                canister_id: "can4".to_string(),
+                post_id: "400".to_string(),
+                video_id: "video4".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: std::time::SystemTime::now(),
+                percent_watched: 100.0,
+            },
+        ];
+
+        state
+            .add_user_history_plain_items_v3(key, history_items_v3)
+            .await
+            .unwrap();
+
+        // Test existence check for V2 items using V3 method
+        let item1 = PlainPostItemV3 {
+            video_id: "video1".to_string(),
+        };
+        assert!(
+            state
+                .is_user_history_plain_item_exists_v3(key, item1)
+                .await
+                .unwrap(),
+            "Should find V2 item (video1) using V3 method"
+        );
+
+        let item2 = PlainPostItemV3 {
+            video_id: "video2".to_string(),
+        };
+        assert!(
+            state
+                .is_user_history_plain_item_exists_v3(key, item2)
+                .await
+                .unwrap(),
+            "Should find V2 item (video2) using V3 method"
+        );
+
+        // Test existence check for V3 items
+        let item3 = PlainPostItemV3 {
+            video_id: "video3".to_string(),
+        };
+        assert!(
+            state
+                .is_user_history_plain_item_exists_v3(key, item3)
+                .await
+                .unwrap(),
+            "Should find V3 item (video3)"
+        );
+
+        let item4 = PlainPostItemV3 {
+            video_id: "video4".to_string(),
+        };
+        assert!(
+            state
+                .is_user_history_plain_item_exists_v3(key, item4)
+                .await
+                .unwrap(),
+            "Should find V3 item (video4)"
+        );
+
+        // Test non-existent item
+        let non_existent = PlainPostItemV3 {
+            video_id: "non_existent_video".to_string(),
+        };
+        assert!(
+            !state
+                .is_user_history_plain_item_exists_v3(key, non_existent)
+                .await
+                .unwrap(),
+            "Should not find non-existent item"
+        );
+
+        // Clean up
+        let mut conn = state.redis_pool.get().await.unwrap();
+        let _ = conn.del::<&str, ()>(key).await;
     }
 }

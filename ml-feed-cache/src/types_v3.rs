@@ -41,7 +41,6 @@ pub fn get_history_item_score(item: &MLFeedCacheHistoryItemV3) -> f64 {
 )]
 pub struct PlainPostItemV3 {
     pub video_id: String,
-    pub post_id: String, // Added post_id as String (V2 only had video_id)
 }
 
 #[derive(Serialize, Deserialize, Clone, ToRedisArgs, FromRedisValue, Debug)]
