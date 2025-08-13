@@ -42,7 +42,7 @@ pub const USER_HOTORNOT_BUFFER_KEY: &str = "user_hotornot_buffer";
 pub const USER_HOTORNOT_BUFFER_KEY_V2: &str = "user_hotornot_buffer_v2";
 
 // User hotornot buffer keys - v3
-pub const USER_HOTORNOT_BUFFER_KEY_V3: &str = "user_hotornot_buffer_v2";
+pub const USER_HOTORNOT_BUFFER_KEY_V3: &str = "user_hotornot_buffer_v3";
 
 // User cache suffixes - v1
 pub const USER_CACHE_CLEAN_SUFFIX: &str = "_cache_clean";
