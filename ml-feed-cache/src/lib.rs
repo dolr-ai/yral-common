@@ -18,7 +18,6 @@ use types_v3::{
 };
 
 pub mod consts;
-pub mod mixed_type_compat;
 pub mod types;
 pub mod types_v2;
 pub mod types_v3;
@@ -1093,20 +1092,11 @@ impl MLFeedCacheState {
     ) -> Result<Vec<MLFeedCacheHistoryItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
-        // Get raw values from Redis to handle mixed u64/String post_ids
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+        // Get values from Redis - direct deserialization handles mixed types via string_or_number
+        let values: Vec<MLFeedCacheHistoryItemV3> =
+            conn.zrevrange(key, start as isize, end as isize).await?;
 
-        // Filter and convert values using resilient deserializer
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v3_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 
     pub async fn add_user_cache_items_v3(
@@ -1192,18 +1182,10 @@ impl MLFeedCacheState {
         let mut conn = self.redis_pool.get().await.unwrap();
 
         // Get raw values from Redis to handle mixed u64/String post_ids
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+        // Get values from Redis - direct deserialization handles mixed types via string_or_number
+        let values: Vec<PostItemV3> = conn.zrevrange(key, start as isize, end as isize).await?;
 
-        // Filter and convert values using resilient deserializer
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v3_resilient(&value) {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 
     pub async fn add_user_history_plain_items_v3(
@@ -1360,8 +1342,9 @@ impl MLFeedCacheState {
     ) -> Result<Vec<PlainPostItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
-        // Get raw values from Redis to handle mixed u64/String post_ids
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+        // Get values from Redis - direct deserialization handles mixed types
+        let values: Vec<PlainPostItemV3> =
+            conn.zrevrange(key, start as isize, end as isize).await?;
 
         println!(
             "Fetched {} values from Redis for key '{}'",
@@ -1369,18 +1352,7 @@ impl MLFeedCacheState {
             key
         );
 
-        // Filter and convert values using resilient deserializer
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) =
-                mixed_type_compat::deserialize_plain_post_item_v3_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 
     pub async fn get_user_buffer_items_by_timestamp_v3(
@@ -1401,20 +1373,10 @@ impl MLFeedCacheState {
     ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
-        // Get raw values from Redis to handle mixed u64/String post_ids
-        let values: Vec<redis::Value> = conn.zrangebyscore(key, 0, timestamp_secs).await?;
+        // Get values from Redis - direct deserialization handles mixed types via string_or_number
+        let values: Vec<BufferItemV3> = conn.zrangebyscore(key, 0, timestamp_secs).await?;
 
-        // Filter and convert values using resilient deserializer
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v3_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 
     pub async fn remove_user_buffer_items_by_timestamp_v3(
@@ -1586,111 +1548,6 @@ impl MLFeedCacheState {
 
     // Resilient read methods that handle mixed u64/String post_ids in Redis
 
-    /// Get cache items V2 with resilience to String post_ids
-    /// Filters out items with non-numeric String post_ids
-    pub async fn get_cache_items_v2_resilient(
-        &self,
-        key: &str,
-        start: u64,
-        end: u64,
-    ) -> Result<Vec<PostItemV2>, anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
-
-        // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
-
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v2_resilient(&value) {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized or have non-numeric post_ids
-        }
-
-        Ok(items)
-    }
-
-    /// Get cache items V1 with resilience to String post_ids
-    /// Filters out items with non-numeric String post_ids
-    pub async fn get_cache_items_v1_resilient(
-        &self,
-        key: &str,
-        start: u64,
-        end: u64,
-    ) -> Result<Vec<PostItem>, anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
-
-        // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
-
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v1_resilient(&value) {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized or have non-numeric post_ids
-        }
-
-        Ok(items)
-    }
-
-    /// Get watch history items V2 with resilience to String post_ids
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use get_watch_history_items_v3_resilient instead"
-    )]
-    pub async fn get_watch_history_items_v2_resilient(
-        &self,
-        key: &str,
-        start: u64,
-        end: u64,
-    ) -> Result<Vec<MLFeedCacheHistoryItemV2>, anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
-
-        // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
-
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v2_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized or have non-numeric post_ids
-        }
-
-        Ok(items)
-    }
-
-    /// Get buffer items V2 with resilience to String post_ids
-    #[deprecated(since = "0.3.0", note = "Use get_buffer_items_v3_resilient instead")]
-    pub async fn get_buffer_items_v2_resilient(
-        &self,
-        key: &str,
-        start: u64,
-        end: u64,
-    ) -> Result<Vec<BufferItemV2>, anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
-
-        // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
-
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v2_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized or have non-numeric post_ids
-        }
-
-        Ok(items)
-    }
-
     // V3 Resilient Methods
 
     /// Get cache items V3 with resilience to u64 post_ids from V2 data
@@ -1704,18 +1561,9 @@ impl MLFeedCacheState {
         let mut conn = self.redis_pool.get().await.unwrap();
 
         // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+        let values: Vec<PostItemV3> = conn.zrevrange(key, start as isize, end as isize).await?;
 
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_post_item_v3_resilient(&value) {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 
     /// Get watch history items V3 with resilience to u64 post_ids from V2 data
@@ -1727,20 +1575,11 @@ impl MLFeedCacheState {
     ) -> Result<Vec<MLFeedCacheHistoryItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
-        // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+        // Get values from Redis - direct deserialization handles mixed types via string_or_number
+        let values: Vec<MLFeedCacheHistoryItemV3> =
+            conn.zrevrange(key, start as isize, end as isize).await?;
 
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_history_item_v3_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 
     /// Get buffer items V3 with resilience to u64 post_ids from V2 data
@@ -1752,20 +1591,10 @@ impl MLFeedCacheState {
     ) -> Result<Vec<BufferItemV3>, anyhow::Error> {
         let mut conn = self.redis_pool.get().await.unwrap();
 
-        // Get raw values from Redis
-        let values: Vec<redis::Value> = conn.zrevrange(key, start as isize, end as isize).await?;
+        // Get values from Redis - direct deserialization handles mixed types via string_or_number
+        let values: Vec<BufferItemV3> = conn.zrevrange(key, start as isize, end as isize).await?;
 
-        // Filter and convert values
-        let mut items = Vec::new();
-        for value in values {
-            if let Ok(Some(item)) = mixed_type_compat::deserialize_buffer_item_v3_resilient(&value)
-            {
-                items.push(item);
-            }
-            // Skip items that can't be deserialized
-        }
-
-        Ok(items)
+        Ok(values)
     }
 }
 

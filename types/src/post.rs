@@ -62,11 +62,29 @@ pub struct FeedResponseV2 {
     pub posts: Vec<PostItemV2>,
 }
 
+fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumber {
+        String(String),
+        Number(u64),
+    }
+
+    match StringOrNumber::deserialize(deserializer)? {
+        StringOrNumber::String(s) => Ok(s),
+        StringOrNumber::Number(n) => Ok(n.to_string()),
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
 #[cfg_attr(feature = "redis", derive(ToRedisArgs, FromRedisValue))]
 pub struct PostItemV3 {
     pub publisher_user_id: String,
     pub canister_id: String,
+    #[serde(deserialize_with = "string_or_number")]
     pub post_id: String, // Changed from u64 to String
     pub video_id: String,
     pub is_nsfw: bool,
