@@ -1,7 +1,7 @@
 use crate::generator::FlowControlFromEnv;
 use crate::types::{ImageData, ModelMetadata, Veo3AspectRatio, VideoGenProvider, VideoGenerator};
 use crate::video_model::VideoModel;
-use crate::VideoGenError;
+use crate::{VideoGenError, VideoGenInput};
 use candid::CandidType;
 use global_constants::INTTEST_COST_USD_CENTS;
 use serde::{Deserialize, Serialize};
@@ -73,5 +73,59 @@ static INTTEST_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
 impl ModelMetadata for IntTestModel {
     fn model_info() -> &'static VideoModel {
         &INTTEST_MODEL_INFO
+    }
+}
+
+impl IntTestModel {
+    /// Create from unified v2 request
+    pub fn from_unified_request(
+        unified: crate::types_v2::VideoGenRequestV2,
+    ) -> Result<VideoGenInput, VideoGenError> {
+        // Validate before creating
+        Self::validate_unified_parameters(&unified)?;
+
+        Ok(VideoGenInput::IntTest(IntTestModel {
+            prompt: unified.prompt,
+            image: unified.image,
+        }))
+    }
+
+    /// Validate parameters from unified request
+    pub fn validate_unified_parameters(
+        unified: &crate::types_v2::VideoGenRequestV2,
+    ) -> Result<(), VideoGenError> {
+        if unified.prompt.is_empty() {
+            return Err(VideoGenError::InvalidInput(
+                "Prompt cannot be empty".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Get provider information for v2 API
+    pub fn get_provider_info() -> crate::types_v2::ProviderInfo {
+        use crate::types_v2::{AspectRatioV2, CostInfo, ResolutionV2};
+        use std::collections::HashMap;
+
+        crate::types_v2::ProviderInfo {
+            id: "inttest".to_string(),
+            name: "Internal Test".to_string(),
+            description: "Internal test model for development".to_string(),
+            cost: CostInfo::from_usd_cents(INTTEST_COST_USD_CENTS),
+            supports_image: true,
+            supports_negative_prompt: false,
+            supports_audio: false,
+            supports_seed: false,
+            allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9],
+            allowed_resolutions: vec![ResolutionV2::R1080p],
+            allowed_durations: vec![5],
+            default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
+            default_resolution: Some(ResolutionV2::R1080p),
+            default_duration: 5,
+            is_available: true,
+            is_internal: true,
+            model_icon: Some("https://yral.com/img/yral/favicon.svg".to_string()),
+            extra_info: HashMap::new(),
+        }
     }
 }

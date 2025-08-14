@@ -1,4 +1,4 @@
-use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use crate::video_model::VideoModel;
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
@@ -74,7 +74,6 @@ pub struct VideoGenRequest {
 pub enum VideoGenInput {
     Veo3(Veo3Model),
     Veo3Fast(Veo3FastModel),
-    FalAi(FalAiModel),
     LumaLabs(LumaLabsModel),
     IntTest(IntTestModel),
 }
@@ -87,7 +86,6 @@ pub enum VideoGenInput {
 pub enum VideoGenProvider {
     Veo3,
     Veo3Fast,
-    FalAi,
     LumaLabs,
     IntTest,
 }

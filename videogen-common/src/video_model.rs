@@ -1,4 +1,4 @@
-use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use crate::types::{
     ImageData, LumaLabsDuration, LumaLabsResolution, ModelMetadata, Veo3AspectRatio, VideoGenInput,
     VideoGenProvider,
@@ -6,6 +6,8 @@ use crate::types::{
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+// TODO: Deprecated. Remove when mweb shifts to v2 APIs
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
 pub struct VideoModel {
@@ -46,7 +48,6 @@ impl VideoModel {
             Veo3Model::model_info().clone(),
             Veo3FastModel::model_info().clone(),
             LumaLabsModel::model_info().clone(),
-            FalAiModel::model_info().clone(),
             IntTestModel::model_info().clone(),
         ]
     }
@@ -91,12 +92,6 @@ impl VideoModel {
                     .unwrap_or(Veo3AspectRatio::Ratio16x9),
                 duration_seconds: self.max_duration_seconds,
                 generate_audio: true,
-            })),
-            VideoGenProvider::FalAi => Ok(VideoGenInput::FalAi(FalAiModel {
-                prompt,
-                model: self.id.clone(),
-                seed: None,
-                num_frames: Some((self.max_duration_seconds as u32) * 30), // 30 fps
             })),
             VideoGenProvider::LumaLabs => Ok(VideoGenInput::LumaLabs(LumaLabsModel {
                 prompt,
