@@ -1406,8 +1406,7 @@ impl MLFeedCacheState {
         let mut conn = self.redis_pool.get().await.unwrap();
 
         // Use V2 suffixes - V3 functions operate on the same keys
-        #[allow(clippy::useless_vec)]
-        let suffixes = vec![
+        const SUFFIXES: &[&str] = &[
             consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2,
             consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX_V2,
             consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2,
@@ -1420,7 +1419,7 @@ impl MLFeedCacheState {
         ];
 
         // Build all keys with suffixes
-        let keys: Vec<String> = suffixes
+        let keys: Vec<String> = SUFFIXES
             .iter()
             .map(|suffix| format!("{key}{suffix}"))
             .collect();
