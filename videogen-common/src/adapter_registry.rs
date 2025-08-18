@@ -80,4 +80,5 @@ impl Default for AdapterRegistry {
 }
 
 /// Global adapter registry instance
+#[cfg(feature = "server")]
 pub static ADAPTER_REGISTRY: LazyLock<AdapterRegistry> = LazyLock::new(AdapterRegistry::default);

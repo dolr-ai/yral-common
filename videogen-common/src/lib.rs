@@ -21,11 +21,13 @@ pub use types::{
 pub use video_model::VideoModel;
 
 // V2 exports
-pub use adapter_registry::{AdapterRegistry, ADAPTER_REGISTRY};
 pub use types_v2::{
-    CostInfo, ProviderInfo, ProvidersResponse, VideoGenQueuedResponseV2,
-    VideoGenRequestV2, VideoGenRequestWithIdentityV2,
+    CostInfo, ProviderInfo, ProvidersResponse, VideoGenQueuedResponseV2, VideoGenRequestV2,
+    VideoGenRequestWithIdentityV2,
 };
 
 #[cfg(feature = "client")]
 pub use yral_canisters_client::rate_limits::VideoGenRequestStatus;
+
+#[cfg(feature = "server")]
+pub use adapter_registry::{AdapterRegistry, ADAPTER_REGISTRY};
