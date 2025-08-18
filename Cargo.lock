@@ -5685,7 +5685,7 @@ dependencies = [
 [[package]]
 name = "yral-metadata-client"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=990-feature-request-new-vs-repeat-user-tracking#857fb3866fcab91db1d260da96d3e6da112cd8d6"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=990-feature-request-new-vs-repeat-user-tracking#fb8cc3bc6247d5eca6b3b56efbb75338fee0e0c4"
 dependencies = [
  "ic-agent",
  "reqwest",
@@ -5697,7 +5697,7 @@ dependencies = [
 [[package]]
 name = "yral-metadata-types"
 version = "0.1.0"
-source = "git+https://github.com/yral-dapp/yral-metadata?branch=990-feature-request-new-vs-repeat-user-tracking#857fb3866fcab91db1d260da96d3e6da112cd8d6"
+source = "git+https://github.com/yral-dapp/yral-metadata?branch=990-feature-request-new-vs-repeat-user-tracking#fb8cc3bc6247d5eca6b3b56efbb75338fee0e0c4"
 dependencies = [
  "candid",
  "chrono",
