@@ -1,8 +1,8 @@
 use candid::Principal;
+use hon_worker_common::SatsBalanceUpdateRequestV2;
+use num_bigint::{BigInt, BigUint, Sign};
 use reqwest::Client;
 use url::Url;
-use num_bigint::{BigInt, BigUint, Sign};
-use hon_worker_common::SatsBalanceUpdateRequestV2;
 
 use super::balance::TokenBalance;
 use super::operations::TokenOperations;
@@ -52,7 +52,7 @@ impl TokenOperations for SatsOperations {
         // First, load the current balance
         let current_balance = self.load_balance(user_principal).await?;
         let previous_balance = BigUint::from(current_balance.e8s);
-        
+
         // Create negative delta for deduction
         let delta = BigInt::from_biguint(Sign::Minus, BigUint::from(amount));
 
@@ -79,7 +79,10 @@ impl TokenOperations for SatsOperations {
         if res.status().is_success() {
             Ok(amount)
         } else {
-            let error_text = res.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = res
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             Err(Error::YralCanister(format!(
                 "Failed to deduct balance: {error_text}"
             )))
@@ -94,7 +97,7 @@ impl TokenOperations for SatsOperations {
         // First, load the current balance
         let current_balance = self.load_balance(user_principal).await?;
         let previous_balance = BigUint::from(current_balance.e8s);
-        
+
         // Create positive delta for addition
         let delta = BigInt::from(amount);
 
@@ -121,7 +124,10 @@ impl TokenOperations for SatsOperations {
         if res.status().is_success() {
             Ok(())
         } else {
-            let error_text = res.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = res
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             Err(Error::YralCanister(format!(
                 "Failed to add balance: {error_text}"
             )))
@@ -137,12 +143,12 @@ pub struct DolrOperations {
 
 impl DolrOperations {
     pub fn new(admin_agent: ic_agent::Agent) -> Self {
-        Self { 
+        Self {
             admin_agent,
             user_agent: None,
         }
     }
-    
+
     pub fn with_user_agent(admin_agent: ic_agent::Agent, user_agent: ic_agent::Agent) -> Self {
         Self {
             admin_agent,
@@ -185,7 +191,7 @@ impl TokenOperations for DolrOperations {
             Some(user_agent) => {
                 // Direct transfer from user's own agent
                 let ledger = sns_ledger::SnsLedger(ledger_id, user_agent);
-                
+
                 let res = ledger
                     .icrc_1_transfer(sns_ledger::TransferArg {
                         from_subaccount: None,
@@ -211,7 +217,7 @@ impl TokenOperations for DolrOperations {
             None => {
                 // Use transfer_from with admin agent
                 let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
-                
+
                 let res = ledger
                     .icrc_2_transfer_from(sns_ledger::TransferFromArgs {
                         spender_subaccount: None,

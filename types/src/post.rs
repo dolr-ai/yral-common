@@ -61,3 +61,58 @@ pub struct FeedRequestV2 {
 pub struct FeedResponseV2 {
     pub posts: Vec<PostItemV2>,
 }
+
+fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumber {
+        String(String),
+        Number(u64),
+    }
+
+    match StringOrNumber::deserialize(deserializer)? {
+        StringOrNumber::String(s) => Ok(s),
+        StringOrNumber::Number(n) => Ok(n.to_string()),
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
+#[cfg_attr(feature = "redis", derive(ToRedisArgs, FromRedisValue))]
+pub struct PostItemV3 {
+    pub publisher_user_id: String,
+    pub canister_id: String,
+    #[serde(deserialize_with = "string_or_number")]
+    pub post_id: String, // Changed from u64 to String
+    pub video_id: String,
+    pub is_nsfw: bool,
+}
+
+impl Eq for PostItemV3 {}
+
+impl PartialEq for PostItemV3 {
+    fn eq(&self, other: &Self) -> bool {
+        self.video_id == other.video_id
+    }
+}
+
+impl Hash for PostItemV3 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.video_id.hash(state);
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
+pub struct FeedRequestV3 {
+    #[schema(value_type = String)]
+    pub user_id: Principal,
+    pub filter_results: Vec<PostItemV3>,
+    pub num_results: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
+pub struct FeedResponseV3 {
+    pub posts: Vec<PostItemV3>,
+}

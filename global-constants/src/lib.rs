@@ -22,7 +22,7 @@ pub const MAX_DEDUCTED_PER_DAY_PER_USER_SATS: u64 = 100_000;
 
 // Coin state control
 pub const BET_COIN_ENABLED_STATES: [CoinState; 2] = [CoinState::C1, CoinState::C5];
-pub const DEFAULT_BET_COIN_FOR_LOGGED_IN: CoinState = CoinState::C5;
+pub const DEFAULT_BET_COIN_FOR_LOGGED_IN: CoinState = CoinState::C1;
 pub const DEFAULT_BET_COIN_FOR_LOGGED_OUT: CoinState = CoinState::C1;
 pub const MAX_BET_AMOUNT_SATS: u64 = 5; // CoinState::C5 is 5
 

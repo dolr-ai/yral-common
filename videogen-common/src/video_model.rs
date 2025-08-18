@@ -1,15 +1,13 @@
-use crate::models::{FalAiModel, IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use crate::types::{
-    ImageData, LumaLabsDuration, LumaLabsResolution, Veo3AspectRatio, VideoGenInput,
+    ImageData, LumaLabsDuration, LumaLabsResolution, ModelMetadata, Veo3AspectRatio, VideoGenInput,
     VideoGenProvider,
 };
 use candid::CandidType;
-use global_constants::{
-    INTTEST_COST_USD_CENTS, RAY2FLASH_COST_USD_CENTS, SEEDANCE_COST_USD_CENTS, VEO3_COST_USD_CENTS,
-    VEO3_FAST_COST_USD_CENTS,
-};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+// TODO: Deprecated. Remove when mweb shifts to v2 APIs
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType)]
 pub struct VideoModel {
@@ -47,69 +45,10 @@ impl VideoModel {
     /// Get all available video generation models
     pub fn get_models() -> Vec<Self> {
         vec![
-            VideoModel {
-                id: "veo3".to_string(),
-                name: "Veo3".to_string(),
-                description: "Google's advanced video generation model".to_string(),
-                cost_usd_cents: VEO3_COST_USD_CENTS,
-                supports_image: false,
-                provider: VideoGenProvider::Veo3,
-                max_duration_seconds: 8,
-                supported_aspect_ratios: vec![
-                    Veo3AspectRatio::Ratio16x9,
-                    Veo3AspectRatio::Ratio9x16,
-                ],
-                model_icon: Some("/img/ai-models/veo3.svg".to_string()),
-                is_available: true,
-            },
-            VideoModel {
-                id: "veo3_fast".to_string(),
-                name: "Veo3 Fast".to_string(),
-                description: "Google Veo3 Faster and cheaper".to_string(),
-                cost_usd_cents: VEO3_FAST_COST_USD_CENTS,
-                supports_image: false,
-                provider: VideoGenProvider::Veo3Fast,
-                max_duration_seconds: 8,
-                supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
-                model_icon: Some("/img/ai-models/veo3.svg".to_string()),
-                is_available: true,
-            },
-            VideoModel {
-                id: "ray2flash".to_string(),
-                name: "Ray2Flash".to_string(),
-                description: "LumaLabs' fast AI video generation model".to_string(),
-                cost_usd_cents: RAY2FLASH_COST_USD_CENTS,
-                supports_image: true,
-                provider: VideoGenProvider::LumaLabs,
-                max_duration_seconds: 9,
-                supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
-                model_icon: Some("/img/ai-models/lumalabs.png".to_string()),
-                is_available: true,
-            },
-            VideoModel {
-                id: "doubao-seedance-1-0-pro".to_string(),
-                name: "Seedance 1.0 Pro".to_string(),
-                description: "From Tiktok".to_string(),
-                cost_usd_cents: SEEDANCE_COST_USD_CENTS,
-                supports_image: true,
-                provider: VideoGenProvider::FalAi,
-                max_duration_seconds: 8,
-                supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
-                model_icon: Some("/img/ai-models/bytedance.svg".to_string()),
-                is_available: false,
-            },
-            VideoModel {
-                id: "inttest".to_string(),
-                name: "IntTest".to_string(),
-                description: "Test model that always returns the same video".to_string(),
-                cost_usd_cents: INTTEST_COST_USD_CENTS,
-                supports_image: true,
-                provider: VideoGenProvider::IntTest,
-                max_duration_seconds: 5,
-                supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
-                model_icon: Some("/img/yral/favicon.svg".to_string()),
-                is_available: true,
-            },
+            Veo3Model::model_info().clone(),
+            Veo3FastModel::model_info().clone(),
+            LumaLabsModel::model_info().clone(),
+            IntTestModel::model_info().clone(),
         ]
     }
 
@@ -153,12 +92,6 @@ impl VideoModel {
                     .unwrap_or(Veo3AspectRatio::Ratio16x9),
                 duration_seconds: self.max_duration_seconds,
                 generate_audio: true,
-            })),
-            VideoGenProvider::FalAi => Ok(VideoGenInput::FalAi(FalAiModel {
-                prompt,
-                model: self.id.clone(),
-                seed: None,
-                num_frames: Some((self.max_duration_seconds as u32) * 30), // 30 fps
             })),
             VideoGenProvider::LumaLabs => Ok(VideoGenInput::LumaLabs(LumaLabsModel {
                 prompt,
