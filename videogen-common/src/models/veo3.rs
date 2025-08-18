@@ -93,7 +93,7 @@ impl Veo3Model {
         unified: crate::types_v2::VideoGenRequestV2,
     ) -> Result<VideoGenInput, VideoGenError> {
         use crate::types_v2::AspectRatioV2;
-        
+
         // Parse aspect ratio
         let aspect_ratio = match unified.aspect_ratio {
             Some(AspectRatioV2::Ratio16x9) | None => Veo3AspectRatio::Ratio16x9,
@@ -281,7 +281,7 @@ impl Veo3FastModel {
         unified: crate::types_v2::VideoGenRequestV2,
     ) -> Result<VideoGenInput, VideoGenError> {
         use crate::types_v2::AspectRatioV2;
-        
+
         // Parse aspect ratio (Veo3Fast only supports 16:9)
         let aspect_ratio = match unified.aspect_ratio {
             Some(AspectRatioV2::Ratio16x9) | None => Veo3AspectRatio::Ratio16x9,
