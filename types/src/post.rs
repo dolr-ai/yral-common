@@ -62,32 +62,21 @@ pub struct FeedResponseV2 {
     pub posts: Vec<PostItemV2>,
 }
 
-fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum StringOrNumber {
-        String(String),
-        Number(u64),
-    }
-
-    match StringOrNumber::deserialize(deserializer)? {
-        StringOrNumber::String(s) => Ok(s),
-        StringOrNumber::Number(n) => Ok(n.to_string()),
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, ToSchema, Debug)]
 #[cfg_attr(feature = "redis", derive(ToRedisArgs, FromRedisValue))]
 pub struct PostItemV3 {
     pub publisher_user_id: String,
     pub canister_id: String,
-    #[serde(deserialize_with = "string_or_number")]
-    pub post_id: String, // Changed from u64 to String
+    pub post_id: String,
     pub video_id: String,
-    pub is_nsfw: bool,
+    pub nsfw_probability: f64,
+}
+
+impl PostItemV3 {
+    pub fn is_nsfw(&self) -> bool {
+        // TODO: expose this threshold. figure which crate
+        self.nsfw_probability > 0.4
+    }
 }
 
 impl Eq for PostItemV3 {}
@@ -108,8 +97,14 @@ impl Hash for PostItemV3 {
 pub struct FeedRequestV3 {
     #[schema(value_type = String)]
     pub user_id: Principal,
-    pub filter_results: Vec<PostItemV3>,
+    /// Video IDs to exclude from recommendations
+    pub exclude_items: Vec<String>,
+    /// Whether to include NSFW content in recommendations
+    pub nsfw_label: bool,
+    /// Number of results to return
     pub num_results: u32,
+    /// IP address for geolocation
+    pub ip_address: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
