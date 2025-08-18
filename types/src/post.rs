@@ -69,7 +69,7 @@ pub struct PostItemV3 {
     pub canister_id: String,
     pub post_id: String,
     pub video_id: String,
-    #[serde(deserialize_with = "is_nsfw")]
+    #[serde(deserialize_with = "is_nsfw", rename = "nsfw_probability")]
     pub is_nsfw: bool,
 }
 
