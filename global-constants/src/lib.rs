@@ -28,6 +28,9 @@ pub const MAX_BET_AMOUNT_SATS: u64 = 5; // CoinState::C5 is 5
 
 pub const USERNAME_MAX_LEN: usize = 15;
 
+// NSFW content threshold
+pub const NSFW_THRESHOLD: f32 = 0.5;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CoinState {
     C1,

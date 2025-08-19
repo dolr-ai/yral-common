@@ -5,7 +5,7 @@ use std::{
 
 use candid::Principal;
 use canisters_client::individual_user_template::{PostDetailsForFrontend, PostStatus};
-use global_constants::USERNAME_MAX_LEN;
+use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
 use serde::{Deserialize, Serialize};
 use username_gen::random_username_from_principal;
 use web_time::Duration;
@@ -13,6 +13,11 @@ use web_time::Duration;
 use crate::{Canisters, Result};
 
 use super::profile::propic_from_principal;
+
+#[derive(Debug, Deserialize)]
+struct NsfwApiResponse {
+    nsfw_probability: f32,
+}
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PostDetails {
@@ -87,7 +92,7 @@ impl PostDetails {
             liked_by_user: authenticated.then_some(details.liked_by_me),
             poster_principal: details.created_by_user_principal_id,
             hastags: details.hashtags,
-            is_nsfw: nsfw_probability > 0.5,
+            is_nsfw: nsfw_probability >= NSFW_THRESHOLD,
             hot_or_not_feed_ranking_score: details.hot_or_not_feed_ranking_score,
             created_at: Duration::new(
                 details.created_at.secs_since_epoch,
@@ -125,6 +130,19 @@ impl PostDetails {
 }
 
 impl<const A: bool> Canisters<A> {
+    async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
+        let url = format!(
+            "http://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
+            video_uid
+        );
+
+        let response = reqwest::get(&url).await?;
+
+        let nsfw_response: NsfwApiResponse = response.json().await?;
+
+        Ok(nsfw_response.nsfw_probability)
+    }
+
     pub async fn get_post_details(
         &self,
         user_canister: Principal,
@@ -167,11 +185,25 @@ impl<const A: bool> Canisters<A> {
         post_details.created_by_unique_user_name =
             creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
+        // Fetch NSFW probability from the API
+        let nsfw_prob = match self.fetch_nsfw_probability(&post_details.video_uid).await {
+            Ok(prob) => prob,
+            Err(e) => {
+                log::warn!(
+                    "Failed to fetch NSFW probability for video {}: {}, using parameter value {}",
+                    post_details.video_uid,
+                    e,
+                    nsfw_probability
+                );
+                nsfw_probability
+            }
+        };
+
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
             A,
             user_canister,
             post_details,
-            nsfw_probability,
+            nsfw_prob,
         )))
     }
 }
