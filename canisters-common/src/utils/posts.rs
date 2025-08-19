@@ -148,7 +148,7 @@ impl<const A: bool> Canisters<A> {
         user_canister: Principal,
         post_id: u64,
     ) -> Result<Option<PostDetails>> {
-        self.get_post_details_with_nsfw_info(user_canister, post_id, 0.0)
+        self.get_post_details_with_nsfw_info(user_canister, post_id, None)
             .await
     }
 
@@ -156,7 +156,7 @@ impl<const A: bool> Canisters<A> {
         &self,
         user_canister: Principal,
         post_id: u64,
-        nsfw_probability: f32,
+        nsfw_probability: Option<f32>,
     ) -> Result<Option<PostDetails>> {
         let post_creator_can = self.individual_user(user_canister).await;
         let mut post_details = match post_creator_can
@@ -185,17 +185,20 @@ impl<const A: bool> Canisters<A> {
         post_details.created_by_unique_user_name =
             creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
-        // Fetch NSFW probability from the API
-        let nsfw_prob = match self.fetch_nsfw_probability(&post_details.video_uid).await {
-            Ok(prob) => prob,
-            Err(e) => {
-                log::warn!(
-                    "Failed to fetch NSFW probability for video {}: {}, using parameter value {}",
-                    post_details.video_uid,
-                    e,
-                    nsfw_probability
-                );
-                nsfw_probability
+        // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
+        let nsfw_prob = if let Some(prob) = nsfw_probability {
+            prob
+        } else {
+            match self.fetch_nsfw_probability(&post_details.video_uid).await {
+                Ok(prob) => prob,
+                Err(e) => {
+                    log::warn!(
+                        "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
+                        post_details.video_uid,
+                        e
+                    );
+                    1.0
+                }
             }
         };
 
