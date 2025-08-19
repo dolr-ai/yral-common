@@ -79,7 +79,7 @@ where
 {
     let probablity = f64::deserialize(d)?;
 
-    Ok(if probablity > 0.4 { true } else { false })
+    Ok(probablity > 0.4)
 }
 
 impl Eq for PostItemV3 {}
