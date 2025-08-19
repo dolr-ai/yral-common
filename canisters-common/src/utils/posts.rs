@@ -132,7 +132,7 @@ impl PostDetails {
 impl<const A: bool> Canisters<A> {
     async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
         let url = format!(
-            "http://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
+            "https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
             video_uid
         );
 
