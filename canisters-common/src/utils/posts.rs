@@ -186,21 +186,18 @@ impl<const A: bool> Canisters<A> {
             creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
-        let nsfw_prob = if let Some(prob) = nsfw_probability {
-            prob
-        } else {
-            match self.fetch_nsfw_probability(&post_details.video_uid).await {
-                Ok(prob) => prob,
-                Err(e) => {
+        let nsfw_prob = nsfw_probability.unwrap_or(
+            self.fetch_nsfw_probability(&post_details.video_uid)
+                .await
+                .inspect_err(|e| {
                     log::warn!(
                         "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
                         post_details.video_uid,
                         e
                     );
-                    1.0
-                }
-            }
-        };
+                })
+                .unwrap_or(1.0),
+        );
 
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
             A,
