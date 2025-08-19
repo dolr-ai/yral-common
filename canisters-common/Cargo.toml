@@ -16,8 +16,8 @@ identity = { workspace = true, default-features = false, features = [
 username-gen.workspace = true
 global-constants.workspace = true
 
-yral-metadata-client = { git = "https://github.com/yral-dapp/yral-metadata", branch = "990-feature-request-new-vs-repeat-user-tracking", default-features = false }
-yral-metadata-types = { git = "https://github.com/yral-dapp/yral-metadata", branch = "990-feature-request-new-vs-repeat-user-tracking", default-features = false }
+yral-metadata-client = { git = "https://github.com/yral-dapp/yral-metadata", branch = "master", default-features = false }
+yral-metadata-types = { git = "https://github.com/yral-dapp/yral-metadata", branch = "master", default-features = false }
 
 types.workspace = true
 sns-validation.path = "../sns-validation"
