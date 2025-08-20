@@ -1,7 +1,7 @@
 use ic_agent::export::Principal;
 #[cfg(feature = "redis")]
 use redis_macros::{FromRedisValue, ToRedisArgs};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use utoipa::ToSchema;
 
@@ -69,17 +69,13 @@ pub struct PostItemV3 {
     pub canister_id: String,
     pub post_id: String,
     pub video_id: String,
-    #[serde(deserialize_with = "is_nsfw", rename = "nsfw_probability")]
-    pub is_nsfw: bool,
+    pub nsfw_probability: f32,
 }
 
-fn is_nsfw<'de, D>(d: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let probablity = f64::deserialize(d)?;
-
-    Ok(probablity > 0.4)
+impl PostItemV3 {
+    pub fn is_nsfw(&self) -> bool {
+        self.nsfw_probability > 0.4
+    }
 }
 
 impl Eq for PostItemV3 {}
