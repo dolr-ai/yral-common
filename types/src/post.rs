@@ -1,7 +1,7 @@
 use ic_agent::export::Principal;
 #[cfg(feature = "redis")]
 use redis_macros::{FromRedisValue, ToRedisArgs};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use utoipa::ToSchema;
 
