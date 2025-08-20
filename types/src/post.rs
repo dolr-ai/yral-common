@@ -69,7 +69,7 @@ pub struct PostItemV3 {
     pub canister_id: String,
     pub post_id: String,
     pub video_id: String,
-    pub nsfw_probability: f64,
+    pub nsfw_probability: f32,
 }
 
 impl PostItemV3 {
