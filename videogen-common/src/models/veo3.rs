@@ -1,12 +1,11 @@
 use crate::generator::FlowControlFromEnv;
-use crate::types::{ImageData, ModelMetadata, Veo3AspectRatio, VideoGenProvider, VideoGenerator};
-use crate::video_model::VideoModel;
+use crate::types::{ImageData, Veo3AspectRatio, VideoGenProvider, VideoGenerator};
+// VideoModel and ModelMetadata have been removed
 use crate::{VideoGenError, VideoGenInput};
 use candid::CandidType;
 use global_constants::VEO3_COST_USD_CENTS;
 use global_constants::VEO3_FAST_COST_USD_CENTS;
 use serde::{Deserialize, Serialize};
-use std::sync::LazyLock;
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -21,7 +20,7 @@ pub struct Veo3Model {
 
 impl VideoGenerator for Veo3Model {
     fn model_id(&self) -> &'static str {
-        &Self::model_info().id
+        "veo3"
     }
 
     fn provider(&self) -> VideoGenProvider {
@@ -68,24 +67,25 @@ impl FlowControlFromEnv for Veo3Model {
     }
 }
 
-static VEO3_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
-    id: "veo3".to_string(),
-    name: "Veo3".to_string(),
-    description: "Google's advanced video generation model".to_string(),
-    cost_usd_cents: VEO3_COST_USD_CENTS,
-    supports_image: false,
-    provider: VideoGenProvider::Veo3,
-    max_duration_seconds: 8,
-    supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9, Veo3AspectRatio::Ratio9x16],
-    model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
-    is_available: true,
-});
+// VideoModel has been removed - model info is now fetched dynamically via API
+// static VEO3_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
+//     id: "veo3".to_string(),
+//     name: "Veo3".to_string(),
+//     description: "Google's advanced video generation model".to_string(),
+//     cost_usd_cents: VEO3_COST_USD_CENTS,
+//     supports_image: false,
+//     provider: VideoGenProvider::Veo3,
+//     max_duration_seconds: 8,
+//     supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9, Veo3AspectRatio::Ratio9x16],
+//     model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
+//     is_available: true,
+// });
 
-impl ModelMetadata for Veo3Model {
-    fn model_info() -> &'static VideoModel {
-        &VEO3_MODEL_INFO
-    }
-}
+// impl ModelMetadata for Veo3Model {
+//     fn model_info() -> &'static VideoModel {
+//         &VEO3_MODEL_INFO
+//     }
+// }
 
 impl Veo3Model {
     /// Create from unified v2 request
@@ -209,7 +209,7 @@ pub struct Veo3FastModel {
 
 impl VideoGenerator for Veo3FastModel {
     fn model_id(&self) -> &'static str {
-        &Self::model_info().id
+        "veo3_fast"
     }
 
     fn provider(&self) -> VideoGenProvider {
@@ -256,24 +256,25 @@ impl FlowControlFromEnv for Veo3FastModel {
     }
 }
 
-static VEO3_FAST_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
-    id: "veo3_fast".to_string(),
-    name: "Veo3 Fast".to_string(),
-    description: "Google Veo3 Faster and cheaper".to_string(),
-    cost_usd_cents: VEO3_FAST_COST_USD_CENTS,
-    supports_image: false,
-    provider: VideoGenProvider::Veo3Fast,
-    max_duration_seconds: 8,
-    supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
-    model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
-    is_available: true,
-});
+// VideoModel has been removed - model info is now fetched dynamically via API
+// static VEO3_FAST_MODEL_INFO: LazyLock<VideoModel> = LazyLock::new(|| VideoModel {
+//     id: "veo3_fast".to_string(),
+//     name: "Veo3 Fast".to_string(),
+//     description: "Google Veo3 Faster and cheaper".to_string(),
+//     cost_usd_cents: VEO3_FAST_COST_USD_CENTS,
+//     supports_image: false,
+//     provider: VideoGenProvider::Veo3Fast,
+//     max_duration_seconds: 8,
+//     supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9],
+//     model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
+//     is_available: true,
+// });
 
-impl ModelMetadata for Veo3FastModel {
-    fn model_info() -> &'static VideoModel {
-        &VEO3_FAST_MODEL_INFO
-    }
-}
+// impl ModelMetadata for Veo3FastModel {
+//     fn model_info() -> &'static VideoModel {
+//         &VEO3_FAST_MODEL_INFO
+//     }
+// }
 
 impl Veo3FastModel {
     /// Create from unified v2 request

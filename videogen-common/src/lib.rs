@@ -3,7 +3,6 @@ pub mod generator;
 pub mod models;
 pub mod token_costs;
 pub mod types;
-pub mod video_model;
 
 // V2 modules
 pub mod adapter_registry;
@@ -18,7 +17,6 @@ pub use types::{
     VideoGenRequestKey, VideoGenRequestWithIdentity, VideoGenRequestWithSignature,
     VideoGenResponse, VideoGenerator,
 };
-pub use video_model::VideoModel;
 
 // V2 exports
 pub use types_v2::{

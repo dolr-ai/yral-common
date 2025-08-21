@@ -1,8 +1,10 @@
+#[cfg(feature = "server")]
+use std::sync::LazyLock;
+
 use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
 use crate::VideoGenInput;
-use std::sync::LazyLock;
 
 /// Registry for all available model adapters
 pub struct AdapterRegistry;
