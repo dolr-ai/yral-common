@@ -1,31 +1,29 @@
 use std::{
     cmp::Ordering,
-    fmt::format,
     hash::{Hash, Hasher},
 };
 
 use candid::Principal;
+use canisters_client::individual_user_template::PostDetailsForFrontend;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
-    individual_user_template::Ok,
-    user_info_service,
     user_post_service::{
         PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result4,
     },
 };
-use canisters_client::{
-    individual_user_template::{Post, PostDetailsForFrontend, PostStatus},
-    user_info_service::UserProfileDetailsForFrontendV3,
-};
-use global_constants::USERNAME_MAX_LEN;
+use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
 use serde::{Deserialize, Serialize};
-use types::post;
 use username_gen::random_username_from_principal;
 use web_time::Duration;
 
-use crate::{utils::profile::ProfileDetails, Canisters, Result};
+use crate::{Canisters, Result};
 
 use super::profile::propic_from_principal;
+
+#[derive(Debug, Deserialize)]
+struct NsfwApiResponse {
+    nsfw_probability: f32,
+}
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PostDetails {
@@ -127,7 +125,7 @@ impl PostDetails {
             liked_by_user: authenticated.then_some(details.liked_by_me),
             poster_principal: details.created_by_user_principal_id,
             hastags: details.hashtags,
-            is_nsfw: nsfw_probability > 0.5,
+            is_nsfw: nsfw_probability >= NSFW_THRESHOLD,
             hot_or_not_feed_ranking_score: details.hot_or_not_feed_ranking_score,
             created_at: Duration::new(
                 details.created_at.secs_since_epoch,
@@ -165,12 +163,25 @@ impl PostDetails {
 }
 
 impl<const A: bool> Canisters<A> {
+    async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
+        let url = format!(
+            "https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
+            video_uid
+        );
+
+        let response = reqwest::get(&url).await?;
+
+        let nsfw_response: NsfwApiResponse = response.json().await?;
+
+        Ok(nsfw_response.nsfw_probability)
+    }
+
     pub async fn get_post_details(
         &self,
         user_canister: Principal,
         post_id: String,
     ) -> Result<Option<PostDetails>> {
-        self.get_post_details_with_nsfw_info(user_canister, post_id, 0.0)
+        self.get_post_details_with_nsfw_info(user_canister, post_id, None)
             .await
     }
 
@@ -178,9 +189,9 @@ impl<const A: bool> Canisters<A> {
         &self,
         user_canister: Principal,
         post_id: String,
-        nsfw_probability: f32,
+        nsfw_probability: Option<f32>,
     ) -> Result<Option<PostDetails>> {
-        let mut profile_details = if user_canister == USER_INFO_SERVICE_ID {
+        let profile_details = if user_canister == USER_INFO_SERVICE_ID {
             let post_service_canister = self.user_post_service().await;
             let post_details_res = post_service_canister
                 .get_individual_post_details_by_id_for_user(
@@ -213,7 +224,7 @@ impl<const A: bool> Canisters<A> {
                     A,
                     user_canister,
                     p,
-                    nsfw_probability,
+                    0.0,
                 )),
                 Err(e) => {
                     log::warn!(
@@ -234,6 +245,22 @@ impl<const A: bool> Canisters<A> {
             .get_user_metadata_v2(creator_principal.to_text())
             .await?;
         post_details.username = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
+
+        // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
+        let nsfw_prob = nsfw_probability.unwrap_or(
+            self.fetch_nsfw_probability(&post_details.uid)
+                .await
+                .inspect_err(|e| {
+                    log::warn!(
+                        "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
+                        post_details.uid,
+                        e
+                    );
+                })
+                .unwrap_or(1.0),
+        );
+
+        post_details.nsfw_probability = nsfw_prob;
 
         Ok(Some(post_details))
     }

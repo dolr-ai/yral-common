@@ -1457,7 +1457,7 @@ impl MLFeedCacheState {
             canister_id: item.canister_id.clone(),
             post_id: item.post_id.to_string(),
             video_id: item.video_id.clone(),
-            is_nsfw: item.is_nsfw,
+            nsfw_probability: if item.is_nsfw { 1.0 } else { 0.0 },
         }
     }
 
@@ -1468,7 +1468,7 @@ impl MLFeedCacheState {
             canister_id: item.canister_id.clone(),
             post_id,
             video_id: item.video_id.clone(),
-            is_nsfw: item.is_nsfw,
+            is_nsfw: item.is_nsfw(),
         })
     }
 
@@ -2705,14 +2705,14 @@ mod tests {
                 canister_id: "canister1".to_string(),
                 post_id: "123".to_string(), // Numeric string
                 video_id: "video1".to_string(),
-                is_nsfw: false,
+                nsfw_probability: 1.0,
             },
             PostItemV3 {
                 publisher_user_id: "user2".to_string(),
                 canister_id: "canister2".to_string(),
                 post_id: "abc-456-def".to_string(), // Non-numeric string
                 video_id: "video2".to_string(),
-                is_nsfw: true,
+                nsfw_probability: 0.0,
             },
         ];
 
@@ -2787,7 +2787,7 @@ mod tests {
             canister_id: "can1".to_string(),
             post_id: "not-a-number".to_string(),
             video_id: "vid1".to_string(),
-            is_nsfw: false,
+            nsfw_probability: 0.0,
         };
 
         let result = MLFeedCacheState::try_convert_post_item_v3_to_v2(&v3_non_numeric);
@@ -2993,14 +2993,14 @@ mod tests {
                     canister_id: "can3".to_string(),
                     post_id: "xyz789".to_string(),
                     video_id: "cache_video3".to_string(),
-                    is_nsfw: false,
+                    nsfw_probability: 0.0,
                 },
                 PostItemV3 {
                     publisher_user_id: "pub4".to_string(),
                     canister_id: "can4".to_string(),
                     post_id: "33333".to_string(),
                     video_id: "cache_video4".to_string(),
-                    is_nsfw: false,
+                    nsfw_probability: 0.0,
                 },
             ];
 
@@ -3023,11 +3023,11 @@ mod tests {
                 match item.video_id.as_str() {
                     "cache_video1" => {
                         assert_eq!(item.post_id, "11111");
-                        assert!(!item.is_nsfw);
+                        assert!(!item.is_nsfw());
                     }
                     "cache_video2" => {
                         assert_eq!(item.post_id, "22222");
-                        assert!(item.is_nsfw);
+                        assert!(item.is_nsfw());
                     }
                     "cache_video3" => assert_eq!(item.post_id, "xyz789"),
                     "cache_video4" => assert_eq!(item.post_id, "33333"),
@@ -3236,14 +3236,14 @@ mod tests {
                 canister_id: "can3".to_string(),
                 post_id: "non_numeric_id".to_string(),
                 video_id: "cache_vid3".to_string(),
-                is_nsfw: false,
+                nsfw_probability: 0.0,
             },
             PostItemV3 {
                 publisher_user_id: "user4".to_string(),
                 canister_id: "can4".to_string(),
                 post_id: "5003".to_string(),
                 video_id: "cache_vid4".to_string(),
-                is_nsfw: false,
+                nsfw_probability: 0.0,
             },
         ];
 
@@ -3260,7 +3260,7 @@ mod tests {
                 "cache_vid1" => assert_eq!(item.post_id, "5001"),
                 "cache_vid2" => {
                     assert_eq!(item.post_id, "5002");
-                    assert!(item.is_nsfw);
+                    assert!(item.is_nsfw());
                 }
                 "cache_vid3" => assert_eq!(item.post_id, "non_numeric_id"),
                 "cache_vid4" => assert_eq!(item.post_id, "5003"),
