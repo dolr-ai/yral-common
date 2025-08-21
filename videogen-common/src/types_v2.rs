@@ -5,7 +5,7 @@ use strum::{Display, EnumString};
 use utoipa::ToSchema;
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
-use crate::types::{ImageData, TokenType, VideoGenRequestKey};
+use crate::types::{AudioData, ImageData, TokenType, VideoGenRequestKey};
 
 /// Aspect ratio options for video generation in v2 API
 #[derive(
@@ -76,6 +76,9 @@ pub struct VideoGenRequestV2 {
 
     /// Optional input image for image-to-video
     pub image: Option<ImageData>,
+
+    /// Optional input audio for talking head generation
+    pub audio: Option<AudioData>,
 
     /// Aspect ratio
     #[schema(example = "16:9")]
@@ -169,6 +172,10 @@ pub struct ProviderInfo {
     /// Whether the model can generate audio
     pub supports_audio: bool,
 
+    /// Whether the model supports audio input (for talking head, etc.)
+    #[serde(default)]
+    pub supports_audio_input: bool,
+
     /// Whether the model supports seed for reproducibility
     pub supports_seed: bool,
 
@@ -190,9 +197,9 @@ pub struct ProviderInfo {
     /// Default resolution if not specified
     pub default_resolution: Option<ResolutionV2>,
 
-    /// Default duration if not specified
+    /// Default duration if not specified (None for providers where duration is determined by input)
     #[schema(example = 5)]
-    pub default_duration: u8,
+    pub default_duration: Option<u8>,
 
     // Status
     /// Whether the model is currently available

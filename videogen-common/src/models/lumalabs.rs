@@ -1,7 +1,6 @@
 use crate::generator::FlowControlFromEnv;
 use crate::types::{
-    ImageData, LumaLabsDuration, LumaLabsResolution,
-    VideoGenProvider, VideoGenerator,
+    ImageData, LumaLabsDuration, LumaLabsResolution, VideoGenProvider, VideoGenerator,
 };
 // VideoModel and ModelMetadata have been removed
 use crate::{VideoGenError, VideoGenInput};
@@ -191,6 +190,7 @@ impl LumaLabsModel {
             supports_image: true,
             supports_negative_prompt: false,
             supports_audio: false,
+            supports_audio_input: false,
             supports_seed: false,
             allowed_aspect_ratios: vec![
                 AspectRatioV2::Ratio16x9,
@@ -208,7 +208,7 @@ impl LumaLabsModel {
             allowed_durations: vec![9],
             default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
             default_resolution: Some(ResolutionV2::R1080p),
-            default_duration: 9,
+            default_duration: Some(9),
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/lumalabs.png".to_string()),

@@ -1,4 +1,4 @@
-use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model};
 // VideoModel has been removed - using ProviderInfo from types_v2 instead
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
@@ -41,7 +41,7 @@ pub trait VideoGenerator {
 }
 
 // VideoModel and ModelMetadata have been removed - using ProviderInfo from types_v2 instead
-// /// Trait for associating model implementations with their metadata  
+// /// Trait for associating model implementations with their metadata
 // pub trait ModelMetadata {
 //     /// Get the VideoModel metadata for this model type
 //     fn model_info() -> &'static VideoModel;
@@ -77,6 +77,7 @@ pub enum VideoGenInput {
     Veo3Fast(Veo3FastModel),
     LumaLabs(LumaLabsModel),
     IntTest(IntTestModel),
+    TalkingHead(TalkingHeadModel),
 }
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
@@ -89,6 +90,7 @@ pub enum VideoGenProvider {
     Veo3Fast,
     LumaLabs,
     IntTest,
+    TalkingHead,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -139,6 +141,56 @@ impl ImageData {
         match self {
             ImageData::Base64(input) => input.data.len(),
             ImageData::Url(url) => url.len(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
+pub struct AudioInput {
+    #[schema(example = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQAAAAA=")]
+    pub data: String, // Base64 encoded audio data
+    #[schema(example = "audio/mp3")]
+    pub mime_type: String,
+}
+
+/// Enum to support both base64 encoded audio and URL references
+#[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
+#[serde(tag = "type", content = "value")]
+pub enum AudioData {
+    /// Base64 encoded audio data
+    Base64(AudioInput),
+    /// URL reference to audio stored in cloud storage
+    #[schema(example = "https://storage.googleapis.com/videogen-images/user123/audio.mp3")]
+    Url(String),
+}
+
+impl AudioData {
+    /// Convert to Option<AudioInput> for backward compatibility
+    pub fn to_audio_input(&self) -> Option<AudioInput> {
+        match self {
+            AudioData::Base64(input) => Some(input.clone()),
+            AudioData::Url(_) => None, // Will need to be downloaded
+        }
+    }
+
+    /// Get the URL if this is a URL variant
+    pub fn as_url(&self) -> Option<&str> {
+        match self {
+            AudioData::Url(url) => Some(url),
+            AudioData::Base64(_) => None,
+        }
+    }
+
+    /// Check if this is a URL variant
+    pub fn is_url(&self) -> bool {
+        matches!(self, AudioData::Url(_))
+    }
+
+    /// Get size estimate in bytes
+    pub fn size_estimate(&self) -> usize {
+        match self {
+            AudioData::Base64(input) => input.data.len(),
+            AudioData::Url(url) => url.len(),
         }
     }
 }
