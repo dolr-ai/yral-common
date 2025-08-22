@@ -100,8 +100,7 @@ impl Veo3Model {
             Some(AspectRatioV2::Ratio9x16) => Veo3AspectRatio::Ratio9x16,
             Some(other) => {
                 return Err(VideoGenError::InvalidInput(format!(
-                    "Veo3 does not support {} aspect ratio. Supported: 16:9, 9:16",
-                    other
+                    "Veo3 does not support {other} aspect ratio. Supported: 16:9, 9:16"
                 )))
             }
         };
@@ -287,8 +286,7 @@ impl Veo3FastModel {
             Some(AspectRatioV2::Ratio16x9) | None => Veo3AspectRatio::Ratio16x9,
             Some(other) => {
                 return Err(VideoGenError::InvalidInput(format!(
-                    "Veo3Fast only supports 16:9 aspect ratio, got: {}",
-                    other
+                    "Veo3Fast only supports 16:9 aspect ratio, got: {other}"
                 )))
             }
         };
