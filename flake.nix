@@ -24,6 +24,9 @@
                             gcc
                             mold
                         ];
+                    shellHook = ''
+                        ./setup_git_hook.sh
+                    '';
                     };
                 }
         );
