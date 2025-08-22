@@ -24,7 +24,7 @@
                             gcc
                             mold
                         ];
-                    shellHook = ''
+                shellHook = ''
                         ./setup_git_hook.sh
                     '';
                     };

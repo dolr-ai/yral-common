@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -e
+
+echo "Running cargo check --all-features..."
+cargo check --all-features
+if [ $? -ne 0 ]; then
+  echo "cargo check failed. Commit aborted."
+  exit 1
+fi
+
+echo "Running cargo clippy --no-deps --all-features --release -- -Dwarnings..."
+cargo clippy --no-deps --all-features --release -- -Dwarnings
+if [ $? -ne 0 ]; then
+  echo "cargo clippy failed. Commit aborted."
+  exit 1
+fi
