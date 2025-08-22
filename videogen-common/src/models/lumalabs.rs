@@ -212,6 +212,7 @@ impl LumaLabsModel {
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/lumalabs.png".to_string()),
+            ios_model_icon: Some("https://yral.com/img/ai-models/lumalabs.png".to_string()),
             extra_info: HashMap::new(),
         }
     }

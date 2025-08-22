@@ -213,6 +213,10 @@ pub struct ProviderInfo {
     #[schema(example = "/img/ai-models/veo3.svg")]
     pub model_icon: Option<String>,
 
+    /// Path to model icon
+    #[schema(example = "/img/ai-models/veo3.svg")]
+    pub ios_model_icon: Option<String>,
+
     /// Additional model-specific information
     #[serde(default)]
     pub extra_info: HashMap<String, serde_json::Value>,

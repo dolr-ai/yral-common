@@ -193,6 +193,7 @@ impl Veo3Model {
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
+            ios_model_icon: Some("https://yral.com/img/ai-models/veo3.png".to_string()),
             extra_info: HashMap::new(),
         }
     }
@@ -382,6 +383,7 @@ impl Veo3FastModel {
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
+            ios_model_icon: Some("https://yral.com/img/ai-models/veo3.png".to_string()),
             extra_info: HashMap::new(),
         }
     }
