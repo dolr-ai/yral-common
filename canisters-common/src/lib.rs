@@ -1,35 +1,28 @@
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::sync::Arc;
 
 use agent_wrapper::AgentWrapper;
-use candid::{Decode, Principal};
+use candid::Principal;
 use canisters_client::{
-    individual_user_template::{
-        Canister, IndividualUserTemplate, Post, PostStatus, Result15, Result3, Result7,
-        SessionType, UserCanisterDetails,
-    },
+    individual_user_template::IndividualUserTemplate,
     local::USER_INFO_SERVICE_ID,
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
     rate_limits::RateLimits,
     sns_governance::SnsGovernance,
     sns_index::SnsIndex,
-    sns_ledger::{self, Account as LedgerAccount, SnsLedger},
+    sns_ledger::SnsLedger,
     sns_root::SnsRoot,
     sns_swap::SnsSwap,
-    user_index::{Result_ as UserIndexRegisterUserResult, UserIndex},
-    user_info_service::{
-        Result1, Result2, Result_, SessionType as UserInfoServiceSessionType, UserInfoService,
-    },
-    user_post_service::{Result2 as PostDetailsResultOfServiceCansiter, UserPostService},
+    user_index::UserIndex,
+    user_info_service::{Result1, Result_, UserInfoService},
+    user_post_service::UserPostService,
 };
 use consts::{
     canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID, RATE_LIMITS_ID},
-    CDAO_SWAP_TIME_SECS, METADATA_API_BASE,
+    METADATA_API_BASE,
 };
-use ic_agent::{identity::DelegatedIdentity, Agent, Identity};
-use reqwest::Client;
+use ic_agent::{identity::DelegatedIdentity, Identity};
 use serde::{Deserialize, Serialize};
-use sns_validation::pbs::sns_pb::SnsInitPayload;
 use types::delegated_identity::DelegatedIdentityWire;
 use utils::profile::ProfileDetails;
 use yral_metadata_client::MetadataClient;
@@ -42,11 +35,6 @@ mod error;
 pub mod utils;
 
 pub use error::*;
-
-use crate::{
-    consts::SUPPORTED_NON_YRAL_TOKENS_ROOT,
-    utils::{posts::PostDetails, token::balance::TokenBalance},
-};
 
 pub const CENT_TOKEN_NAME: &str = "CENTS";
 pub const SATS_TOKEN_NAME: &str = "Satoshi";
@@ -339,23 +327,6 @@ impl<const A: bool> Canisters<A> {
     pub async fn rate_limits(&self) -> RateLimits<'_> {
         let agent = self.agent.get_agent().await;
         RateLimits(RATE_LIMITS_ID, agent)
-    }
-
-    async fn subnet_indexes(&self) -> Result<Vec<Principal>> {
-        #[cfg(feature = "local")]
-        {
-            use consts::canister_ids::USER_INDEX_ID;
-            Ok(vec![USER_INDEX_ID])
-        }
-        #[cfg(not(feature = "local"))]
-        {
-            let orchestrator = self.orchestrator().await;
-            Ok(orchestrator
-                .get_all_available_subnet_orchestrators()
-                .await?
-                .into_iter()
-                .collect())
-        }
     }
 }
 
