@@ -206,7 +206,7 @@ impl LumaLabsModel {
                 ResolutionV2::R4k,
             ],
             allowed_durations: vec![9],
-            default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
+            default_aspect_ratio: Some(AspectRatioV2::Ratio9x16),
             default_resolution: Some(ResolutionV2::R1080p),
             default_duration: Some(9),
             is_available: true,
