@@ -124,6 +124,13 @@ pub struct GameRes {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameResV4WithCanister {
+    pub post_creator_canister: Principal,
+    pub post_id: String,
+    pub game_info: GameInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameResV2 {
     pub post_canister: Principal,
     pub post_id: u64,
