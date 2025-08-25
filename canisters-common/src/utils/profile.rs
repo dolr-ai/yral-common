@@ -1,5 +1,8 @@
 use candid::Principal;
-use canisters_client::individual_user_template::UserProfileDetailsForFrontendV2;
+use canisters_client::{
+    individual_user_template::UserProfileDetailsForFrontendV2,
+    user_info_service::UserProfileDetailsForFrontendV3,
+};
 use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
 use username_gen::random_username_from_principal;
@@ -40,6 +43,25 @@ impl ProfileDetails {
             user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
+        }
+    }
+
+    pub fn from_service_canister(
+        user_principal: Principal,
+        username: Option<String>,
+        profile_details: UserProfileDetailsForFrontendV3,
+    ) -> Self {
+        Self {
+            username: username.clone().filter(|u| !u.is_empty()),
+            lifetime_earnings: 0,
+            followers_cnt: 0,
+            following_cnt: 0,
+            profile_pic: profile_details.profile_picture_url,
+            display_name: username,
+            principal: user_principal,
+            user_canister: user_principal,
+            hots: 0,
+            nots: 0,
         }
     }
 }

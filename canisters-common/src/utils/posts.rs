@@ -4,7 +4,13 @@ use std::{
 };
 
 use candid::Principal;
-use canisters_client::individual_user_template::{PostDetailsForFrontend, PostStatus};
+use canisters_client::individual_user_template::PostDetailsForFrontend;
+use canisters_client::{
+    ic::USER_INFO_SERVICE_ID,
+    user_post_service::{
+        PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result4,
+    },
+};
 use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
 use serde::{Deserialize, Serialize};
 use username_gen::random_username_from_principal;
@@ -22,7 +28,7 @@ struct NsfwApiResponse {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PostDetails {
     pub canister_id: Principal, // canister id of the publishing canister.
-    pub post_id: u64,
+    pub post_id: String,
     pub uid: String,
     pub description: String,
     pub views: u64,
@@ -71,6 +77,33 @@ impl PostDetails {
         Self::from_canister_post_with_nsfw_info(authenticated, canister_id, details, 0.0)
     }
 
+    pub fn from_service_post(
+        canister_id: Principal,
+        post_details: PostServicePostDetailsForFrontend,
+    ) -> Self {
+        Self {
+            canister_id,
+            post_id: post_details.id,
+            uid: post_details.video_uid,
+            description: post_details.description,
+            views: post_details.total_view_count,
+            likes: post_details.like_count,
+            display_name: None,
+            propic_url: propic_from_principal(post_details.created_by_user_principal_id),
+            liked_by_user: Some(post_details.liked_by_me),
+            poster_principal: post_details.creator_principal,
+            hastags: post_details.hashtags,
+            is_nsfw: false,
+            hot_or_not_feed_ranking_score: Some(0),
+            created_at: Duration::new(
+                post_details.created_at.secs_since_epoch,
+                post_details.created_at.nanos_since_epoch,
+            ),
+            nsfw_probability: 0.0,
+            username: None,
+        }
+    }
+
     pub fn from_canister_post_with_nsfw_info(
         authenticated: bool,
         canister_id: Principal,
@@ -79,7 +112,7 @@ impl PostDetails {
     ) -> Self {
         Self {
             canister_id,
-            post_id: details.id,
+            post_id: details.id.to_string(),
             uid: details.video_uid,
             description: details.description,
             views: details.total_view_count,
@@ -131,10 +164,7 @@ impl PostDetails {
 
 impl<const A: bool> Canisters<A> {
     async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
-        let url = format!(
-            "https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
-            video_uid
-        );
+        let url = format!("https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{video_uid}");
 
         let response = reqwest::get(&url).await?;
 
@@ -146,7 +176,7 @@ impl<const A: bool> Canisters<A> {
     pub async fn get_post_details(
         &self,
         user_canister: Principal,
-        post_id: u64,
+        post_id: String,
     ) -> Result<Option<PostDetails>> {
         self.get_post_details_with_nsfw_info(user_canister, post_id, None)
             .await
@@ -155,69 +185,120 @@ impl<const A: bool> Canisters<A> {
     pub async fn get_post_details_with_nsfw_info(
         &self,
         user_canister: Principal,
-        post_id: u64,
+        post_id: String,
         nsfw_probability: Option<f32>,
     ) -> Result<Option<PostDetails>> {
-        let post_creator_can = self.individual_user(user_canister).await;
-        let mut post_details = match post_creator_can
-            .get_individual_post_details_by_id(post_id)
-            .await
-        {
-            Ok(p) => p,
-            Err(e) => {
-                log::warn!(
-                    "failed to get post details for {user_canister} {post_id}: {e}, skipping"
-                );
-                return Ok(None);
+        let profile_details = if user_canister == USER_INFO_SERVICE_ID {
+            let post_service_canister = self.user_post_service().await;
+            let post_details_res = post_service_canister
+                .get_individual_post_details_by_id_for_user(
+                    post_id.clone(),
+                    post_service_canister.1.get_principal().unwrap(),
+                )
+                .await;
+
+            match post_details_res {
+                Ok(post_details) => {
+                    let Result2::Ok(post_details) = post_details else {
+                        return Ok(None);
+                    };
+                    Some(PostDetails::from_service_post(user_canister, post_details))
+                }
+                Err(e) => {
+                    log::warn!(
+                        "Failed to get post details for {user_canister} {post_id}: {e}, skipping"
+                    );
+                    None
+                }
+            }
+        } else {
+            let post_creator_can = self.individual_user(user_canister).await;
+            match post_creator_can
+                .get_individual_post_details_by_id(post_id.parse::<u64>().unwrap())
+                .await
+            {
+                Ok(p) => Some(PostDetails::from_canister_post_with_nsfw_info(
+                    A,
+                    user_canister,
+                    p,
+                    0.0,
+                )),
+                Err(e) => {
+                    log::warn!(
+                        "failed to get post details for {user_canister} {post_id}: {e}, skipping"
+                    );
+                    None
+                }
             }
         };
 
-        // TODO: temporary patch in frontend to not show banned videos, to be removed later after NSFW tagging
-        if matches!(post_details.status, PostStatus::BannedDueToUserReporting) {
+        let Some(mut post_details) = profile_details else {
             return Ok(None);
-        }
+        };
 
-        let creator_principal = post_details.created_by_user_principal_id;
+        let creator_principal = post_details.poster_principal;
         let creator_meta = self
             .metadata_client
             .get_user_metadata_v2(creator_principal.to_text())
             .await?;
-        post_details.created_by_unique_user_name =
-            creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
+        post_details.username = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
         let nsfw_prob = nsfw_probability.unwrap_or(
-            self.fetch_nsfw_probability(&post_details.video_uid)
+            self.fetch_nsfw_probability(&post_details.uid)
                 .await
                 .inspect_err(|e| {
                     log::warn!(
                         "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
-                        post_details.video_uid,
+                        post_details.uid,
                         e
                     );
                 })
                 .unwrap_or(1.0),
         );
 
-        Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
-            A,
-            user_canister,
-            post_details,
-            nsfw_prob,
-        )))
+        post_details.nsfw_probability = nsfw_prob;
+
+        Ok(Some(post_details))
+    }
+
+    pub async fn post_like_info(
+        &self,
+        post_canister: Principal,
+        post_id: String,
+    ) -> Result<(bool, u64)> {
+        let post_details = self.get_post_details(post_canister, post_id).await?;
+        let Some(post_details) = post_details else {
+            return Err(crate::Error::YralCanister("Post not found".to_string()));
+        };
+
+        Ok((
+            post_details.liked_by_user.unwrap_or(false),
+            post_details.likes,
+        ))
     }
 }
 
 impl Canisters<true> {
-    pub async fn post_like_info(
-        &self,
-        post_canister: Principal,
-        post_id: u64,
-    ) -> Result<(bool, u64)> {
-        let individual = self.individual_user(post_canister).await;
-        let post = individual
-            .get_individual_post_details_by_id(post_id)
-            .await?;
-        Ok((post.liked_by_me, post.like_count))
+    pub async fn like_post(&self, post_canister: Principal, post_id: String) -> Result<bool> {
+        match post_canister {
+            USER_INFO_SERVICE_ID => {
+                let post_service_canister = self.user_post_service().await;
+                let res = post_service_canister
+                    .update_post_toggle_like_status_by_caller(post_id)
+                    .await?;
+                match res {
+                    Result4::Ok(val) => Ok(val),
+                    Result4::Err(err) => Err(crate::Error::YralCanister(format!("{err:?}"))),
+                }
+            }
+            _ => {
+                let individual = self.individual_user(post_canister).await;
+                individual
+                    .update_post_toggle_like_status_by_caller(post_id.parse::<u64>().unwrap())
+                    .await
+                    .map_err(|e| crate::Error::YralCanister(e.to_string()))
+            }
+        }
     }
 }
