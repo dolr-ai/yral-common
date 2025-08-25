@@ -103,6 +103,27 @@ impl VoteDetails {
     }
 }
 
+pub async fn fetch_game_with_sats_info_v3(
+    user_principal: Principal,
+    cloudflare_url: reqwest::Url,
+    request: GameInfoReqV3,
+) -> Result<Option<GameInfo>> {
+    let path = format!("/v3/game_info/{user_principal}");
+    let url = cloudflare_url.join(&path)?;
+
+    let client = reqwest::Client::new();
+    let res = client.post(url).json(&request).send().await?;
+
+    if !res.status().is_success() {
+        let err = res.text().await?;
+        return Err(Error::Hon(HonError::Backend(err)));
+    }
+
+    let info = res.json().await?;
+
+    Ok(info)
+}
+
 impl Canisters<true> {
     /// Places a vote on a post via cloudflare. The vote amount must be in cents e0s
     pub async fn vote_with_cents_on_post_via_cloudflare(
@@ -158,19 +179,6 @@ impl Canisters<true> {
         cloudflare_url: reqwest::Url,
         request: GameInfoReqV3,
     ) -> Result<Option<GameInfo>> {
-        let path = format!("/v3/game_info/{}", self.user_principal());
-        let url = cloudflare_url.join(&path)?;
-
-        let client = reqwest::Client::new();
-        let res = client.post(url).json(&request).send().await?;
-
-        if !res.status().is_success() {
-            let err = res.text().await?;
-            return Err(Error::Hon(HonError::Backend(err)));
-        }
-
-        let info = res.json().await?;
-
-        Ok(info)
+        fetch_game_with_sats_info_v3(self.user_principal(), cloudflare_url, request).await
     }
 }
