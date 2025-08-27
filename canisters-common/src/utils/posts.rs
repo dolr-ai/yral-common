@@ -8,6 +8,7 @@ use canisters_client::individual_user_template::PostDetailsForFrontend;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
     user_post_service::{
+        Post as PostFromServiceCanister,
         PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result4,
     },
 };
@@ -75,6 +76,33 @@ impl PostDetails {
         details: PostDetailsForFrontend,
     ) -> Self {
         Self::from_canister_post_with_nsfw_info(authenticated, canister_id, details, 0.0)
+    }
+
+    pub fn from_service_post_anonymous(
+        canister_id: Principal,
+        service_post: PostFromServiceCanister,
+    ) -> Self {
+        Self {
+            canister_id,
+            post_id: service_post.id,
+            uid: service_post.video_uid,
+            description: service_post.description,
+            views: service_post.view_stats.total_view_count,
+            likes: service_post.likes.len() as u64,
+            display_name: None,
+            propic_url: propic_from_principal(service_post.creator_principal),
+            liked_by_user: None,
+            poster_principal: service_post.creator_principal,
+            hastags: service_post.hashtags,
+            is_nsfw: false,
+            hot_or_not_feed_ranking_score: Some(0),
+            created_at: Duration::new(
+                service_post.created_at.secs_since_epoch,
+                service_post.created_at.nanos_since_epoch,
+            ),
+            nsfw_probability: 0.0,
+            username: None,
+        }
     }
 
     pub fn from_service_post(

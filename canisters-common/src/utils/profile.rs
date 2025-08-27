@@ -135,19 +135,14 @@ impl<const A: bool> Canisters<A> {
                 .await?;
 
             match user_profile_details {
-                Result1::Ok(profile_details) => {
-                    return Ok(Some(ProfileDetails::from_service_canister(
-                        user_principal,
-                        Some(meta.user_name),
-                        profile_details,
-                    )));
-                }
-                Result1::Err(e) => {
-                    return Err(Error::YralCanister(format!(
-                        "{e} for principal {}",
-                        user_principal
-                    )));
-                }
+                Result1::Ok(profile_details) => Ok(Some(ProfileDetails::from_service_canister(
+                    user_principal,
+                    Some(meta.user_name),
+                    profile_details,
+                ))),
+                Result1::Err(e) => Err(Error::YralCanister(format!(
+                    "{e} for principal {user_principal}"
+                ))),
             }
         } else {
             let profile_details = self
