@@ -5,12 +5,14 @@ use std::{
 
 use candid::Principal;
 use canisters_client::individual_user_template::{PostDetailsForFrontend, PostStatus};
+use futures_util::try_join;
 use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use username_gen::random_username_from_principal;
 use web_time::Duration;
 
-use crate::{Canisters, Result};
+use crate::{Canisters, Error, Result};
 
 use super::profile::propic_from_principal;
 
@@ -130,6 +132,7 @@ impl PostDetails {
 }
 
 impl<const A: bool> Canisters<A> {
+    #[instrument(skip(self))]
     async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
         let url = format!(
             "https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
@@ -152,24 +155,36 @@ impl<const A: bool> Canisters<A> {
             .await
     }
 
+    #[instrument(skip(self))]
+    async fn get_individual_post_details_by_id_instrumented(
+        &self,
+        user_canister: Principal,
+        post_id: u64,
+    ) -> Option<PostDetailsForFrontend> {
+        let post_creator_can = self.individual_user(user_canister).await;
+        post_creator_can
+            .get_individual_post_details_by_id(post_id)
+            .await
+            .inspect_err(|err| {
+                log::warn!(
+                    "failed to get post details for {user_canister} {post_id}: {err:#?}, skipping"
+                );
+            })
+            .ok()
+    }
+
+    #[tracing::instrument(skip(self))]
     pub async fn get_post_details_with_nsfw_info(
         &self,
         user_canister: Principal,
         post_id: u64,
         nsfw_probability: Option<f32>,
     ) -> Result<Option<PostDetails>> {
-        let post_creator_can = self.individual_user(user_canister).await;
-        let mut post_details = match post_creator_can
-            .get_individual_post_details_by_id(post_id)
+        let Some(mut post_details) = self
+            .get_individual_post_details_by_id_instrumented(user_canister, post_id)
             .await
-        {
-            Ok(p) => p,
-            Err(e) => {
-                log::warn!(
-                    "failed to get post details for {user_canister} {post_id}: {e}, skipping"
-                );
-                return Ok(None);
-            }
+        else {
+            return Ok(None);
         };
 
         // TODO: temporary patch in frontend to not show banned videos, to be removed later after NSFW tagging
@@ -178,26 +193,37 @@ impl<const A: bool> Canisters<A> {
         }
 
         let creator_principal = post_details.created_by_user_principal_id;
-        let creator_meta = self
-            .metadata_client
-            .get_user_metadata_v2(creator_principal.to_text())
-            .await?;
+        let (creator_meta, nsfw_prob) = try_join!(
+            async {
+                let meta = self
+                    .metadata_client
+                    .get_user_metadata_v2(creator_principal.to_text())
+                    .await?;
+
+                Ok::<_, Error>(meta)
+            },
+            async {
+                // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
+                if let Some(nsfw_prob) = nsfw_probability {
+                    return Ok(nsfw_prob);
+                }
+                // TODO: add a fast path for fetching nsfw probability
+                // since the probablity wont ever change for any given video_uid, it can be easily cached
+                Ok(self
+                    .fetch_nsfw_probability(&post_details.video_uid)
+                    .await
+                    .inspect_err(|e| {
+                        log::warn!(
+                            "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
+                            post_details.video_uid,
+                            e
+                        );
+                    })
+                    .unwrap_or(1.0))
+            }
+        )?;
         post_details.created_by_unique_user_name =
             creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
-
-        // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
-        let nsfw_prob = nsfw_probability.unwrap_or(
-            self.fetch_nsfw_probability(&post_details.video_uid)
-                .await
-                .inspect_err(|e| {
-                    log::warn!(
-                        "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
-                        post_details.video_uid,
-                        e
-                    );
-                })
-                .unwrap_or(1.0),
-        );
 
         Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
             A,
