@@ -5615,6 +5615,7 @@ dependencies = [
  "serde_json",
  "sns-validation",
  "thiserror 2.0.12",
+ "tracing",
  "url",
  "web-time",
  "yral-canisters-client",
