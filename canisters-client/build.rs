@@ -15,6 +15,7 @@ use candid_parser::{
 };
 use convert_case::{Case, Casing};
 use serde::Deserialize;
+use serde::Serialize;
 
 use quote::format_ident;
 use syn::{FnArg, ImplItem, Item, Pat, Visibility};
@@ -56,7 +57,7 @@ static DID_WHITELIST: LazyLock<HashSet<&str>> = LazyLock::new(|| {
     whitelist
 });
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct CanId {
     ic: Principal,
     local: Principal,
@@ -121,7 +122,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
     let mut candid_config = candid_parser::bindings::rust::Config::new();
     candid_config.set_target(candid_parser::bindings::rust::Target::Agent);
     candid_config
-        .set_type_attributes("#[derive(CandidType, Deserialize, Debug, Clone, PartialEq)]".into());
+        .set_type_attributes("#[derive(CandidType, Serialize, Deserialize, Debug, Clone, PartialEq)]".into());
     let mut did_mod_contents = String::new();
     let whitelist = DID_WHITELIST.clone();
 
