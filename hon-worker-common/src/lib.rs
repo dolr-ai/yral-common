@@ -54,7 +54,7 @@ pub enum HotOrNot {
     Not,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum GameResult {
     Win { win_amt: BigUint },
     Loss { lose_amt: BigUint },
@@ -72,7 +72,7 @@ pub enum GameResultV2 {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum GameInfo {
     CreatorReward(BigUint),
     Vote {
@@ -108,7 +108,7 @@ pub struct VoteRequest {
     pub direction: HotOrNot,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct GameRes {
     pub post_canister: Principal,
     pub post_id: u64,
