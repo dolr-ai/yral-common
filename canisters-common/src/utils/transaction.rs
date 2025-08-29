@@ -12,7 +12,7 @@ pub enum TxnDirection {
     Deducted,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq)]
 pub enum TxnInfoType {
     Mint { to: Principal },
     Sent { to: Principal }, // only for keyed
@@ -21,7 +21,7 @@ pub enum TxnInfoType {
     Transfer { from: Principal, to: Principal }, // only for public transaction
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct TxnInfoWallet {
     pub tag: TxnInfoType,
     pub timestamp: u64,
