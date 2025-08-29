@@ -121,7 +121,7 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
     let mut candid_config = candid_parser::bindings::rust::Config::new();
     candid_config.set_target(candid_parser::bindings::rust::Target::Agent);
     candid_config
-        .set_type_attributes("#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]".into());
+        .set_type_attributes("#[derive(CandidType, serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]".into());
     let mut did_mod_contents = String::new();
     let whitelist = DID_WHITELIST.clone();
 
