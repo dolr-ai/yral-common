@@ -9,7 +9,7 @@ use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
     user_post_service::{
         Post as PostFromServiceCanister,
-        PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result4,
+        PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result5,
     },
 };
 use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
@@ -316,8 +316,8 @@ impl Canisters<true> {
                     .update_post_toggle_like_status_by_caller(post_id)
                     .await?;
                 match res {
-                    Result4::Ok(val) => Ok(val),
-                    Result4::Err(err) => Err(crate::Error::YralCanister(format!("{err:?}"))),
+                    Result5::Ok(val) => Ok(val),
+                    Result5::Err(err) => Err(crate::Error::YralCanister(format!("{err:?}"))),
                 }
             }
             _ => {
