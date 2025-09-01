@@ -1691,26 +1691,11 @@ impl MLFeedCacheState {
         let memory_pool = self.memory_store_pool.clone();
         let mut memory_conn = memory_pool.get().await?;
         
+        // Add video IDs to set (no size limit)
         for video_id in &video_ids {
             let _: () = redis::cmd("SADD")
                 .arg(key)
                 .arg(video_id)
-                .query_async(&mut *memory_conn)
-                .await?;
-        }
-
-        // Check set size and trim if needed (reuse existing constant)
-        let set_size: u64 = redis::cmd("SCARD")
-            .arg(key)
-            .query_async(&mut *memory_conn)
-            .await?;
-
-        if set_size > MAX_WATCH_HISTORY_CACHE_LEN {
-            // For sets, we need to remove random members to maintain size limit
-            let to_remove = set_size - MAX_WATCH_HISTORY_CACHE_LEN;
-            let _: () = redis::cmd("SPOP")
-                .arg(&key)
-                .arg(to_remove)
                 .query_async(&mut *memory_conn)
                 .await?;
         }
@@ -1721,28 +1706,13 @@ impl MLFeedCacheState {
         let video_ids_clone = video_ids.clone();
         tokio::spawn(async move {
             if let Ok(mut conn) = redis_pool.get().await {
+                // Add to persistent store (no size limit)
                 for video_id in video_ids_clone {
                     let _: Result<(), _> = redis::cmd("SADD")
                         .arg(&key_clone)
                         .arg(&video_id)
                         .query_async(&mut *conn)
                         .await;
-                }
-                
-                // Trim persistent store too
-                let size: Result<u64, _> = redis::cmd("SCARD")
-                    .arg(&key_clone)
-                    .query_async(&mut *conn)
-                    .await;
-                if let Ok(size) = size {
-                    if size > MAX_WATCH_HISTORY_CACHE_LEN {
-                        let to_remove = size - MAX_WATCH_HISTORY_CACHE_LEN;
-                        let _: Result<(), _> = redis::cmd("SPOP")
-                            .arg(&key_clone)
-                            .arg(to_remove)
-                            .query_async(&mut *conn)
-                            .await;
-                    }
                 }
             }
         });
