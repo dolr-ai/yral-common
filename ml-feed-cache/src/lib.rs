@@ -940,24 +940,27 @@ impl MLFeedCacheState {
         key: &str,
         items: Vec<MLFeedCacheHistoryItemV3>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
+        let mut memory_conn = self.memory_store_pool.get().await.unwrap();
+
+        // Extract video IDs for the watched set
+        let video_ids: Vec<String> = items.iter().map(|item| item.video_id.clone()).collect();
 
         let items = items
             .iter()
             .map(|item| (get_history_item_score_v3(item), item.clone()))
             .collect::<Vec<_>>();
 
-        // zadd_multiple in groups of 1000
+        // zadd_multiple in groups of 1000 to memory store first
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
+            memory_conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
                 .await?;
         }
 
-        // Trim to max length
-        let num_items = conn.zcard::<&str, u64>(key).await?;
+        // Trim memory store to max length
+        let num_items = memory_conn.zcard::<&str, u64>(key).await?;
         if num_items > MAX_WATCH_HISTORY_CACHE_LEN {
-            conn.zremrangebyrank::<&str, ()>(
+            memory_conn.zremrangebyrank::<&str, ()>(
                 key,
                 0,
                 (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
@@ -965,45 +968,58 @@ impl MLFeedCacheState {
             .await?;
         }
 
-        // Update memory store pool asynchronously
+        // Add video IDs to watched set for O(1) filtering
+        if !video_ids.is_empty() {
+            // Extract user_id by splitting at last underscore
+            let user_id = key.rsplit_once('_').map(|(prefix, _)| prefix).unwrap_or(key);
+            
+            let set_key = if key.contains("_nsfw") {
+                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2)
+            } else {
+                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2)
+            };
+            
+            self.add_watched_video_ids_to_set(&set_key, video_ids).await?;
+        }
+
+        // Update persistent Redis (Upstash) in background
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
         let items_clone = items.clone();
-        self.spawn_memory_store_update(key, move |pool, key| {
-            Box::pin(async move {
-                let mut conn = match pool.get().await {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        log::error!("Failed to get memory store connection: {e}");
-                        return Ok(());
-                    }
-                };
-
-                for chunk in items_clone.chunks(chunk_size) {
-                    if let Err(e) = conn
-                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key, chunk)
-                        .await
-                    {
-                        log::error!("Failed to add items to memory store: {e}");
-                    }
-                }
-
-                match conn.zcard::<&str, u64>(&key).await {
-                    Ok(num_items) if num_items > MAX_WATCH_HISTORY_CACHE_LEN => {
+        tokio::spawn(async move {
+            match redis_pool.get().await {
+                Ok(mut conn) => {
+                    for chunk in items_clone.chunks(chunk_size) {
                         if let Err(e) = conn
-                            .zremrangebyrank::<&str, ()>(
-                                &key,
-                                0,
-                                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
-                            )
+                            .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key_clone, chunk)
                             .await
                         {
-                            log::error!("Failed to trim memory store: {e}");
+                            log::error!("Failed to add items to persistent Redis: {e}");
                         }
                     }
-                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
-                    _ => {}
+
+                    // Trim persistent store
+                    match conn.zcard::<&str, u64>(&key_clone).await {
+                        Ok(num_items) if num_items > MAX_WATCH_HISTORY_CACHE_LEN => {
+                            if let Err(e) = conn
+                                .zremrangebyrank::<&str, ()>(
+                                    &key_clone,
+                                    0,
+                                    (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+                                )
+                                .await
+                            {
+                                log::error!("Failed to trim persistent Redis: {e}");
+                            }
+                        }
+                        Err(e) => log::error!("Failed to get card count from persistent Redis: {e}"),
+                        _ => {}
+                    }
                 }
-                Ok(())
-            })
+                Err(e) => {
+                    log::error!("Failed to get persistent Redis connection: {e}");
+                }
+            }
         });
 
         Ok(())
@@ -1014,25 +1030,27 @@ impl MLFeedCacheState {
         key: &str,
         items: Vec<MLFeedCacheHistoryItemV3>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
+        let mut memory_conn = self.memory_store_pool.get().await.unwrap();
+
+        // Extract video IDs for the watched set
+        let video_ids: Vec<String> = items.iter().map(|item| item.video_id.clone()).collect();
 
         let items = items
             .iter()
             .map(|item| (get_history_item_score_v3(item), item.clone()))
             .collect::<Vec<_>>();
 
-        // zadd_multiple in groups of 1000
+        // zadd_multiple in groups of 1000 to memory store first
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
+            memory_conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
                 .await?;
         }
 
-        // get num items in the list
-        let num_items = conn.zcard::<&str, u64>(key).await?;
-
+        // Trim memory store to max length
+        let num_items = memory_conn.zcard::<&str, u64>(key).await?;
         if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN {
-            conn.zremrangebyrank::<&str, ()>(
+            memory_conn.zremrangebyrank::<&str, ()>(
                 key,
                 0,
                 (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
@@ -1040,45 +1058,58 @@ impl MLFeedCacheState {
             .await?;
         }
 
-        // Update memory store pool asynchronously
+        // Add video IDs to watched set for O(1) filtering
+        if !video_ids.is_empty() {
+            // Extract user_id by splitting at last underscore
+            let user_id = key.rsplit_once('_').map(|(prefix, _)| prefix).unwrap_or(key);
+            
+            let set_key = if key.contains("_nsfw") {
+                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2)
+            } else {
+                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2)
+            };
+            
+            self.add_watched_video_ids_to_set(&set_key, video_ids).await?;
+        }
+
+        // Update persistent Redis (Upstash) in background
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
         let items_clone = items.clone();
-        self.spawn_memory_store_update(key, move |pool, key| {
-            Box::pin(async move {
-                let mut conn = match pool.get().await {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        log::error!("Failed to get memory store connection: {e}");
-                        return Ok(());
-                    }
-                };
-
-                for chunk in items_clone.chunks(chunk_size) {
-                    if let Err(e) = conn
-                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key, chunk)
-                        .await
-                    {
-                        log::error!("Failed to add items to memory store: {e}");
-                    }
-                }
-
-                match conn.zcard::<&str, u64>(&key).await {
-                    Ok(num_items) if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN => {
+        tokio::spawn(async move {
+            match redis_pool.get().await {
+                Ok(mut conn) => {
+                    for chunk in items_clone.chunks(chunk_size) {
                         if let Err(e) = conn
-                            .zremrangebyrank::<&str, ()>(
-                                &key,
-                                0,
-                                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
-                            )
+                            .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key_clone, chunk)
                             .await
                         {
-                            log::error!("Failed to trim memory store: {e}");
+                            log::error!("Failed to add items to persistent Redis: {e}");
                         }
                     }
-                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
-                    _ => {}
+
+                    // Trim persistent store
+                    match conn.zcard::<&str, u64>(&key_clone).await {
+                        Ok(num_items) if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN => {
+                            if let Err(e) = conn
+                                .zremrangebyrank::<&str, ()>(
+                                    &key_clone,
+                                    0,
+                                    (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+                                )
+                                .await
+                            {
+                                log::error!("Failed to trim persistent Redis: {e}");
+                            }
+                        }
+                        Err(e) => log::error!("Failed to get card count from persistent Redis: {e}"),
+                        _ => {}
+                    }
                 }
-                Ok(())
-            })
+                Err(e) => {
+                    log::error!("Failed to get persistent Redis connection: {e}");
+                }
+            }
         });
 
         Ok(())
@@ -1193,7 +1224,10 @@ impl MLFeedCacheState {
         key: &str,
         items: Vec<MLFeedCacheHistoryItemV3>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
+        let mut memory_conn = self.memory_store_pool.get().await.unwrap();
+
+        // Extract video IDs for the watched set
+        let video_ids: Vec<String> = items.iter().map(|item| item.video_id.clone()).collect();
 
         let items = items
             .iter()
@@ -1210,25 +1244,74 @@ impl MLFeedCacheState {
             })
             .collect::<Vec<_>>();
 
-        // zadd_multiple in groups of 1000
+        // zadd_multiple in groups of 1000 to memory store first
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, u64, PlainPostItemV3, ()>(key, chunk)
+            memory_conn.zadd_multiple::<&str, u64, PlainPostItemV3, ()>(key, chunk)
                 .await?;
         }
 
-        // get num items in the list
-        let num_items = conn.zcard::<&str, u64>(key).await?;
-
-        // if num items is greater than MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN, remove the oldest items
+        // Trim memory store to max length
+        let num_items = memory_conn.zcard::<&str, u64>(key).await?;
         if num_items > MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN {
-            conn.zremrangebyrank::<&str, ()>(
+            memory_conn.zremrangebyrank::<&str, ()>(
                 key,
                 0,
                 (num_items - (MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN + 1)) as isize,
             )
             .await?;
         }
+
+        // Add video IDs to watched set for O(1) filtering
+        if !video_ids.is_empty() {
+            // Extract user_id by splitting at last underscore
+            let user_id = key.rsplit_once('_').map(|(prefix, _)| prefix).unwrap_or(key);
+            
+            // Plain post items are always clean (no nsfw variant)
+            let set_key = format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2);
+            
+            self.add_watched_video_ids_to_set(&set_key, video_ids).await?;
+        }
+
+        // Update persistent Redis (Upstash) in background
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
+        let items_clone = items.clone();
+        tokio::spawn(async move {
+            match redis_pool.get().await {
+                Ok(mut conn) => {
+                    for chunk in items_clone.chunks(chunk_size) {
+                        if let Err(e) = conn
+                            .zadd_multiple::<&str, u64, PlainPostItemV3, ()>(&key_clone, chunk)
+                            .await
+                        {
+                            log::error!("Failed to add items to persistent Redis: {e}");
+                        }
+                    }
+
+                    // Trim persistent store
+                    match conn.zcard::<&str, u64>(&key_clone).await {
+                        Ok(num_items) if num_items > MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN => {
+                            if let Err(e) = conn
+                                .zremrangebyrank::<&str, ()>(
+                                    &key_clone,
+                                    0,
+                                    (num_items - (MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN + 1)) as isize,
+                                )
+                                .await
+                            {
+                                log::error!("Failed to trim persistent Redis: {e}");
+                            }
+                        }
+                        Err(e) => log::error!("Failed to get card count from persistent Redis: {e}"),
+                        _ => {}
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to get persistent Redis connection: {e}");
+                }
+            }
+        });
 
         Ok(())
     }
@@ -1595,6 +1678,79 @@ impl MLFeedCacheState {
 
         Ok(values)
     }
+
+    pub async fn add_watched_video_ids_to_set(
+        &self,
+        key: &str,
+        video_ids: Vec<String>,
+    ) -> Result<(), anyhow::Error> {
+        if video_ids.is_empty() {
+            return Ok(());
+        }
+
+        let memory_pool = self.memory_store_pool.clone();
+        let mut memory_conn = memory_pool.get().await?;
+        
+        for video_id in &video_ids {
+            let _: () = redis::cmd("SADD")
+                .arg(key)
+                .arg(video_id)
+                .query_async(&mut *memory_conn)
+                .await?;
+        }
+
+        // Check set size and trim if needed (reuse existing constant)
+        let set_size: u64 = redis::cmd("SCARD")
+            .arg(key)
+            .query_async(&mut *memory_conn)
+            .await?;
+
+        if set_size > MAX_WATCH_HISTORY_CACHE_LEN {
+            // For sets, we need to remove random members to maintain size limit
+            let to_remove = set_size - MAX_WATCH_HISTORY_CACHE_LEN;
+            let _: () = redis::cmd("SPOP")
+                .arg(&key)
+                .arg(to_remove)
+                .query_async(&mut *memory_conn)
+                .await?;
+        }
+
+        // Update persistent Redis in background
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
+        let video_ids_clone = video_ids.clone();
+        tokio::spawn(async move {
+            if let Ok(mut conn) = redis_pool.get().await {
+                for video_id in video_ids_clone {
+                    let _: Result<(), _> = redis::cmd("SADD")
+                        .arg(&key_clone)
+                        .arg(&video_id)
+                        .query_async(&mut *conn)
+                        .await;
+                }
+                
+                // Trim persistent store too
+                let size: Result<u64, _> = redis::cmd("SCARD")
+                    .arg(&key_clone)
+                    .query_async(&mut *conn)
+                    .await;
+                if let Ok(size) = size {
+                    if size > MAX_WATCH_HISTORY_CACHE_LEN {
+                        let to_remove = size - MAX_WATCH_HISTORY_CACHE_LEN;
+                        let _: Result<(), _> = redis::cmd("SPOP")
+                            .arg(&key_clone)
+                            .arg(to_remove)
+                            .query_async(&mut *conn)
+                            .await;
+                    }
+                }
+            }
+        });
+
+        Ok(())
+    }
+
+
 }
 
 #[cfg(test)]
