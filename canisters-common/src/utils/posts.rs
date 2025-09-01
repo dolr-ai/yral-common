@@ -134,10 +134,7 @@ impl PostDetails {
 impl<const A: bool> Canisters<A> {
     #[instrument(skip(self))]
     async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
-        let url = format!(
-            "https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{}",
-            video_uid
-        );
+        let url = format!("https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{video_uid}");
 
         let response = reqwest::get(&url).await?;
 
