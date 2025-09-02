@@ -8,27 +8,18 @@ async fn backfill_watched_video_ids(
     user_id: &str,
     is_nsfw: bool,
 ) -> Result<u64> {
-    let history_suffixes = if is_nsfw {
-        vec![consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2, consts::USER_SUCCESS_HISTORY_NSFW_SUFFIX_V2]
+    // Only use watch history suffix (not success or plain post items)
+    let suffix = if is_nsfw {
+        consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2
     } else {
-        vec![consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2, consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX_V2]
+        consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2
     };
 
     let mut all_video_ids = HashSet::new();
-
-    // Collect from history
-    for suffix in history_suffixes {
-        let key = format!("{}{}", user_id, suffix);
-        if let Ok(items) = state.get_watch_history_items_v3_resilient(&key, 0, consts::MAX_WATCH_HISTORY_CACHE_LEN - 1).await {
-            for item in items {
-                all_video_ids.insert(item.video_id);
-            }
-        }
-    }
-
-    // Collect from plain post items
-    let plain_key = format!("{}{}", user_id, consts::USER_WATCH_HISTORY_PLAIN_POST_ITEM_SUFFIX_V2);
-    if let Ok(items) = state.get_plain_post_items_v3(&plain_key, 0, consts::MAX_HISTORY_PLAIN_POST_ITEM_CACHE_LEN - 1).await {
+    let key = format!("{}{}", user_id, suffix);
+    
+    // Collect from watch history only - fetch ALL items (no limit)
+    if let Ok(items) = state.get_watch_history_items_v3_resilient(&key, 0, u64::MAX).await {
         for item in items {
             all_video_ids.insert(item.video_id);
         }
