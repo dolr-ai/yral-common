@@ -997,20 +997,6 @@ impl MLFeedCacheState {
             .await?;
         }
 
-        // Add video IDs to watched set for O(1) filtering
-        if !video_ids.is_empty() {
-            // Extract user_id by splitting at last underscore
-            let user_id = key.rsplit_once('_').map(|(prefix, _)| prefix).unwrap_or(key);
-            
-            let set_key = if key.contains("_nsfw") {
-                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2)
-            } else {
-                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2)
-            };
-            
-            self.add_watched_video_ids_to_set(&set_key, video_ids).await?;
-        }
-
         // Update persistent Redis (Upstash) in background
         let redis_pool = self.redis_pool.clone();
         let key_clone = key.to_string();
@@ -1112,20 +1098,6 @@ impl MLFeedCacheState {
                 (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
             )
             .await?;
-        }
-
-        // Add video IDs to watched set for O(1) filtering
-        if !video_ids.is_empty() {
-            // Extract user_id by splitting at last underscore
-            let user_id = key.rsplit_once('_').map(|(prefix, _)| prefix).unwrap_or(key);
-            
-            let set_key = if key.contains("_nsfw") {
-                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2)
-            } else {
-                format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2)
-            };
-            
-            self.add_watched_video_ids_to_set(&set_key, video_ids).await?;
         }
 
         // Update persistent Redis (Upstash) in background
@@ -1273,23 +1245,6 @@ impl MLFeedCacheState {
         let values: Vec<PostItemV3> = conn.zrevrange(key, start as isize, end as isize).await?;
 
         Ok(values)
-    }
-
-    pub async fn add_user_history_plain_items_v4(
-        &self,
-        user_id: &str,
-        items: Vec<MLFeedCacheHistoryItemV3>,
-    ) -> Result<(), anyhow::Error> {
-        // Add to watched set FIRST for immediate filtering (plain items are always clean)
-        let video_ids: Vec<String> = items.iter().map(|item| item.video_id.clone()).collect();
-        if !video_ids.is_empty() {
-            let set_key = format!("{}{}", user_id, consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2);
-            self.add_watched_video_ids_to_set(&set_key, video_ids).await?;
-        }
-
-        // Now add to history
-        let key = format!("{}{}", user_id, consts::USER_WATCH_HISTORY_PLAIN_POST_ITEM_SUFFIX_V2);
-        self.add_user_history_plain_items_v3(&key, items).await
     }
 
     pub async fn add_user_history_plain_items_v3(
