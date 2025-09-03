@@ -3,6 +3,10 @@ name = "ml-feed-cache"
 version = "0.2.0"
 edition = "2021"
 
+[[bin]]
+name = "backfill-watched-videos"
+path = "src/bin/backfill_watched_videos.rs"
+
 [dependencies]
 redis = { version = "0.29.1", features = [
     "tokio-rustls-comp",
@@ -19,7 +23,8 @@ anyhow = "1.0.97"
 utoipa = "5.3.1"
 types = { workspace = true, features = ["redis"] }
 log.workspace = true
-tokio = { version = "1.44.1", features = ["rt"] }
+tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
+env_logger = "0.11"
 
 [dev-dependencies]
-tokio = { version = "1.44.1", features = ["rt", "macros"] }
+tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
