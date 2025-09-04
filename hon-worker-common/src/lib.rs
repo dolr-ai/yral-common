@@ -108,10 +108,25 @@ pub struct VoteRequest {
     pub direction: HotOrNot,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, CandidType)]
+pub struct ServerVoteRequest {
+    pub post_canister: Principal,
+    pub post_id: String,
+    pub vote_amount: u128,
+    pub direction: HotOrNot,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameRes {
     pub post_canister: Principal,
     pub post_id: u64,
+    pub game_info: GameInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameResV4WithCanister {
+    pub post_creator_canister: Principal,
+    pub post_id: String,
     pub game_info: GameInfo,
 }
 

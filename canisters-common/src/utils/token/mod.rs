@@ -1,3 +1,4 @@
+use canisters_client::ic::USER_INFO_SERVICE_ID;
 use canisters_client::sns_swap::GetInitArg;
 use hon_worker_common::SatsBalanceInfo;
 use hon_worker_common::WithdrawalState;
@@ -505,7 +506,7 @@ impl<const A: bool> Canisters<A> {
         let is_non_yral_token = SUPPORTED_NON_YRAL_TOKENS_ROOT
             .iter()
             .any(|&token_root| token_root == root_id.to_text());
-        if is_non_yral_token {
+        if is_non_yral_token || destination_canister_id == USER_INFO_SERVICE_ID {
             return Ok(());
         }
 

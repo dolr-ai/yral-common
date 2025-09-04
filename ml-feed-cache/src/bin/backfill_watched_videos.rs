@@ -16,7 +16,7 @@ async fn backfill_watched_video_ids(
     };
 
     let mut all_video_ids = HashSet::new();
-    let key = format!("{}{}", user_id, suffix);
+    let key = format!("{user_id}{suffix}");
 
     // Collect from watch history only - fetch ALL items (no limit)
     if let Ok(items) = state
@@ -43,10 +43,7 @@ async fn backfill_watched_video_ids(
         state
             .add_watched_video_ids_to_set(&set_key, all_video_ids.into_iter().collect())
             .await?;
-        println!(
-            "Added {} video IDs for user {} (nsfw: {})",
-            count, user_id, is_nsfw
-        );
+        println!("Added {count} video IDs for user {user_id} (nsfw: {is_nsfw})");
     }
 
     Ok(count)
@@ -80,7 +77,7 @@ async fn backfill_all_users(state: &MLFeedCacheState) -> Result<()> {
                     .unwrap_or(&key)
                     .to_string();
                 let is_nsfw = key.contains("_nsfw");
-                let user_key = format!("{}_{}", user_id, is_nsfw);
+                let user_key = format!("{user_id}_{is_nsfw}");
 
                 if processed.insert(user_key) {
                     backfill_watched_video_ids(state, &user_id, is_nsfw)
