@@ -16,7 +16,7 @@ jobs:
       - name: Rust Setup
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: 1.87.0
           components: clippy
       - name: Cache rust dependencies and build output
         uses: Swatinem/rust-cache@v2 

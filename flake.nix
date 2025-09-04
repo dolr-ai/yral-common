@@ -21,12 +21,7 @@
                             curl
                             openssl
                             pkg-config
-                            gcc
-                            mold
                         ];
-                shellHook = ''
-                        ./setup_git_hook.sh
-                    '';
                     };
                 }
         );

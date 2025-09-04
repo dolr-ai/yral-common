@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal};
 use canisters_client::individual_user_template::BettingStatus;
-use hon_worker_common::{GameInfo, GameInfoReq, GameInfoReqV3, GameInfoReqV4};
+use hon_worker_common::{GameInfo, GameInfoReq, GameInfoReqV3};
 use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
@@ -180,26 +180,5 @@ impl Canisters<true> {
         request: GameInfoReqV3,
     ) -> Result<Option<GameInfo>> {
         fetch_game_with_sats_info_v3(self.user_principal(), cloudflare_url, request).await
-    }
-
-    pub async fn fetch_game_with_sats_info_v4(
-        &self,
-        cloudflare_url: reqwest::Url,
-        request: GameInfoReqV4,
-    ) -> Result<Option<GameInfo>> {
-        let path = format!("/v4/game_info/{}", self.user_principal());
-        let url = cloudflare_url.join(&path)?;
-
-        let client = reqwest::Client::new();
-        let res = client.post(url).json(&request).send().await?;
-
-        if !res.status().is_success() {
-            let err = res.text().await?;
-            return Err(Error::Hon(HonError::Backend(err)));
-        }
-
-        let info = res.json().await?;
-
-        Ok(info)
     }
 }
