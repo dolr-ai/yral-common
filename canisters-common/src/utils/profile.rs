@@ -1,16 +1,12 @@
 use candid::Principal;
-use canisters_client::{
-    ic::USER_INFO_SERVICE_ID,
-    individual_user_template::UserProfileDetailsForFrontendV2,
-    user_info_service::{Result1, UserProfileDetailsForFrontendV3},
-};
+use canisters_client::individual_user_template::UserProfileDetailsForFrontendV2;
 use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
 use username_gen::random_username_from_principal;
 
 use crate::{
     consts::{GOBGOB_PROPIC_URL, GOBGOB_TOTAL_COUNT},
-    Canisters, Error, Result,
+    Canisters, Result,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,25 +40,6 @@ impl ProfileDetails {
             user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
-        }
-    }
-
-    pub fn from_service_canister(
-        user_principal: Principal,
-        username: Option<String>,
-        profile_details: UserProfileDetailsForFrontendV3,
-    ) -> Self {
-        Self {
-            username: username.clone().filter(|u| !u.is_empty()),
-            lifetime_earnings: 0,
-            followers_cnt: 0,
-            following_cnt: 0,
-            profile_pic: profile_details.profile_picture_url,
-            display_name: username,
-            principal: user_principal,
-            user_canister: user_principal,
-            hots: 0,
-            nots: 0,
         }
     }
 }
@@ -124,38 +101,13 @@ impl<const A: bool> Canisters<A> {
         else {
             return Ok(None);
         };
+        let user_profile = self.individual_user(meta.user_canister_id).await;
+        let user = user_profile.get_profile_details_v_2().await?;
 
-        let user_canister = meta.user_canister_id;
-        let user_principal = meta.user_principal;
-
-        if user_canister == USER_INFO_SERVICE_ID {
-            let service_canister = self.user_info_service().await;
-            let user_profile_details = service_canister
-                .get_user_profile_details(user_principal)
-                .await?;
-
-            match user_profile_details {
-                Result1::Ok(profile_details) => Ok(Some(ProfileDetails::from_service_canister(
-                    user_principal,
-                    Some(meta.user_name),
-                    profile_details,
-                ))),
-                Result1::Err(e) => Err(Error::YralCanister(format!(
-                    "{e} for principal {user_principal}"
-                ))),
-            }
-        } else {
-            let profile_details = self
-                .individual_user(user_canister)
-                .await
-                .get_profile_details_v_2()
-                .await?;
-
-            Ok(Some(ProfileDetails::from_canister(
-                user_canister,
-                Some(meta.user_name),
-                profile_details,
-            )))
-        }
+        Ok(Some(ProfileDetails::from_canister(
+            meta.user_canister_id,
+            Some(meta.user_name),
+            user,
+        )))
     }
 }

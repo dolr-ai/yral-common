@@ -2,8 +2,8 @@ use std::sync::Mutex;
 
 use candid::Principal;
 use hon_worker_common::{
-    GameRes, GameResV2, GameResV3, GameResV4WithCanister, PaginatedGamesReq, PaginatedGamesRes,
-    PaginatedGamesResV2, PaginatedGamesResV3, PaginatedGamesResV4, WORKER_URL,
+    GameRes, GameResV2, GameResV3, PaginatedGamesReq, PaginatedGamesRes, PaginatedGamesResV2,
+    PaginatedGamesResV3, WORKER_URL,
 };
 use url::Url;
 use yral_metadata_client::MetadataClient;
@@ -25,14 +25,6 @@ impl KeyedData for GameRes {
 
     fn key(&self) -> Self::Key {
         (self.post_canister, self.post_id)
-    }
-}
-
-impl KeyedData for GameResV4WithCanister {
-    type Key = (Principal, String);
-
-    fn key(&self) -> Self::Key {
-        (self.post_creator_canister, self.post_id.clone())
     }
 }
 
@@ -254,95 +246,6 @@ impl CursoredDataProvider for VotesWithSatsProviderV3 {
                     post_canister: metadata.user_canister_id,
                     post_id: game_v3.post_id,
                     game_info: game_v3.game_info,
-                };
-                converted_games.push(game_res);
-            }
-        }
-
-        Ok(PageEntry {
-            data: converted_games,
-            end,
-        })
-    }
-}
-
-pub struct VotesWithSatsProviderV4 {
-    next: Mutex<Option<String>>,
-    user_principal: Principal,
-    metadata_client: MetadataClient<false>,
-}
-
-impl VotesWithSatsProviderV4 {
-    pub fn new(user_principal: Principal, metadata_client: MetadataClient<false>) -> Self {
-        Self {
-            user_principal,
-            metadata_client,
-            next: Mutex::new(None),
-        }
-    }
-
-    fn get_cursor(&self) -> Option<String> {
-        self.next.lock().unwrap().clone()
-    }
-}
-
-impl Clone for VotesWithSatsProviderV4 {
-    fn clone(&self) -> Self {
-        let lock = self.next.lock().unwrap();
-        let next = lock.clone();
-        let user_principal = self.user_principal;
-        let metadata_client = self.metadata_client.clone();
-
-        Self {
-            next: Mutex::new(next),
-            user_principal,
-            metadata_client,
-        }
-    }
-}
-
-impl CursoredDataProvider for VotesWithSatsProviderV4 {
-    type Data = GameResV4WithCanister;
-    type Error = Error;
-
-    async fn get_by_cursor_inner(
-        &self,
-        start: usize,
-        end: usize,
-    ) -> Result<PageEntry<Self::Data>, Self::Error> {
-        let url: Url = WORKER_URL.parse().unwrap();
-        let path = format!("/v4/games/{}", self.user_principal);
-        let url = url.join(&path).unwrap();
-        let cursor = self.get_cursor();
-        let req = PaginatedGamesReq {
-            page_size: end - start,
-            cursor,
-        };
-
-        let client = reqwest::Client::new();
-        let PaginatedGamesResV4 { games, next }: PaginatedGamesResV4 =
-            client.post(url).json(&req).send().await?.json().await?;
-
-        let end = next.is_none();
-        *self.next.lock().unwrap() = next;
-
-        // Convert GameResV3 to GameRes using metadata client
-        let mut converted_games = Vec::new();
-        let publisher_principals: Vec<Principal> =
-            games.iter().map(|g| g.publisher_principal).collect();
-
-        // Get canister mappings in bulk
-        let canister_mappings = self
-            .metadata_client
-            .get_user_metadata_bulk(publisher_principals)
-            .await?;
-
-        for game_v4 in games {
-            if let Some(Some(metadata)) = canister_mappings.get(&game_v4.publisher_principal) {
-                let game_res = GameResV4WithCanister {
-                    post_creator_canister: metadata.user_canister_id,
-                    post_id: game_v4.post_id.clone(),
-                    game_info: game_v4.game_info,
                 };
                 converted_games.push(game_res);
             }
