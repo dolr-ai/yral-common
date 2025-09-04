@@ -45,9 +45,9 @@ impl VideoModel {
     /// Get all available video generation models
     pub fn get_models() -> Vec<Self> {
         vec![
-            Veo3Model::model_info().clone(),
-            Veo3FastModel::model_info().clone(),
             LumaLabsModel::model_info().clone(),
+            Veo3FastModel::model_info().clone(),
+            Veo3Model::model_info().clone(),
             IntTestModel::model_info().clone(),
         ]
     }

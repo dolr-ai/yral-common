@@ -125,6 +125,7 @@ impl IntTestModel {
             is_available: true,
             is_internal: true,
             model_icon: Some("https://yral.com/img/yral/favicon.svg".to_string()),
+            ios_model_icon: Some("https://yral.com/img/yral/favicon.svg".to_string()),
             extra_info: HashMap::new(),
         }
     }

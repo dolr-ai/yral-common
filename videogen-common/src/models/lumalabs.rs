@@ -205,12 +205,13 @@ impl LumaLabsModel {
                 ResolutionV2::R4k,
             ],
             allowed_durations: vec![9],
-            default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
+            default_aspect_ratio: Some(AspectRatioV2::Ratio9x16),
             default_resolution: Some(ResolutionV2::R1080p),
             default_duration: 9,
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/lumalabs.png".to_string()),
+            ios_model_icon: Some("https://yral.com/img/ai-models/lumalabs.png".to_string()),
             extra_info: HashMap::new(),
         }
     }

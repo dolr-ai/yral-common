@@ -901,6 +901,8 @@ impl MLFeedCacheState {
             consts::USER_CACHE_CLEAN_SUFFIX_V2,
             consts::USER_CACHE_NSFW_SUFFIX_V2,
             consts::USER_CACHE_MIXED_SUFFIX_V2,
+            consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2,
+            consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2,
         ];
 
         // Build all keys with suffixes
@@ -935,78 +937,155 @@ impl MLFeedCacheState {
 
     // V3 API Methods with String post_id
 
+    pub async fn add_user_watch_history_items_v4(
+        &self,
+        user_id: &str,
+        items: Vec<MLFeedCacheHistoryItemV3>,
+        is_nsfw: bool,
+    ) -> Result<(), anyhow::Error> {
+        // Add to watched set FIRST for immediate filtering
+        let video_ids: Vec<String> = items.iter().map(|item| item.video_id.clone()).collect();
+        if !video_ids.is_empty() {
+            let set_key = format!(
+                "{}{}",
+                user_id,
+                if is_nsfw {
+                    consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2
+                } else {
+                    consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2
+                }
+            );
+            self.add_watched_video_ids_to_set(&set_key, video_ids)
+                .await?;
+        }
+
+        // Now add to history
+        let key = format!(
+            "{}{}",
+            user_id,
+            if is_nsfw {
+                consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2
+            } else {
+                consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2
+            }
+        );
+
+        self.add_user_watch_history_items_v3(&key, items).await
+    }
+
     pub async fn add_user_watch_history_items_v3(
         &self,
         key: &str,
         items: Vec<MLFeedCacheHistoryItemV3>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
+        let mut memory_conn = self.memory_store_pool.get().await.unwrap();
 
         let items = items
             .iter()
             .map(|item| (get_history_item_score_v3(item), item.clone()))
             .collect::<Vec<_>>();
 
-        // zadd_multiple in groups of 1000
+        // zadd_multiple in groups of 1000 to memory store first
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
+            memory_conn
+                .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
                 .await?;
         }
 
-        // Trim to max length
-        let num_items = conn.zcard::<&str, u64>(key).await?;
+        // Trim memory store to max length
+        let num_items = memory_conn.zcard::<&str, u64>(key).await?;
         if num_items > MAX_WATCH_HISTORY_CACHE_LEN {
-            conn.zremrangebyrank::<&str, ()>(
-                key,
-                0,
-                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
-            )
-            .await?;
+            memory_conn
+                .zremrangebyrank::<&str, ()>(
+                    key,
+                    0,
+                    (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+                )
+                .await?;
         }
 
-        // Update memory store pool asynchronously
+        // Update persistent Redis (Upstash) in background
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
         let items_clone = items.clone();
-        self.spawn_memory_store_update(key, move |pool, key| {
-            Box::pin(async move {
-                let mut conn = match pool.get().await {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        log::error!("Failed to get memory store connection: {e}");
-                        return Ok(());
-                    }
-                };
-
-                for chunk in items_clone.chunks(chunk_size) {
-                    if let Err(e) = conn
-                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key, chunk)
-                        .await
-                    {
-                        log::error!("Failed to add items to memory store: {e}");
-                    }
-                }
-
-                match conn.zcard::<&str, u64>(&key).await {
-                    Ok(num_items) if num_items > MAX_WATCH_HISTORY_CACHE_LEN => {
+        tokio::spawn(async move {
+            match redis_pool.get().await {
+                Ok(mut conn) => {
+                    for chunk in items_clone.chunks(chunk_size) {
                         if let Err(e) = conn
-                            .zremrangebyrank::<&str, ()>(
-                                &key,
-                                0,
-                                (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+                            .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(
+                                &key_clone, chunk,
                             )
                             .await
                         {
-                            log::error!("Failed to trim memory store: {e}");
+                            log::error!("Failed to add items to persistent Redis: {e}");
                         }
                     }
-                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
-                    _ => {}
+
+                    // Trim persistent store
+                    match conn.zcard::<&str, u64>(&key_clone).await {
+                        Ok(num_items) if num_items > MAX_WATCH_HISTORY_CACHE_LEN => {
+                            if let Err(e) = conn
+                                .zremrangebyrank::<&str, ()>(
+                                    &key_clone,
+                                    0,
+                                    (num_items - (MAX_WATCH_HISTORY_CACHE_LEN + 1)) as isize,
+                                )
+                                .await
+                            {
+                                log::error!("Failed to trim persistent Redis: {e}");
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to get card count from persistent Redis: {e}")
+                        }
+                        _ => {}
+                    }
                 }
-                Ok(())
-            })
+                Err(e) => {
+                    log::error!("Failed to get persistent Redis connection: {e}");
+                }
+            }
         });
 
         Ok(())
+    }
+
+    pub async fn add_user_success_history_items_v4(
+        &self,
+        user_id: &str,
+        items: Vec<MLFeedCacheHistoryItemV3>,
+        is_nsfw: bool,
+    ) -> Result<(), anyhow::Error> {
+        // Add to watched set FIRST for immediate filtering
+        let video_ids: Vec<String> = items.iter().map(|item| item.video_id.clone()).collect();
+        if !video_ids.is_empty() {
+            let set_key = format!(
+                "{}{}",
+                user_id,
+                if is_nsfw {
+                    consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2
+                } else {
+                    consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2
+                }
+            );
+            self.add_watched_video_ids_to_set(&set_key, video_ids)
+                .await?;
+        }
+
+        // Now add to history
+        let key = format!(
+            "{}{}",
+            user_id,
+            if is_nsfw {
+                consts::USER_SUCCESS_HISTORY_NSFW_SUFFIX_V2
+            } else {
+                consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX_V2
+            }
+        );
+
+        self.add_user_success_history_items_v3(&key, items).await
     }
 
     pub async fn add_user_success_history_items_v3(
@@ -1014,71 +1093,75 @@ impl MLFeedCacheState {
         key: &str,
         items: Vec<MLFeedCacheHistoryItemV3>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = self.redis_pool.get().await.unwrap();
+        let mut memory_conn = self.memory_store_pool.get().await.unwrap();
 
         let items = items
             .iter()
             .map(|item| (get_history_item_score_v3(item), item.clone()))
             .collect::<Vec<_>>();
 
-        // zadd_multiple in groups of 1000
+        // zadd_multiple in groups of 1000 to memory store first
         let chunk_size = 1000;
         for chunk in items.chunks(chunk_size) {
-            conn.zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
+            memory_conn
+                .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(key, chunk)
                 .await?;
         }
 
-        // get num items in the list
-        let num_items = conn.zcard::<&str, u64>(key).await?;
-
+        // Trim memory store to max length
+        let num_items = memory_conn.zcard::<&str, u64>(key).await?;
         if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN {
-            conn.zremrangebyrank::<&str, ()>(
-                key,
-                0,
-                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
-            )
-            .await?;
+            memory_conn
+                .zremrangebyrank::<&str, ()>(
+                    key,
+                    0,
+                    (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+                )
+                .await?;
         }
 
-        // Update memory store pool asynchronously
+        // Update persistent Redis (Upstash) in background
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
         let items_clone = items.clone();
-        self.spawn_memory_store_update(key, move |pool, key| {
-            Box::pin(async move {
-                let mut conn = match pool.get().await {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        log::error!("Failed to get memory store connection: {e}");
-                        return Ok(());
-                    }
-                };
-
-                for chunk in items_clone.chunks(chunk_size) {
-                    if let Err(e) = conn
-                        .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(&key, chunk)
-                        .await
-                    {
-                        log::error!("Failed to add items to memory store: {e}");
-                    }
-                }
-
-                match conn.zcard::<&str, u64>(&key).await {
-                    Ok(num_items) if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN => {
+        tokio::spawn(async move {
+            match redis_pool.get().await {
+                Ok(mut conn) => {
+                    for chunk in items_clone.chunks(chunk_size) {
                         if let Err(e) = conn
-                            .zremrangebyrank::<&str, ()>(
-                                &key,
-                                0,
-                                (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+                            .zadd_multiple::<&str, f64, MLFeedCacheHistoryItemV3, ()>(
+                                &key_clone, chunk,
                             )
                             .await
                         {
-                            log::error!("Failed to trim memory store: {e}");
+                            log::error!("Failed to add items to persistent Redis: {e}");
                         }
                     }
-                    Err(e) => log::error!("Failed to get card count from memory store: {e}"),
-                    _ => {}
+
+                    // Trim persistent store
+                    match conn.zcard::<&str, u64>(&key_clone).await {
+                        Ok(num_items) if num_items > MAX_SUCCESS_HISTORY_CACHE_LEN => {
+                            if let Err(e) = conn
+                                .zremrangebyrank::<&str, ()>(
+                                    &key_clone,
+                                    0,
+                                    (num_items - (MAX_SUCCESS_HISTORY_CACHE_LEN + 1)) as isize,
+                                )
+                                .await
+                            {
+                                log::error!("Failed to trim persistent Redis: {e}");
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to get card count from persistent Redis: {e}")
+                        }
+                        _ => {}
+                    }
                 }
-                Ok(())
-            })
+                Err(e) => {
+                    log::error!("Failed to get persistent Redis connection: {e}");
+                }
+            }
         });
 
         Ok(())
@@ -1595,10 +1678,46 @@ impl MLFeedCacheState {
 
         Ok(values)
     }
+
+    pub async fn add_watched_video_ids_to_set(
+        &self,
+        key: &str,
+        video_ids: Vec<String>,
+    ) -> Result<(), anyhow::Error> {
+        if video_ids.is_empty() {
+            return Ok(());
+        }
+
+        const CHUNK_SIZE: usize = 1000;
+
+        // Add to memory store first, then release connection
+        {
+            let mut memory_conn = self.memory_store_pool.get().await?;
+            for chunk in video_ids.chunks(CHUNK_SIZE) {
+                memory_conn.sadd::<_, _, ()>(key, chunk).await?;
+            }
+        } // memory_conn is dropped here, releasing it back to the pool
+
+        // Update persistent Redis in background (won't deadlock now)
+        let redis_pool = self.redis_pool.clone();
+        let key_clone = key.to_string();
+        let video_ids_clone = video_ids.clone();
+
+        tokio::spawn(async move {
+            if let Ok(mut conn) = redis_pool.get().await {
+                for chunk in video_ids_clone.chunks(CHUNK_SIZE) {
+                    let _: Result<(), _> = conn.sadd::<_, _, ()>(&key_clone, chunk).await;
+                }
+            }
+        });
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use std::time::Duration;
 
     use super::*;
@@ -2680,6 +2799,8 @@ mod tests {
             consts::USER_CACHE_CLEAN_SUFFIX_V2,
             consts::USER_CACHE_NSFW_SUFFIX_V2,
             consts::USER_CACHE_MIXED_SUFFIX_V2,
+            consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2,
+            consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2,
         ];
 
         for suffix in suffixes {
@@ -3586,5 +3707,404 @@ mod tests {
         // Clean up
         let mut conn = state.redis_pool.get().await.unwrap();
         let _ = conn.del::<&str, ()>(key).await;
+    }
+
+    #[tokio::test]
+    async fn test_add_watched_video_ids_to_set() {
+        let state = MLFeedCacheState::new().await;
+        let test_key = "test_user_watched_set";
+
+        // Test adding video IDs
+        let video_ids = vec![
+            "video1".to_string(),
+            "video2".to_string(),
+            "video3".to_string(),
+        ];
+
+        state
+            .add_watched_video_ids_to_set(test_key, video_ids.clone())
+            .await
+            .unwrap();
+
+        // Verify in memory store
+        let mut memory_conn = state.memory_store_pool.get().await.unwrap();
+        let exists1: bool = memory_conn.sismember(test_key, "video1").await.unwrap();
+        let exists2: bool = memory_conn.sismember(test_key, "video2").await.unwrap();
+        let exists3: bool = memory_conn.sismember(test_key, "video3").await.unwrap();
+        let not_exists: bool = memory_conn
+            .sismember(test_key, "video_not_added")
+            .await
+            .unwrap();
+
+        assert!(exists1, "video1 should exist in set");
+        assert!(exists2, "video2 should exist in set");
+        assert!(exists3, "video3 should exist in set");
+        assert!(!not_exists, "video_not_added should not exist in set");
+
+        // Test adding duplicate - should not error
+        let duplicate_ids = vec!["video1".to_string(), "video4".to_string()];
+        state
+            .add_watched_video_ids_to_set(test_key, duplicate_ids)
+            .await
+            .unwrap();
+
+        let exists4: bool = memory_conn.sismember(test_key, "video4").await.unwrap();
+        assert!(exists4, "video4 should exist after second add");
+
+        // Clean up
+        let _ = memory_conn.del::<&str, ()>(test_key).await;
+        let mut redis_conn = state.redis_pool.get().await.unwrap();
+        let _ = redis_conn.del::<&str, ()>(test_key).await;
+    }
+
+    #[tokio::test]
+    async fn test_v4_watch_history_with_watched_set() {
+        let state = MLFeedCacheState::new().await;
+        let test_user = "test_user_v4";
+
+        // Create test items
+        let items = vec![
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "publisher1".to_string(),
+                canister_id: "canister1".to_string(),
+                post_id: "1".to_string(),
+                video_id: "video_v4_1".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 50.0,
+            },
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "publisher2".to_string(),
+                canister_id: "canister2".to_string(),
+                post_id: "2".to_string(),
+                video_id: "video_v4_2".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 75.0,
+            },
+        ];
+
+        // Test clean version
+        state
+            .add_user_watch_history_items_v4(test_user, items.clone(), false)
+            .await
+            .unwrap();
+
+        // Verify watched set was updated
+        let set_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2
+        );
+        let mut memory_conn = state.memory_store_pool.get().await.unwrap();
+
+        let exists1: bool = memory_conn.sismember(&set_key, "video_v4_1").await.unwrap();
+        let exists2: bool = memory_conn.sismember(&set_key, "video_v4_2").await.unwrap();
+
+        assert!(exists1, "video_v4_1 should be in watched set");
+        assert!(exists2, "video_v4_2 should be in watched set");
+
+        // Test NSFW version
+        let nsfw_items = vec![MLFeedCacheHistoryItemV3 {
+            publisher_user_id: "publisher3".to_string(),
+            canister_id: "canister3".to_string(),
+            post_id: "3".to_string(),
+            video_id: "video_v4_nsfw".to_string(),
+            item_type: "video_viewed".to_string(),
+            timestamp: SystemTime::now(),
+            percent_watched: 80.0,
+        }];
+
+        state
+            .add_user_watch_history_items_v4(test_user, nsfw_items, true)
+            .await
+            .unwrap();
+
+        let nsfw_set_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2
+        );
+        let nsfw_exists: bool = memory_conn
+            .sismember(&nsfw_set_key, "video_v4_nsfw")
+            .await
+            .unwrap();
+        assert!(nsfw_exists, "video_v4_nsfw should be in NSFW watched set");
+
+        // Clean up
+        let history_key_clean = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2
+        );
+        let history_key_nsfw =
+            format!("{}{}", test_user, consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2);
+
+        let _ = memory_conn.del::<&str, ()>(&set_key).await;
+        let _ = memory_conn.del::<&str, ()>(&nsfw_set_key).await;
+        let _ = memory_conn.del::<&str, ()>(&history_key_clean).await;
+        let _ = memory_conn.del::<&str, ()>(&history_key_nsfw).await;
+
+        let mut redis_conn = state.redis_pool.get().await.unwrap();
+        let _ = redis_conn.del::<&str, ()>(&set_key).await;
+        let _ = redis_conn.del::<&str, ()>(&nsfw_set_key).await;
+        let _ = redis_conn.del::<&str, ()>(&history_key_clean).await;
+        let _ = redis_conn.del::<&str, ()>(&history_key_nsfw).await;
+    }
+
+    #[tokio::test]
+    async fn test_v4_success_history_with_watched_set() {
+        let state = MLFeedCacheState::new().await;
+        let test_user = "test_user_v4_success";
+
+        let items = vec![MLFeedCacheHistoryItemV3 {
+            publisher_user_id: "publisher1".to_string(),
+            canister_id: "canister1".to_string(),
+            post_id: "1".to_string(),
+            video_id: "success_video_1".to_string(),
+            item_type: "like_video".to_string(),
+            timestamp: SystemTime::now(),
+            percent_watched: 100.0,
+        }];
+
+        state
+            .add_user_success_history_items_v4(test_user, items, false)
+            .await
+            .unwrap();
+
+        // Verify watched set
+        let set_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2
+        );
+        let mut memory_conn = state.memory_store_pool.get().await.unwrap();
+        let exists: bool = memory_conn
+            .sismember(&set_key, "success_video_1")
+            .await
+            .unwrap();
+        assert!(exists, "success_video_1 should be in watched set");
+
+        // Clean up
+        let history_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_SUCCESS_HISTORY_CLEAN_SUFFIX_V2
+        );
+        let _ = memory_conn.del::<&str, ()>(&set_key).await;
+        let _ = memory_conn.del::<&str, ()>(&history_key).await;
+
+        let mut redis_conn = state.redis_pool.get().await.unwrap();
+        let _ = redis_conn.del::<&str, ()>(&set_key).await;
+        let _ = redis_conn.del::<&str, ()>(&history_key).await;
+    }
+
+    #[tokio::test]
+    async fn test_large_batch_watched_video_ids() {
+        let state = MLFeedCacheState::new().await;
+        let test_key = "test_large_batch_set";
+
+        let large_batch_size = 10000; // Test with 10k items
+        let mut video_ids = Vec::new();
+        for i in 0..large_batch_size {
+            video_ids.push(format!("video_{}", i));
+        }
+
+        let result = state
+            .add_watched_video_ids_to_set(test_key, video_ids.clone())
+            .await;
+
+        if result.is_err() {
+            println!("Large batch failed: {:?}", result.err());
+            assert!(false, "Large batch SADD failed - need chunking!");
+        }
+
+        let mut memory_conn = state.memory_store_pool.get().await.unwrap();
+        let set_size: u64 = memory_conn.scard(test_key).await.unwrap();
+        assert_eq!(
+            set_size, large_batch_size as u64,
+            "Not all items were added to set"
+        );
+
+        let exists_first: bool = memory_conn.sismember(test_key, "video_0").await.unwrap();
+        let exists_middle: bool = memory_conn.sismember(test_key, "video_5000").await.unwrap();
+        let exists_last: bool = memory_conn
+            .sismember(test_key, format!("video_{}", large_batch_size - 1))
+            .await
+            .unwrap();
+
+        assert!(exists_first, "First video should exist");
+        assert!(exists_middle, "Middle video should exist");
+        assert!(exists_last, "Last video should exist");
+
+        let _ = memory_conn.del::<&str, ()>(test_key).await;
+        let mut redis_conn = state.redis_pool.get().await.unwrap();
+        let _ = redis_conn.del::<&str, ()>(test_key).await;
+    }
+
+    #[tokio::test]
+    async fn test_backfill_scenario() {
+        let state = MLFeedCacheState::new().await;
+        let test_user = "backfill_test_user";
+
+        // Step 1: Add watch history using v3 methods (simulating existing data)
+        let clean_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCH_HISTORY_CLEAN_SUFFIX_V2
+        );
+        let nsfw_key = format!("{}{}", test_user, consts::USER_WATCH_HISTORY_NSFW_SUFFIX_V2);
+
+        let clean_items = vec![
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub1".to_string(),
+                canister_id: "can1".to_string(),
+                post_id: "1".to_string(),
+                video_id: "backfill_clean_1".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 50.0,
+            },
+            MLFeedCacheHistoryItemV3 {
+                publisher_user_id: "pub2".to_string(),
+                canister_id: "can2".to_string(),
+                post_id: "2".to_string(),
+                video_id: "backfill_clean_2".to_string(),
+                item_type: "video_viewed".to_string(),
+                timestamp: SystemTime::now(),
+                percent_watched: 75.0,
+            },
+        ];
+
+        let nsfw_items = vec![MLFeedCacheHistoryItemV3 {
+            publisher_user_id: "pub3".to_string(),
+            canister_id: "can3".to_string(),
+            post_id: "3".to_string(),
+            video_id: "backfill_nsfw_1".to_string(),
+            item_type: "video_viewed".to_string(),
+            timestamp: SystemTime::now(),
+            percent_watched: 60.0,
+        }];
+
+        // Add items using v4 to ensure watched sets are populated
+        state
+            .add_user_watch_history_items_v4(test_user, clean_items.clone(), false)
+            .await
+            .unwrap();
+        state
+            .add_user_watch_history_items_v4(test_user, nsfw_items.clone(), true)
+            .await
+            .unwrap();
+
+        // Step 2: Verify the watched sets were populated
+        let clean_set_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2
+        );
+        let nsfw_set_key = format!(
+            "{}{}",
+            test_user,
+            consts::USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2
+        );
+
+        let mut memory_conn = state.memory_store_pool.get().await.unwrap();
+
+        // Check clean videos
+        let clean1: bool = memory_conn
+            .sismember(&clean_set_key, "backfill_clean_1")
+            .await
+            .unwrap();
+        let clean2: bool = memory_conn
+            .sismember(&clean_set_key, "backfill_clean_2")
+            .await
+            .unwrap();
+        assert!(clean1, "backfill_clean_1 should be in clean watched set");
+        assert!(clean2, "backfill_clean_2 should be in clean watched set");
+
+        // Check nsfw videos
+        let nsfw1: bool = memory_conn
+            .sismember(&nsfw_set_key, "backfill_nsfw_1")
+            .await
+            .unwrap();
+        assert!(nsfw1, "backfill_nsfw_1 should be in nsfw watched set");
+
+        // Step 3: Clear the sets to simulate missing watched data
+        let _ = memory_conn.del::<&str, ()>(&clean_set_key).await;
+        let _ = memory_conn.del::<&str, ()>(&nsfw_set_key).await;
+
+        // Step 4: Run backfill simulation
+        let mut clean_video_ids = HashSet::new();
+        if let Ok(items) = state
+            .get_watch_history_items_v3_resilient(&clean_key, 0, u64::MAX)
+            .await
+        {
+            for item in items {
+                clean_video_ids.insert(item.video_id);
+            }
+        }
+
+        let mut nsfw_video_ids = HashSet::new();
+        if let Ok(items) = state
+            .get_watch_history_items_v3_resilient(&nsfw_key, 0, u64::MAX)
+            .await
+        {
+            for item in items {
+                nsfw_video_ids.insert(item.video_id);
+            }
+        }
+
+        // Add back to sets (simulating backfill)
+        if !clean_video_ids.is_empty() {
+            state
+                .add_watched_video_ids_to_set(&clean_set_key, clean_video_ids.into_iter().collect())
+                .await
+                .unwrap();
+        }
+        if !nsfw_video_ids.is_empty() {
+            state
+                .add_watched_video_ids_to_set(&nsfw_set_key, nsfw_video_ids.into_iter().collect())
+                .await
+                .unwrap();
+        }
+
+        // Step 5: Verify backfill worked
+        let clean1_after: bool = memory_conn
+            .sismember(&clean_set_key, "backfill_clean_1")
+            .await
+            .unwrap();
+        let clean2_after: bool = memory_conn
+            .sismember(&clean_set_key, "backfill_clean_2")
+            .await
+            .unwrap();
+        let nsfw1_after: bool = memory_conn
+            .sismember(&nsfw_set_key, "backfill_nsfw_1")
+            .await
+            .unwrap();
+
+        assert!(
+            clean1_after,
+            "backfill_clean_1 should be restored after backfill"
+        );
+        assert!(
+            clean2_after,
+            "backfill_clean_2 should be restored after backfill"
+        );
+        assert!(
+            nsfw1_after,
+            "backfill_nsfw_1 should be restored after backfill"
+        );
+
+        // Clean up
+        let _ = memory_conn.del::<&str, ()>(&clean_key).await;
+        let _ = memory_conn.del::<&str, ()>(&nsfw_key).await;
+        let _ = memory_conn.del::<&str, ()>(&clean_set_key).await;
+        let _ = memory_conn.del::<&str, ()>(&nsfw_set_key).await;
+
+        let mut redis_conn = state.redis_pool.get().await.unwrap();
+        let _ = redis_conn.del::<&str, ()>(&clean_key).await;
+        let _ = redis_conn.del::<&str, ()>(&nsfw_key).await;
+        let _ = redis_conn.del::<&str, ()>(&clean_set_key).await;
+        let _ = redis_conn.del::<&str, ()>(&nsfw_set_key).await;
     }
 }

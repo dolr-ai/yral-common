@@ -53,3 +53,7 @@ pub const USER_CACHE_MIXED_SUFFIX: &str = "_cache_mixed";
 pub const USER_CACHE_CLEAN_SUFFIX_V2: &str = "_cache_clean_v2";
 pub const USER_CACHE_NSFW_SUFFIX_V2: &str = "_cache_nsfw_v2";
 pub const USER_CACHE_MIXED_SUFFIX_V2: &str = "_cache_mixed_v2";
+
+// User watched video ID set suffixes - v2
+pub const USER_WATCHED_VIDEO_IDS_SET_CLEAN_SUFFIX_V2: &str = "_set_watch_clean_v2";
+pub const USER_WATCHED_VIDEO_IDS_SET_NSFW_SUFFIX_V2: &str = "_set_watch_nsfw_v2";

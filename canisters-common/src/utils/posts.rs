@@ -14,6 +14,7 @@ use canisters_client::{
 };
 use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use username_gen::random_username_from_principal;
 use web_time::Duration;
 
@@ -191,6 +192,7 @@ impl PostDetails {
 }
 
 impl<const A: bool> Canisters<A> {
+    #[instrument(skip(self))]
     async fn fetch_nsfw_probability(&self, video_uid: &str) -> Result<f32> {
         let url = format!("https://icp-off-chain-agent.fly.dev/api/v2/posts/nsfw_prob/{video_uid}");
 
@@ -210,6 +212,25 @@ impl<const A: bool> Canisters<A> {
             .await
     }
 
+    #[instrument(skip(self))]
+    async fn get_individual_post_details_by_id_instrumented(
+        &self,
+        user_canister: Principal,
+        post_id: u64,
+    ) -> Option<PostDetailsForFrontend> {
+        let post_creator_can = self.individual_user(user_canister).await;
+        post_creator_can
+            .get_individual_post_details_by_id(post_id)
+            .await
+            .inspect_err(|err| {
+                log::warn!(
+                    "failed to get post details for {user_canister} {post_id}: {err:#?}, skipping"
+                );
+            })
+            .ok()
+    }
+
+    #[tracing::instrument(skip(self))]
     pub async fn get_post_details_with_nsfw_info(
         &self,
         user_canister: Principal,

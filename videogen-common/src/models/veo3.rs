@@ -182,7 +182,7 @@ impl Veo3Model {
             supports_negative_prompt: true,
             supports_audio: true,
             supports_seed: false,
-            allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9, AspectRatioV2::Ratio9x16],
+            allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9],
             allowed_resolutions: vec![], // Not applicable for Veo3
             allowed_durations: vec![8],
             default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
@@ -191,6 +191,7 @@ impl Veo3Model {
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
+            ios_model_icon: Some("https://yral.com/img/ai-models/veo3.png".to_string()),
             extra_info: HashMap::new(),
         }
     }
@@ -368,7 +369,7 @@ impl Veo3FastModel {
             supports_negative_prompt: true,
             supports_audio: true,
             supports_seed: false,
-            allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9, AspectRatioV2::Ratio9x16],
+            allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9],
             allowed_resolutions: vec![],
             allowed_durations: vec![8],
             default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
@@ -377,6 +378,7 @@ impl Veo3FastModel {
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/ai-models/veo3.svg".to_string()),
+            ios_model_icon: Some("https://yral.com/img/ai-models/veo3.png".to_string()),
             extra_info: HashMap::new(),
         }
     }
