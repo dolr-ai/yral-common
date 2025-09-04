@@ -216,7 +216,7 @@ impl<const A: bool> Canisters<A> {
         post_id: String,
         nsfw_probability: Option<f32>,
     ) -> Result<Option<PostDetails>> {
-        let profile_details = if user_canister == USER_INFO_SERVICE_ID {
+        let post_details = if user_canister == USER_INFO_SERVICE_ID {
             let post_service_canister = self.user_post_service().await;
             let post_details_res = post_service_canister
                 .get_individual_post_details_by_id_for_user(
@@ -260,7 +260,7 @@ impl<const A: bool> Canisters<A> {
             }
         };
 
-        let Some(mut post_details) = profile_details else {
+        let Some(mut post_details) = post_details else {
             return Ok(None);
         };
 
