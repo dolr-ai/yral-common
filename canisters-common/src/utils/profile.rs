@@ -60,7 +60,7 @@ impl ProfileDetails {
             profile_pic: profile_details.profile_picture_url,
             display_name: username,
             principal: user_principal,
-            user_canister: user_principal,
+            user_canister: USER_INFO_SERVICE_ID,
             hots: 0,
             nots: 0,
         }
