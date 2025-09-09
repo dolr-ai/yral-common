@@ -3,6 +3,7 @@ use std::sync::Arc;
 use agent_wrapper::AgentWrapper;
 use candid::Principal;
 use canisters_client::{
+    ic::USER_POST_SERVICE_ID,
     individual_user_template::IndividualUserTemplate,
     local::USER_INFO_SERVICE_ID,
     platform_orchestrator::PlatformOrchestrator,
@@ -261,7 +262,7 @@ impl<const A: bool> Canisters<A> {
 
     pub async fn user_post_service(&self) -> UserPostService<'_> {
         let agent = self.agent.get_agent().await;
-        UserPostService(self.user_canister, agent)
+        UserPostService(USER_POST_SERVICE_ID, agent)
     }
 
     pub async fn individual_user(&self, user_canister: Principal) -> IndividualUserTemplate<'_> {
