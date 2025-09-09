@@ -28,7 +28,7 @@ pub mod operations;
 pub mod types;
 
 pub use operations::TokenOperations;
-pub use types::{DolrOperations, SatsOperations, TokenOperationsProvider};
+pub use types::{CkBtcOperations, DolrOperations, SatsOperations, TokenOperationsProvider};
 
 use canisters_client::individual_user_template::ClaimStatus;
 use canisters_client::sns_root::ListSnsCanistersResponse;
