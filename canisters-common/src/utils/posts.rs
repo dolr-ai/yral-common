@@ -73,13 +73,15 @@ impl Eq for PostDetails {}
 impl PostDetails {
     pub fn from_canister_post(
         authenticated: bool,
+        username: Option<String>,
         canister_id: Principal,
         details: PostDetailsForFrontend,
     ) -> Self {
-        Self::from_canister_post_with_nsfw_info(authenticated, canister_id, details, 0.0)
+        Self::from_canister_post_with_nsfw_info(authenticated, username, canister_id, details, 0.0)
     }
 
     pub fn from_service_post_anonymous(
+        username: Option<String>,
         canister_id: Principal,
         service_post: PostFromServiceCanister,
     ) -> Self {
@@ -102,11 +104,12 @@ impl PostDetails {
                 service_post.created_at.nanos_since_epoch,
             ),
             nsfw_probability: 0.0,
-            username: None,
+            username,
         }
     }
 
     pub fn from_service_post(
+        username: Option<String>,
         canister_id: Principal,
         post_details: PostServicePostDetailsForFrontend,
     ) -> Self {
@@ -129,12 +132,13 @@ impl PostDetails {
                 post_details.created_at.nanos_since_epoch,
             ),
             nsfw_probability: 0.0,
-            username: None,
+            username,
         }
     }
 
     pub fn from_canister_post_with_nsfw_info(
         authenticated: bool,
+        username: Option<String>,
         canister_id: Principal,
         details: PostDetailsForFrontend,
         nsfw_probability: f32,
@@ -147,7 +151,7 @@ impl PostDetails {
             views: details.total_view_count,
             likes: details.like_count,
             display_name: details.created_by_display_name,
-            username: details.created_by_unique_user_name,
+            username,
             propic_url: details
                 .created_by_profile_photo_url
                 .unwrap_or_else(|| propic_from_principal(details.created_by_user_principal_id)),
@@ -251,7 +255,18 @@ impl<const A: bool> Canisters<A> {
                     let Result2::Ok(post_details) = post_details else {
                         return Ok(None);
                     };
-                    Some(PostDetails::from_service_post(user_canister, post_details))
+
+                    let username = self
+                        .metadata_client
+                        .get_user_metadata_v2(post_details.creator_principal.to_text())
+                        .await?
+                        .map(|m| m.user_name);
+
+                    Some(PostDetails::from_service_post(
+                        username,
+                        user_canister,
+                        post_details,
+                    ))
                 }
                 Err(e) => {
                     log::warn!(
@@ -266,12 +281,21 @@ impl<const A: bool> Canisters<A> {
                 .get_individual_post_details_by_id(post_id.parse::<u64>().unwrap())
                 .await
             {
-                Ok(p) => Some(PostDetails::from_canister_post_with_nsfw_info(
-                    A,
-                    user_canister,
-                    p,
-                    0.0,
-                )),
+                Ok(p) => {
+                    let username = self
+                        .metadata_client
+                        .get_user_metadata_v2(p.created_by_user_principal_id.to_text())
+                        .await?
+                        .map(|m| m.user_name);
+
+                    Some(PostDetails::from_canister_post_with_nsfw_info(
+                        A,
+                        username,
+                        user_canister,
+                        p,
+                        0.0,
+                    ))
+                }
                 Err(e) => {
                     log::warn!(
                         "failed to get post details for {user_canister} {post_id}: {e}, skipping"
