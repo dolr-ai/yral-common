@@ -104,7 +104,7 @@ impl PostDetails {
                 service_post.created_at.nanos_since_epoch,
             ),
             nsfw_probability: 0.0,
-            username: username,
+            username,
         }
     }
 
@@ -132,7 +132,7 @@ impl PostDetails {
                 post_details.created_at.nanos_since_epoch,
             ),
             nsfw_probability: 0.0,
-            username: username,
+            username,
         }
     }
 
@@ -151,7 +151,7 @@ impl PostDetails {
             views: details.total_view_count,
             likes: details.like_count,
             display_name: details.created_by_display_name,
-            username: username,
+            username,
             propic_url: details
                 .created_by_profile_photo_url
                 .unwrap_or_else(|| propic_from_principal(details.created_by_user_principal_id)),
