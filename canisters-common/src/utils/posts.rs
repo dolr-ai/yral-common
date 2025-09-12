@@ -12,13 +12,14 @@ use canisters_client::{
         PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result5,
     },
 };
+use futures_util::try_join;
 use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use username_gen::random_username_from_principal;
 use web_time::Duration;
 
-use crate::{Canisters, Result};
+use crate::{Canisters, Error, Result};
 
 use super::profile::propic_from_principal;
 
@@ -234,6 +235,51 @@ impl<const A: bool> Canisters<A> {
             .ok()
     }
 
+    /// A fast path for fetching post details from the canister.
+    ///
+    /// No additional detail is resolved, e.g. username or nsfw probability. For
+    /// a more accurate post detail refer to `[Canisters::get_post_details]`
+    #[tracing::instrument(skip(self))]
+    pub async fn get_post_details_from_canister(
+        &self,
+        user_canister: Principal,
+        post_id: &str,
+    ) -> Result<Option<PostDetails>> {
+        let post_details = if user_canister == USER_INFO_SERVICE_ID {
+            let post_service_canister = self.user_post_service().await;
+            let post_details = post_service_canister
+                .get_individual_post_details_by_id_for_user(
+                    post_id.into(),
+                    post_service_canister.1.get_principal().unwrap(),
+                )
+                .await?;
+
+            let Result2::Ok(post_details) = post_details else {
+                return Ok(None);
+            };
+
+            Ok::<_, Error>(Some(PostDetails::from_service_post(
+                None,
+                user_canister,
+                post_details,
+            )))
+        } else {
+            let post_creator_can = self.individual_user(user_canister).await;
+            let res = post_creator_can
+                .get_individual_post_details_by_id(post_id.parse::<u64>().unwrap())
+                .await?;
+            Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
+                A,
+                None,
+                user_canister,
+                res,
+                0.0,
+            )))
+        }?;
+
+        Ok(post_details)
+    }
+
     #[tracing::instrument(skip(self))]
     pub async fn get_post_details_with_nsfw_info(
         &self,
@@ -241,96 +287,47 @@ impl<const A: bool> Canisters<A> {
         post_id: String,
         nsfw_probability: Option<f32>,
     ) -> Result<Option<PostDetails>> {
-        let post_details = if user_canister == USER_INFO_SERVICE_ID {
-            let post_service_canister = self.user_post_service().await;
-            let post_details_res = post_service_canister
-                .get_individual_post_details_by_id_for_user(
-                    post_id.clone(),
-                    post_service_canister.1.get_principal().unwrap(),
-                )
-                .await;
-
-            match post_details_res {
-                Ok(post_details) => {
-                    let Result2::Ok(post_details) = post_details else {
-                        return Ok(None);
-                    };
-
-                    let username = self
-                        .metadata_client
-                        .get_user_metadata_v2(post_details.creator_principal.to_text())
-                        .await?
-                        .map(|m| m.user_name);
-
-                    Some(PostDetails::from_service_post(
-                        username,
-                        user_canister,
-                        post_details,
-                    ))
-                }
-                Err(e) => {
-                    log::warn!(
-                        "Failed to get post details for {user_canister} {post_id}: {e}, skipping"
-                    );
-                    None
-                }
-            }
-        } else {
-            let post_creator_can = self.individual_user(user_canister).await;
-            match post_creator_can
-                .get_individual_post_details_by_id(post_id.parse::<u64>().unwrap())
-                .await
-            {
-                Ok(p) => {
-                    let username = self
-                        .metadata_client
-                        .get_user_metadata_v2(p.created_by_user_principal_id.to_text())
-                        .await?
-                        .map(|m| m.user_name);
-
-                    Some(PostDetails::from_canister_post_with_nsfw_info(
-                        A,
-                        username,
-                        user_canister,
-                        p,
-                        0.0,
-                    ))
-                }
-                Err(e) => {
-                    log::warn!(
-                        "failed to get post details for {user_canister} {post_id}: {e}, skipping"
-                    );
-                    None
-                }
-            }
-        };
+        let post_details = self
+            .get_post_details_from_canister(user_canister, &post_id)
+            .await?;
 
         let Some(mut post_details) = post_details else {
             return Ok(None);
         };
 
         let creator_principal = post_details.poster_principal;
-        let creator_meta = self
-            .metadata_client
-            .get_user_metadata_v2(creator_principal.to_text())
-            .await?;
-        post_details.username = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
+        let (creator_meta, nsfw_prob) = try_join!(
+            async {
+                let meta = self
+                    .metadata_client
+                    .get_user_metadata_v2(creator_principal.to_text())
+                    .await?;
 
-        // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
-        let nsfw_prob = nsfw_probability.unwrap_or(
-            self.fetch_nsfw_probability(&post_details.uid)
-                .await
-                .inspect_err(|e| {
-                    log::warn!(
-                        "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
-                        post_details.uid,
-                        e
-                    );
-                })
-                .unwrap_or(1.0),
-        );
+                Ok::<_, Error>(meta)
+            },
+            async {
+                // Determine NSFW probability: use provided value, or fetch from API, or default to 1.0
+                if let Some(nsfw_prob) = nsfw_probability {
+                    return Ok(nsfw_prob);
+                }
+                // TODO: add a fast path for fetching nsfw probability
+                // since the probablity wont ever change for any given video_uid, it can be easily cached
+                Ok(self
+                    .fetch_nsfw_probability(&post_details.uid)
+                    .await
+                    .inspect_err(|e| {
+                        log::warn!(
+                            "Failed to fetch NSFW probability for video {}: {}, defaulting to 1.0",
+                            post_details.uid,
+                            e
+                        );
+                    })
+                    .unwrap_or(1.0))
+            }
+        )?;
 
         post_details.nsfw_probability = nsfw_prob;
+        post_details.username = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
 
         Ok(Some(post_details))
     }
