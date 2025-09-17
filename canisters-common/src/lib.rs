@@ -15,7 +15,7 @@ use canisters_client::{
     sns_root::SnsRoot,
     sns_swap::SnsSwap,
     user_index::UserIndex,
-    user_info_service::{Result1, Result_, UserInfoService},
+    user_info_service::{Result4, Result_, UserInfoService},
     user_post_service::UserPostService,
 };
 use consts::{
@@ -180,14 +180,14 @@ impl Canisters<true> {
                 .await?;
 
             match user_profile_details {
-                Result1::Ok(profile_details) => {
+                Result4::Ok(profile_details) => {
                     canisters.profile_details = Some(ProfileDetails::from_service_canister(
                         canisters.user_principal(),
                         maybe_meta.map(|m| m.user_name),
                         profile_details,
                     ));
                 }
-                Result1::Err(e) => {
+                Result4::Err(e) => {
                     return Err(Error::YralCanister(format!(
                         "{e} for principal {}",
                         canisters.user_principal()
