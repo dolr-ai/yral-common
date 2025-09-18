@@ -112,8 +112,7 @@ impl LumaLabsModel {
             Some(9) => LumaLabsDuration::D9s,
             Some(other) => {
                 return Err(VideoGenError::InvalidInput(format!(
-                    "LumaLabs only supports 5 or 9 second durations, got: {}",
-                    other
+                    "LumaLabs only supports 5 or 9 second durations, got: {other}"
                 )))
             }
         };

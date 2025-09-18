@@ -13,11 +13,12 @@ type UserProfileGlobalStats = record {
   not_bets_received : nat64;
 };
 service : (UserInfoServiceInitArgs) -> {
+  accept_new_user_registration : (principal) -> (Result);
   delete_user_info : (principal) -> (Result);
   get_user_profile_details : (principal) -> (Result_1) query;
   get_user_session_type : (principal) -> (Result_2) query;
   get_version : () -> (text) query;
-  register_new_user : (principal) -> (Result);
+  register_new_user : () -> (Result);
   update_session_type : (principal, SessionType) -> (Result);
   update_user_last_access_time : (principal) -> (Result);
 }

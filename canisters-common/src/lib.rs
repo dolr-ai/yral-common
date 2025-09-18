@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
 use agent_wrapper::AgentWrapper;
-use candid::{Decode, Principal};
+use candid::Principal;
 use canisters_client::{
-    individual_user_template::{IndividualUserTemplate, Result15, Result3, UserCanisterDetails},
+    ic::USER_POST_SERVICE_ID,
+    individual_user_template::IndividualUserTemplate,
+    local::USER_INFO_SERVICE_ID,
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
     rate_limits::RateLimits,
@@ -12,15 +14,16 @@ use canisters_client::{
     sns_ledger::SnsLedger,
     sns_root::SnsRoot,
     sns_swap::SnsSwap,
-    user_index::{Result_, UserIndex},
+    user_index::UserIndex,
+    user_info_service::{Result1, Result_, UserInfoService},
+    user_post_service::UserPostService,
 };
 use consts::{
     canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID, RATE_LIMITS_ID},
-    CDAO_SWAP_TIME_SECS, METADATA_API_BASE,
+    METADATA_API_BASE,
 };
 use ic_agent::{identity::DelegatedIdentity, Identity};
 use serde::{Deserialize, Serialize};
-use sns_validation::pbs::sns_pb::SnsInitPayload;
 use types::delegated_identity::DelegatedIdentityWire;
 use utils::profile::ProfileDetails;
 use yral_metadata_client::MetadataClient;
@@ -33,6 +36,7 @@ mod error;
 pub mod utils;
 
 pub use error::*;
+
 pub const CENT_TOKEN_NAME: &str = "CENTS";
 pub const SATS_TOKEN_NAME: &str = "Satoshi";
 pub const SATS_TOKEN_SYMBOL: &str = "SATS";
@@ -67,6 +71,49 @@ impl Canisters<true> {
         self.expiry
     }
 
+    pub async fn register_new_user(
+        id: Arc<DelegatedIdentity>,
+        id_wire: Arc<DelegatedIdentityWire>,
+    ) -> Result<Self> {
+        let service_canister = Self {
+            agent: AgentWrapper::build(|b| b.with_arc_identity(id.clone())),
+            id: Some(id),
+            id_wire: Some(id_wire.clone()),
+            user_canister: USER_INFO_SERVICE_ID,
+            metadata_client: MetadataClient::with_base_url(METADATA_API_BASE.clone()),
+            expiry: id_wire
+                .delegation_chain
+                .iter()
+                .fold(u64::MAX, |res, next_val| {
+                    next_val.delegation.expiration.min(res)
+                }),
+            profile_details: None,
+        };
+
+        let user_info_service = service_canister.user_info_service().await;
+        let result = user_info_service.register_new_user().await?;
+
+        if let Result_::Err(e) = result {
+            return Err(Error::YralCanister(format!(
+                "Failed to register new user: {e} for user {}",
+                service_canister.user_principal().to_text()
+            )));
+        }
+
+        service_canister
+            .metadata_client
+            .set_user_metadata(
+                service_canister.identity(),
+                SetUserMetadataReqMetadata {
+                    user_canister_id: USER_INFO_SERVICE_ID,
+                    user_name: "".into(),
+                },
+            )
+            .await?;
+
+        Ok(service_canister)
+    }
+
     pub fn identity(&self) -> &DelegatedIdentity {
         self.id
             .as_ref()
@@ -81,17 +128,6 @@ impl Canisters<true> {
         self.individual_user(self.user_canister).await
     }
 
-    pub async fn deploy_cdao_sns(&self, init_payload: SnsInitPayload) -> Result<Result3> {
-        let agent = self.agent.get_agent().await;
-        let args = candid::encode_args((init_payload, CDAO_SWAP_TIME_SECS)).unwrap();
-        let bytes = agent
-            .update(&self.user_canister, "deploy_cdao_sns")
-            .with_arg(args)
-            .call_and_wait()
-            .await?;
-        Ok(Decode!(&bytes, Result3)?)
-    }
-
     pub fn profile_details(&self) -> ProfileDetails {
         self.profile_details
             .clone()
@@ -104,60 +140,7 @@ impl Canisters<true> {
             .expect("expect principal to be present")
     }
 
-    async fn create_individual_canister(&self) -> Result<Principal> {
-        let subnet_idxs = self.subnet_indexes().await?;
-
-        let mut by = [0u8; 16];
-        let principal = self.identity().sender().unwrap();
-        let principal_by = principal.as_slice();
-        let cnt = by.len().min(principal_by.len());
-        by[..cnt].copy_from_slice(&principal_by[..cnt]);
-
-        let discrim = u128::from_be_bytes(by);
-        let subnet_idx = subnet_idxs[(discrim % subnet_idxs.len() as u128) as usize];
-        let idx = self.user_index_with(subnet_idx).await;
-        let user_canister = match idx
-            .get_requester_principals_canister_id_create_if_not_exists()
-            .await?
-        {
-            Result_::Ok(val) => Ok(val),
-            Result_::Err(e) => Err(Error::YralCanister(e)),
-        }?;
-
-        self.metadata_client
-            .set_user_metadata(
-                self.identity(),
-                SetUserMetadataReqMetadata {
-                    user_canister_id: user_canister,
-                    user_name: "".into(),
-                },
-            )
-            .await?;
-
-        Ok(user_canister)
-    }
-
-    async fn handle_referrer(&self, referrer: Principal) -> Result<()> {
-        let user = self.authenticated_user().await;
-
-        let maybe_referrer_canister = self.get_individual_canister_v2(referrer.to_text()).await?;
-        let Some(referrer_canister) = maybe_referrer_canister else {
-            return Ok(());
-        };
-
-        user.update_referrer_details(UserCanisterDetails {
-            user_canister_id: referrer_canister,
-            profile_owner: referrer,
-        })
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn authenticate_with_network(
-        auth: DelegatedIdentityWire,
-        referrer: Option<Principal>,
-    ) -> Result<Self> {
+    pub async fn authenticate_with_network(auth: DelegatedIdentityWire) -> Result<Canisters<true>> {
         let id: DelegatedIdentity = auth.clone().try_into()?;
         let expiry = id
             .delegation_chain()
@@ -166,48 +149,68 @@ impl Canisters<true> {
                 del.delegation.expiration.min(prev_expiry)
             });
         let id = Arc::new(id);
-        let mut res = Self {
-            agent: AgentWrapper::build(|b| b.with_arc_identity(id.clone())),
-            metadata_client: MetadataClient::with_base_url(METADATA_API_BASE.clone()),
-            id: Some(id.clone()),
-            id_wire: Some(Arc::new(auth)),
-            user_canister: Principal::anonymous(),
-            expiry,
-            profile_details: None,
-        };
-
-        let maybe_meta = res
-            .metadata_client
+        let auth = Arc::new(auth);
+        let metadata_client = MetadataClient::with_base_url(METADATA_API_BASE.clone());
+        let maybe_meta = metadata_client
             .get_user_metadata_v2(id.sender().unwrap().to_text())
             .await?;
-        res.user_canister = if let Some(meta) = maybe_meta.as_ref() {
-            meta.user_canister_id
+
+        let mut canisters;
+        if let Some(user_metadata) = maybe_meta.clone() {
+            let user_canister_id = user_metadata.user_canister_id;
+
+            canisters = Canisters {
+                agent: AgentWrapper::build(|b| b),
+                id: Some(id.clone()),
+                id_wire: Some(auth.clone()),
+                user_canister: user_canister_id,
+                metadata_client,
+                expiry,
+                profile_details: None,
+            };
         } else {
-            res.create_individual_canister().await?
-        };
-
-        if let Some(referrer_principal_id) = referrer {
-            res.handle_referrer(referrer_principal_id).await?;
+            //TODO Register new user
+            canisters = Self::register_new_user(id, auth).await?;
         }
 
-        let user = res.authenticated_user().await;
-        match user
-            .update_last_access_time()
-            .await
-            .map_err(|e| e.to_string())
-        {
-            Ok(Result15::Ok(_)) => (),
-            Err(e) | Ok(Result15::Err(e)) => log::warn!("Failed to update last access time: {e}"),
+        if canisters.user_canister == USER_INFO_SERVICE_ID {
+            let service_canister = canisters.user_info_service().await;
+            let user_profile_details = service_canister
+                .get_user_profile_details(canisters.user_principal())
+                .await?;
+
+            match user_profile_details {
+                Result1::Ok(profile_details) => {
+                    canisters.profile_details = Some(ProfileDetails::from_service_canister(
+                        canisters.user_principal(),
+                        maybe_meta.map(|m| m.user_name),
+                        profile_details,
+                    ));
+                }
+                Result1::Err(e) => {
+                    return Err(Error::YralCanister(format!(
+                        "{e} for principal {}",
+                        canisters.user_principal()
+                    )));
+                }
+            }
+        } else {
+            let profile_details = canisters
+                .individual_user(canisters.user_canister)
+                .await
+                .get_profile_details_v_2()
+                .await?;
+
+            canisters.profile_details = Some(ProfileDetails::from_canister(
+                canisters.user_canister,
+                maybe_meta.map(|m| m.user_name),
+                profile_details,
+            ));
         }
 
-        let profile_details = ProfileDetails::from_canister(
-            res.user_canister,
-            maybe_meta.map(|meta| meta.user_name),
-            user.get_profile_details_v_2().await?,
-        );
-        res.profile_details = Some(profile_details);
+        //TODO: update last access time
 
-        Ok(res)
+        Ok(canisters)
     }
 
     pub async fn set_username(&mut self, new_username: String) -> Result<()> {
@@ -252,6 +255,16 @@ impl<const A: bool> Canisters<A> {
         PostCache(POST_CACHE_ID, agent)
     }
 
+    pub async fn user_info_service(&self) -> UserInfoService<'_> {
+        let agent = self.agent.get_agent().await;
+        UserInfoService(USER_INFO_SERVICE_ID, agent)
+    }
+
+    pub async fn user_post_service(&self) -> UserPostService<'_> {
+        let agent = self.agent.get_agent().await;
+        UserPostService(USER_POST_SERVICE_ID, agent)
+    }
+
     pub async fn individual_user(&self, user_canister: Principal) -> IndividualUserTemplate<'_> {
         let agent = self.agent.get_agent().await;
         IndividualUserTemplate(user_canister, agent)
@@ -265,28 +278,6 @@ impl<const A: bool> Canisters<A> {
     pub async fn orchestrator(&self) -> PlatformOrchestrator<'_> {
         let agent = self.agent.get_agent().await;
         PlatformOrchestrator(PLATFORM_ORCHESTRATOR_ID, agent)
-    }
-
-    #[deprecated = "Use `get_individual_canister_v2` instead"]
-    pub async fn get_individual_canister_by_user_principal(
-        &self,
-        user_principal: Principal,
-    ) -> Result<Option<Principal>> {
-        let meta = self
-            .metadata_client
-            .get_user_metadata_v2(user_principal.to_text())
-            .await?;
-        if let Some(meta) = meta {
-            return Ok(Some(meta.user_canister_id));
-        }
-        #[cfg(feature = "local")]
-        {
-            Ok(None)
-        }
-        #[cfg(not(feature = "local"))]
-        {
-            Ok(None)
-        }
     }
 
     pub async fn get_user_metadata(
@@ -337,23 +328,6 @@ impl<const A: bool> Canisters<A> {
     pub async fn rate_limits(&self) -> RateLimits<'_> {
         let agent = self.agent.get_agent().await;
         RateLimits(RATE_LIMITS_ID, agent)
-    }
-
-    async fn subnet_indexes(&self) -> Result<Vec<Principal>> {
-        #[cfg(feature = "local")]
-        {
-            use consts::canister_ids::USER_INDEX_ID;
-            Ok(vec![USER_INDEX_ID])
-        }
-        #[cfg(not(feature = "local"))]
-        {
-            let orchestrator = self.orchestrator().await;
-            Ok(orchestrator
-                .get_all_available_subnet_orchestrators()
-                .await?
-                .into_iter()
-                .collect())
-        }
     }
 }
 

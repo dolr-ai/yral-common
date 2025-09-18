@@ -9,6 +9,8 @@ use super::operations::TokenOperations;
 use crate::{consts::DOLR_AI_LEDGER_CANISTER, error::Error, Result};
 use canisters_client::sns_ledger::{self, Account as LedgerAccount};
 
+// ckBTC transfer types - no longer needed as we're using direct IC transfers
+
 #[derive(Clone)]
 pub struct SatsOperations {
     jwt_token: Option<String>,
@@ -279,9 +281,79 @@ impl TokenOperations for DolrOperations {
     }
 }
 
+#[derive(Clone)]
+pub struct CkBtcOperations {
+    admin_agent: ic_agent::Agent,
+}
+
+impl CkBtcOperations {
+    pub fn new(admin_agent: ic_agent::Agent) -> Self {
+        Self { admin_agent }
+    }
+}
+
+impl TokenOperations for CkBtcOperations {
+    async fn load_balance(&self, user_principal: Principal) -> Result<TokenBalance> {
+        let ledger_id = Principal::from_text(crate::consts::CKBTC_LEDGER)
+            .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+        let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
+
+        let balance = ledger
+            .icrc_1_balance_of(LedgerAccount {
+                owner: user_principal,
+                subaccount: None,
+            })
+            .await
+            .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+        Ok(TokenBalance::new(balance, 8))
+    }
+
+    async fn deduct_balance(&self, _user_principal: Principal, _amount: u64) -> Result<u64> {
+        Err(Error::YralCanister(
+            "ckBTC deduction not supported".to_string(),
+        ))
+    }
+
+    async fn add_balance(&self, user_principal: Principal, amount: u64) -> Result<()> {
+        let ledger_id = Principal::from_text(crate::consts::CKBTC_LEDGER)
+            .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+        let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
+
+        // Convert u64 to Nat
+        let amount_nat = candid::Nat::from(amount);
+
+        // Transfer from admin to user
+        let res = ledger
+            .icrc_1_transfer(sns_ledger::TransferArg {
+                to: LedgerAccount {
+                    owner: user_principal,
+                    subaccount: None,
+                },
+                amount: amount_nat,
+                fee: None,
+                memo: Some(Vec::from("Tournament reward").into()),
+                from_subaccount: None,
+                created_at_time: None,
+            })
+            .await
+            .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+        match res {
+            sns_ledger::TransferResult::Ok(_) => Ok(()),
+            sns_ledger::TransferResult::Err(e) => {
+                Err(Error::YralCanister(format!("ckBTC transfer failed: {e:?}")))
+            }
+        }
+    }
+}
+
 #[enum_dispatch::enum_dispatch(TokenOperations)]
 #[allow(clippy::large_enum_variant)]
 pub enum TokenOperationsProvider {
     Sats(SatsOperations),
     Dolr(DolrOperations),
+    CkBtc(CkBtcOperations),
 }
