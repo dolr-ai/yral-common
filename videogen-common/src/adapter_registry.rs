@@ -1,7 +1,9 @@
 #[cfg(feature = "server")]
 use std::sync::LazyLock;
 
-use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model};
+use crate::models::{
+    IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model, Wan22Model,
+};
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
 use crate::VideoGenInput;
@@ -21,6 +23,7 @@ impl AdapterRegistry {
             "lumalabs" => LumaLabsModel::from_unified_request(request),
             "inttest" => IntTestModel::from_unified_request(request),
             "talkinghead" => TalkingHeadModel::from_unified_request(request),
+            "wan2_2" => Wan22Model::from_unified_request(request),
             _ => Err(VideoGenError::InvalidInput(format!(
                 "Unknown model: {}",
                 request.model_id
@@ -34,8 +37,8 @@ impl AdapterRegistry {
             LumaLabsModel::get_provider_info(),
             Veo3FastModel::get_provider_info(),
             Veo3Model::get_provider_info(),
+            Wan22Model::get_provider_info(),
             IntTestModel::get_provider_info(),
-            TalkingHeadModel::get_provider_info(),
         ];
 
         ProvidersResponse {
@@ -50,6 +53,7 @@ impl AdapterRegistry {
             LumaLabsModel::get_provider_info(),
             Veo3FastModel::get_provider_info(),
             Veo3Model::get_provider_info(),
+            Wan22Model::get_provider_info(),
         ];
 
         ProvidersResponse {
@@ -66,6 +70,7 @@ impl AdapterRegistry {
             "lumalabs" => Some(LumaLabsModel::get_provider_info()),
             "inttest" => Some(IntTestModel::get_provider_info()),
             "talkinghead" => Some(TalkingHeadModel::get_provider_info()),
+            "wan2_2" => Some(Wan22Model::get_provider_info()),
             _ => None,
         }
     }

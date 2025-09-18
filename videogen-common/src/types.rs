@@ -1,4 +1,6 @@
-use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model};
+use crate::models::{
+    IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model, Wan22Model,
+};
 // VideoModel has been removed - using ProviderInfo from types_v2 instead
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
@@ -78,6 +80,7 @@ pub enum VideoGenInput {
     LumaLabs(LumaLabsModel),
     IntTest(IntTestModel),
     TalkingHead(TalkingHeadModel),
+    Wan22(Wan22Model),
 }
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
@@ -91,6 +94,7 @@ pub enum VideoGenProvider {
     LumaLabs,
     IntTest,
     TalkingHead,
+    Wan22,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -297,4 +301,6 @@ pub enum VideoGenError {
     InsufficientBalance,
     #[error("Invalid signature")]
     InvalidSignature,
+    #[error("Unsupported model")]
+    UnsupportedModel(String),
 }
