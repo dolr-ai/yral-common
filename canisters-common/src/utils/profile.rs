@@ -2,7 +2,7 @@ use candid::Principal;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
     individual_user_template::UserProfileDetailsForFrontendV2,
-    user_info_service::{Result4, UserProfileDetailsForFrontendV3},
+    user_info_service::{Result3, UserProfileDetailsForFrontendV4},
 };
 use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
@@ -25,6 +25,10 @@ pub struct ProfileDetails {
     pub user_canister: Principal,
     pub hots: u64,
     pub nots: u64,
+    pub bio: Option<String>,
+    pub website_url: Option<String>,
+    pub caller_follows_user: Option<bool>,
+    pub user_follows_caller: Option<bool>,
 }
 
 impl ProfileDetails {
@@ -44,25 +48,33 @@ impl ProfileDetails {
             user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
+            bio: None,  // V2 doesn't have bio
+            website_url: None,  // V2 doesn't have website_url
+            caller_follows_user: None,  // V2 doesn't have follow relationships
+            user_follows_caller: None,  // V2 doesn't have follow relationships
         }
     }
 
     pub fn from_service_canister(
         user_principal: Principal,
         username: Option<String>,
-        profile_details: UserProfileDetailsForFrontendV3,
+        profile_details: UserProfileDetailsForFrontendV4,
     ) -> Self {
         Self {
             username: username.clone().filter(|u| !u.is_empty()),
-            lifetime_earnings: 0,
-            followers_cnt: 0,
-            following_cnt: 0,
+            lifetime_earnings: 0,  // TODO: V4 doesn't provide lifetime_earnings yet
+            followers_cnt: profile_details.followers_count,
+            following_cnt: profile_details.following_count,
             profile_pic: profile_details.profile_picture_url,
-            display_name: username,
+            display_name: username,  // Using username as display_name since V4 doesn't have display_name
             principal: user_principal,
             user_canister: USER_INFO_SERVICE_ID,
-            hots: 0,
-            nots: 0,
+            hots: profile_details.profile_stats.hot_bets_received,
+            nots: profile_details.profile_stats.not_bets_received,
+            bio: profile_details.bio,
+            website_url: profile_details.website_url,
+            caller_follows_user: profile_details.caller_follows_user,
+            user_follows_caller: profile_details.user_follows_caller,
         }
     }
 }
@@ -131,16 +143,16 @@ impl<const A: bool> Canisters<A> {
         if user_canister == USER_INFO_SERVICE_ID {
             let service_canister = self.user_info_service().await;
             let user_profile_details = service_canister
-                .get_user_profile_details(user_principal)
+                .get_profile_details_v_4(user_principal)
                 .await?;
 
             match user_profile_details {
-                Result4::Ok(profile_details) => Ok(Some(ProfileDetails::from_service_canister(
+                Result3::Ok(profile_details) => Ok(Some(ProfileDetails::from_service_canister(
                     user_principal,
                     Some(meta.user_name),
                     profile_details,
                 ))),
-                Result4::Err(e) => Err(Error::YralCanister(format!(
+                Result3::Err(e) => Err(Error::YralCanister(format!(
                     "{e} for principal {user_principal}"
                 ))),
             }

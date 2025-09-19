@@ -15,7 +15,7 @@ use canisters_client::{
     sns_root::SnsRoot,
     sns_swap::SnsSwap,
     user_index::UserIndex,
-    user_info_service::{Result4, Result_, UserInfoService},
+    user_info_service::{Result3, Result_, UserInfoService},
     user_post_service::UserPostService,
 };
 use consts::{
@@ -176,18 +176,18 @@ impl Canisters<true> {
         if canisters.user_canister == USER_INFO_SERVICE_ID {
             let service_canister = canisters.user_info_service().await;
             let user_profile_details = service_canister
-                .get_user_profile_details(canisters.user_principal())
+                .get_profile_details_v_4(canisters.user_principal())
                 .await?;
 
             match user_profile_details {
-                Result4::Ok(profile_details) => {
+                Result3::Ok(profile_details) => {
                     canisters.profile_details = Some(ProfileDetails::from_service_canister(
                         canisters.user_principal(),
                         maybe_meta.map(|m| m.user_name),
                         profile_details,
                     ));
                 }
-                Result4::Err(e) => {
+                Result3::Err(e) => {
                     return Err(Error::YralCanister(format!(
                         "{e} for principal {}",
                         canisters.user_principal()
