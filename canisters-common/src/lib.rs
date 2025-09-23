@@ -160,7 +160,7 @@ impl Canisters<true> {
             let user_canister_id = user_metadata.user_canister_id;
 
             canisters = Canisters {
-                agent: AgentWrapper::build(|b| b),
+                agent: AgentWrapper::build(|b| b.with_arc_identity(id.clone())),
                 id: Some(id.clone()),
                 id_wire: Some(auth.clone()),
                 user_canister: user_canister_id,
