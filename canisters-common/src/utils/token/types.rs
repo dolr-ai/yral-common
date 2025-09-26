@@ -348,6 +348,42 @@ impl TokenOperations for CkBtcOperations {
             }
         }
     }
+
+    async fn add_balance_with_memo(&self, user_principal: Principal, amount: u64, memo: Option<Vec<u8>>) -> Result<()> {
+        let ledger_id = Principal::from_text(crate::consts::CKBTC_LEDGER)
+            .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+        let ledger = sns_ledger::SnsLedger(ledger_id, &self.admin_agent);
+
+        // Convert u64 to Nat
+        let amount_nat = candid::Nat::from(amount);
+
+        // Use provided memo or default to "ckBTC transfer"
+        let transfer_memo = memo.unwrap_or_else(|| Vec::from("ckBTC transfer"));
+
+        // Transfer from admin to user
+        let res = ledger
+            .icrc_1_transfer(sns_ledger::TransferArg {
+                to: LedgerAccount {
+                    owner: user_principal,
+                    subaccount: None,
+                },
+                amount: amount_nat,
+                fee: None,
+                memo: Some(transfer_memo.into()),
+                from_subaccount: None,
+                created_at_time: None,
+            })
+            .await
+            .map_err(|e| Error::YralCanister(e.to_string()))?;
+
+        match res {
+            sns_ledger::TransferResult::Ok(_) => Ok(()),
+            sns_ledger::TransferResult::Err(e) => {
+                Err(Error::YralCanister(format!("ckBTC transfer failed: {e:?}")))
+            }
+        }
+    }
 }
 
 #[enum_dispatch::enum_dispatch(TokenOperations)]
