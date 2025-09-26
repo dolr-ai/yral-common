@@ -2,7 +2,8 @@
 use std::sync::LazyLock;
 
 use crate::models::{
-    IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model, Wan22Model,
+    IntTestModel, LlmHandlerModel, LumaLabsModel, StableAudioModel, TalkingHeadModel,
+    Veo3FastModel, Veo3Model, Wan22Model,
 };
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
@@ -24,6 +25,8 @@ impl AdapterRegistry {
             "inttest" => IntTestModel::from_unified_request(request),
             "talkinghead" => TalkingHeadModel::from_unified_request(request),
             "wan2_2" => Wan22Model::from_unified_request(request),
+            "llm_handler" => LlmHandlerModel::from_unified_request(request),
+            "stable_audio" => StableAudioModel::from_unified_request(request),
             _ => Err(VideoGenError::InvalidInput(format!(
                 "Unknown model: {}",
                 request.model_id
@@ -71,6 +74,8 @@ impl AdapterRegistry {
             "inttest" => Some(IntTestModel::get_provider_info()),
             "talkinghead" => Some(TalkingHeadModel::get_provider_info()),
             "wan2_2" => Some(Wan22Model::get_provider_info()),
+            "llm_handler" => Some(LlmHandlerModel::get_provider_info()),
+            "stable_audio" => Some(StableAudioModel::get_provider_info()),
             _ => None,
         }
     }

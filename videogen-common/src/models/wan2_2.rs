@@ -9,7 +9,8 @@ use utoipa::ToSchema;
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct Wan22Model {
     pub prompt: String,
-    // All other parameters are hardcoded in the provider implementation
+    pub image: Option<crate::types::ImageData>, // For I2V mode
+    pub is_i2v: bool, // Flag to determine T2V or I2V endpoint
 }
 
 impl VideoGenerator for Wan22Model {
@@ -35,11 +36,11 @@ impl VideoGenerator for Wan22Model {
     }
 
     fn get_image(&self) -> Option<&crate::types::ImageData> {
-        None // No image support
+        self.image.as_ref()
     }
 
     fn get_image_mut(&mut self) -> Option<&mut crate::types::ImageData> {
-        None
+        self.image.as_mut()
     }
 
     fn flow_control_config(&self) -> Option<(u32, u32)> {
@@ -60,25 +61,10 @@ impl Wan22Model {
     ) -> Result<VideoGenInput, VideoGenError> {
         use crate::types_v2::ResolutionV2;
 
-        // Validate no image input
-        if unified.image.is_some() {
-            return Err(VideoGenError::InvalidInput(
-                "Wan 2.2 does not support image input".to_string(),
-            ));
-        }
+        // Determine if I2V mode based on image presence
+        let is_i2v = unified.image.is_some();
 
-        // Validate parameters that Wan 2.2 doesn't support in unified API
-        if unified.negative_prompt.is_some() {
-            return Err(VideoGenError::InvalidInput(
-                "Wan 2.2 negative prompt is hardcoded and cannot be customized".to_string(),
-            ));
-        }
-
-        if unified.seed.is_some() {
-            return Err(VideoGenError::InvalidInput(
-                "Wan 2.2 seed is hardcoded to -1 (random)".to_string(),
-            ));
-        }
+        // Note: negative prompt and seed are hardcoded in the implementation
 
         // Validate duration (only 5s supported)
         if let Some(duration) = unified.duration_seconds {
@@ -105,6 +91,8 @@ impl Wan22Model {
 
         Ok(VideoGenInput::Wan22(Wan22Model {
             prompt: unified.prompt,
+            image: unified.image,
+            is_i2v,
         }))
     }
 
@@ -118,7 +106,7 @@ impl Wan22Model {
             name: "Wan 2.2 T2V".to_string(),
             description: "Alibaba's Wan 2.2 MoE model for cinematic 720p text-to-video generation with superior motion coherence".to_string(),
             cost: CostInfo::from_usd_cents(WAN2_2_COST_USD_CENTS),
-            supports_image: false,
+            supports_image: true, // Supports I2V mode
             supports_negative_prompt: false, // Hardcoded
             supports_audio: false,
             supports_audio_input: false,
@@ -136,6 +124,7 @@ impl Wan22Model {
             extra_info: HashMap::from([
                 ("architecture".to_string(), serde_json::json!("MoE Flow-Matching")),
                 ("model_size".to_string(), serde_json::json!("14B")),
+                ("supports_modes".to_string(), serde_json::json!(["t2v", "i2v"])),
             ]),
         }
     }
