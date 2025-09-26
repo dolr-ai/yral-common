@@ -30,5 +30,9 @@
   "rate_limits": {
     "ic": "h2jgv-ayaaa-aaaas-qbh4a-cai",
     "local": "h2jgv-ayaaa-aaaas-qbh4a-cai"
+  },
+  "daily_missions": {
+    "ic": "rdmx6-jaaaa-aaaah-qcaaw-cai",
+    "local": "bkyz2-fmaaa-aaaaa-qaaaq-cai"
   }
 }
