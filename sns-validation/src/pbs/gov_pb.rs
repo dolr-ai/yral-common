@@ -174,6 +174,7 @@ pub mod neuron {
     #[derive(candid::CandidType, candid::Deserialize)]
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq)]
+    #[allow(dead_code)]
     pub enum DissolveState {
         WhenDissolvedTimestampSeconds(u64),
 
