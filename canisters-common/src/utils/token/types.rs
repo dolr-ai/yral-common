@@ -349,7 +349,12 @@ impl TokenOperations for CkBtcOperations {
         }
     }
 
-    async fn add_balance_with_memo(&self, user_principal: Principal, amount: u64, memo: Option<Vec<u8>>) -> Result<()> {
+    async fn add_balance_with_memo(
+        &self,
+        user_principal: Principal,
+        amount: u64,
+        memo: Option<Vec<u8>>,
+    ) -> Result<()> {
         let ledger_id = Principal::from_text(crate::consts::CKBTC_LEDGER)
             .map_err(|e| Error::YralCanister(e.to_string()))?;
 
