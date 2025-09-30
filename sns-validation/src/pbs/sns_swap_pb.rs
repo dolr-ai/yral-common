@@ -1,6 +1,7 @@
 #[derive(candid::CandidType, candid::Deserialize, serde::Serialize, Eq)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, Debug)]
+#[allow(dead_code)]
 pub struct CfParticipant {
     pub controller: ::core::option::Option<candid::Principal>,
 
@@ -13,6 +14,7 @@ pub struct CfParticipant {
 #[derive(candid::CandidType, candid::Deserialize, serde::Serialize, Eq)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, Debug)]
+#[allow(dead_code)]
 pub struct CfNeuron {
     pub nns_neuron_id: u64,
 
