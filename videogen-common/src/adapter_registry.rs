@@ -1,8 +1,10 @@
-use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+#[cfg(feature = "server")]
+use std::sync::LazyLock;
+
+use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
 use crate::VideoGenInput;
-use std::sync::LazyLock;
 
 /// Registry for all available model adapters
 pub struct AdapterRegistry;
@@ -14,10 +16,11 @@ impl AdapterRegistry {
         request: VideoGenRequestV2,
     ) -> Result<VideoGenInput, VideoGenError> {
         match request.model_id.as_str() {
-            "veo3" => Veo3Model::from_unified_request(request),
-            "veo3_fast" => Veo3FastModel::from_unified_request(request),
             "lumalabs" => LumaLabsModel::from_unified_request(request),
             "inttest" => IntTestModel::from_unified_request(request),
+            "talkinghead" => TalkingHeadModel::from_unified_request(request),
+            "wan2_5" => Wan25Model::from_unified_request(request),
+            "wan2_5_fast" => Wan25FastModel::from_unified_request(request),
             _ => Err(VideoGenError::InvalidInput(format!(
                 "Unknown model: {}",
                 request.model_id
@@ -28,9 +31,9 @@ impl AdapterRegistry {
     /// Get provider information for all registered models
     pub fn get_all_providers(&self) -> ProvidersResponse {
         let providers = vec![
+            Wan25FastModel::get_provider_info(), // Default
+            Wan25Model::get_provider_info(),
             LumaLabsModel::get_provider_info(),
-            Veo3FastModel::get_provider_info(),
-            Veo3Model::get_provider_info(),
             IntTestModel::get_provider_info(),
         ];
 
@@ -43,9 +46,9 @@ impl AdapterRegistry {
     /// Get provider information for all prod models
     pub fn get_all_prod_providers(&self) -> ProvidersResponse {
         let providers = vec![
+            Wan25FastModel::get_provider_info(), // Default
+            Wan25Model::get_provider_info(),
             LumaLabsModel::get_provider_info(),
-            Veo3FastModel::get_provider_info(),
-            Veo3Model::get_provider_info(),
         ];
 
         ProvidersResponse {
@@ -57,10 +60,11 @@ impl AdapterRegistry {
     /// Get provider information for a specific model
     pub fn get_provider_info(&self, model_id: &str) -> Option<ProviderInfo> {
         match model_id {
-            "veo3" => Some(Veo3Model::get_provider_info()),
-            "veo3_fast" => Some(Veo3FastModel::get_provider_info()),
             "lumalabs" => Some(LumaLabsModel::get_provider_info()),
             "inttest" => Some(IntTestModel::get_provider_info()),
+            "talkinghead" => Some(TalkingHeadModel::get_provider_info()),
+            "wan2_5" => Some(Wan25Model::get_provider_info()),
+            "wan2_5_fast" => Some(Wan25FastModel::get_provider_info()),
             _ => None,
         }
     }
