@@ -1,4 +1,4 @@
-use crate::models::{IntTestModel, LumaLabsModel, Veo3FastModel, Veo3Model};
+use crate::models::{IntTestModel, LumaLabsModel};
 use crate::types::{
     ImageData, LumaLabsDuration, LumaLabsResolution, ModelMetadata, Veo3AspectRatio, VideoGenInput,
     VideoGenProvider,
@@ -27,13 +27,13 @@ pub struct VideoModel {
 impl Default for VideoModel {
     fn default() -> Self {
         Self {
-            id: "veo3".to_string(),
-            name: "Veo3".to_string(),
-            description: "Google's advanced video generation model".to_string(),
+            id: "lumalabs".to_string(),
+            name: "LumaLabs".to_string(),
+            description: "LumaLabs Dream Machine video generation".to_string(),
             cost_usd_cents: 10,
             supports_image: true,
-            provider: VideoGenProvider::Veo3,
-            max_duration_seconds: 8,
+            provider: VideoGenProvider::LumaLabs,
+            max_duration_seconds: 9,
             supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9, Veo3AspectRatio::Ratio9x16],
             model_icon: None,
             is_available: true,
@@ -46,8 +46,6 @@ impl VideoModel {
     pub fn get_models() -> Vec<Self> {
         vec![
             LumaLabsModel::model_info().clone(),
-            Veo3FastModel::model_info().clone(),
-            Veo3Model::model_info().clone(),
             IntTestModel::model_info().clone(),
         ]
     }
@@ -69,30 +67,6 @@ impl VideoModel {
         }
 
         match self.provider {
-            VideoGenProvider::Veo3 => Ok(VideoGenInput::Veo3(Veo3Model {
-                prompt,
-                negative_prompt: None,
-                image,
-                aspect_ratio: self
-                    .supported_aspect_ratios
-                    .first()
-                    .cloned()
-                    .unwrap_or(Veo3AspectRatio::Ratio16x9),
-                duration_seconds: self.max_duration_seconds,
-                generate_audio: true,
-            })),
-            VideoGenProvider::Veo3Fast => Ok(VideoGenInput::Veo3Fast(Veo3FastModel {
-                prompt,
-                negative_prompt: None,
-                image,
-                aspect_ratio: self
-                    .supported_aspect_ratios
-                    .first()
-                    .cloned()
-                    .unwrap_or(Veo3AspectRatio::Ratio16x9),
-                duration_seconds: self.max_duration_seconds,
-                generate_audio: true,
-            })),
             VideoGenProvider::LumaLabs => Ok(VideoGenInput::LumaLabs(LumaLabsModel {
                 prompt,
                 image,
@@ -106,6 +80,7 @@ impl VideoModel {
                 loop_video: false,
             })),
             VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest(IntTestModel { prompt, image })),
+            _ => Err(format!("Model {} is not supported", self.name)),
         }
     }
 

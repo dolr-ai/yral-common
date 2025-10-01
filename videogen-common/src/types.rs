@@ -1,6 +1,4 @@
-use crate::models::{
-    IntTestModel, LumaLabsModel, TalkingHeadModel, Veo3FastModel, Veo3Model, Wan25Model,
-};
+use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
 // VideoModel has been removed - using ProviderInfo from types_v2 instead
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
@@ -75,12 +73,11 @@ pub struct VideoGenRequest {
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 #[serde(tag = "provider", content = "data")]
 pub enum VideoGenInput {
-    Veo3(Veo3Model),
-    Veo3Fast(Veo3FastModel),
     LumaLabs(LumaLabsModel),
     IntTest(IntTestModel),
     TalkingHead(TalkingHeadModel),
     Wan25(Wan25Model),
+    Wan25Fast(Wan25FastModel),
 }
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
@@ -89,12 +86,11 @@ pub enum VideoGenInput {
     Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType, strum_macros::Display,
 )]
 pub enum VideoGenProvider {
-    Veo3,
-    Veo3Fast,
     LumaLabs,
     IntTest,
     TalkingHead,
     Wan25,
+    Wan25Fast,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]

@@ -61,8 +61,8 @@ pub struct VideoGenRequestV2 {
     #[schema(example = "A cat playing piano in a jazz club")]
     pub prompt: String,
 
-    /// The model to use (e.g., "veo3", "veo3_fast", "lumalabs", "falai")
-    #[schema(example = "veo3")]
+    /// The model to use (e.g., "lumalabs", "wan2_5")
+    #[schema(example = "lumalabs")]
     pub model_id: String,
 
     /// Token type for payment
@@ -148,11 +148,11 @@ impl CostInfo {
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 pub struct ProviderInfo {
     /// Unique identifier for the model
-    #[schema(example = "veo3")]
+    #[schema(example = "lumalabs")]
     pub id: String,
 
     /// Display name
-    #[schema(example = "Veo3")]
+    #[schema(example = "LumaLabs")]
     pub name: String,
 
     /// Description of the model
@@ -210,11 +210,11 @@ pub struct ProviderInfo {
     pub is_internal: bool,
 
     /// Path to model icon
-    #[schema(example = "/img/ai-models/veo3.svg")]
+    #[schema(example = "/img/ai-models/lumalabs.svg")]
     pub model_icon: Option<String>,
 
     /// Path to model icon
-    #[schema(example = "/img/ai-models/veo3.svg")]
+    #[schema(example = "/img/ai-models/lumalabs.svg")]
     pub ios_model_icon: Option<String>,
 
     /// Additional model-specific information
