@@ -2,7 +2,7 @@ use candid::Principal;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
     individual_user_template::UserProfileDetailsForFrontendV2,
-    user_info_service::{Result1, UserProfileDetailsForFrontendV3},
+    user_info_service::{Result4, UserProfileDetailsForFrontendV3},
 };
 use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
@@ -135,12 +135,12 @@ impl<const A: bool> Canisters<A> {
                 .await?;
 
             match user_profile_details {
-                Result1::Ok(profile_details) => Ok(Some(ProfileDetails::from_service_canister(
+                Result4::Ok(profile_details) => Ok(Some(ProfileDetails::from_service_canister(
                     user_principal,
                     Some(meta.user_name),
                     profile_details,
                 ))),
-                Result1::Err(e) => Err(Error::YralCanister(format!(
+                Result4::Err(e) => Err(Error::YralCanister(format!(
                     "{e} for principal {user_principal}"
                 ))),
             }
