@@ -230,7 +230,12 @@ impl Canisters<true> {
         Ok(())
     }
 
-    pub fn update_profile_details(&mut self, bio: Option<String>, website_url: Option<String>, profile_pic: Option<String>) {
+    pub fn update_profile_details(
+        &mut self,
+        bio: Option<String>,
+        website_url: Option<String>,
+        profile_pic: Option<String>,
+    ) {
         if let Some(ref mut profile) = self.profile_details {
             profile.bio = bio;
             profile.website_url = website_url;

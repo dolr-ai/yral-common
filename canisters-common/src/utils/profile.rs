@@ -48,10 +48,10 @@ impl ProfileDetails {
             user_canister,
             hots: user.profile_stats.hot_bets_received,
             nots: user.profile_stats.not_bets_received,
-            bio: None,  // V2 doesn't have bio
-            website_url: None,  // V2 doesn't have website_url
-            caller_follows_user: None,  // V2 doesn't have follow relationships
-            user_follows_caller: None,  // V2 doesn't have follow relationships
+            bio: None,                 // V2 doesn't have bio
+            website_url: None,         // V2 doesn't have website_url
+            caller_follows_user: None, // V2 doesn't have follow relationships
+            user_follows_caller: None, // V2 doesn't have follow relationships
         }
     }
 
@@ -62,11 +62,11 @@ impl ProfileDetails {
     ) -> Self {
         Self {
             username: username.clone().filter(|u| !u.is_empty()),
-            lifetime_earnings: 0,  // TODO: V4 doesn't provide lifetime_earnings yet
+            lifetime_earnings: 0, // TODO: V4 doesn't provide lifetime_earnings yet
             followers_cnt: profile_details.followers_count,
             following_cnt: profile_details.following_count,
             profile_pic: profile_details.profile_picture_url,
-            display_name: username,  // Using username as display_name since V4 doesn't have display_name
+            display_name: username, // Using username as display_name since V4 doesn't have display_name
             principal: user_principal,
             user_canister: USER_INFO_SERVICE_ID,
             hots: profile_details.profile_stats.hot_bets_received,

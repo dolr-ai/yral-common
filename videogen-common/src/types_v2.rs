@@ -5,7 +5,7 @@ use strum::{Display, EnumString};
 use utoipa::ToSchema;
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
-use crate::types::{ImageData, TokenType, VideoGenRequestKey};
+use crate::types::{AudioData, ImageData, TokenType, VideoGenRequestKey};
 
 /// Aspect ratio options for video generation in v2 API
 #[derive(
@@ -61,8 +61,8 @@ pub struct VideoGenRequestV2 {
     #[schema(example = "A cat playing piano in a jazz club")]
     pub prompt: String,
 
-    /// The model to use (e.g., "veo3", "veo3_fast", "lumalabs", "falai")
-    #[schema(example = "veo3")]
+    /// The model to use (e.g., "lumalabs", "wan2_5")
+    #[schema(example = "lumalabs")]
     pub model_id: String,
 
     /// Token type for payment
@@ -76,6 +76,9 @@ pub struct VideoGenRequestV2 {
 
     /// Optional input image for image-to-video
     pub image: Option<ImageData>,
+
+    /// Optional input audio for talking head generation
+    pub audio: Option<AudioData>,
 
     /// Aspect ratio
     #[schema(example = "16:9")]
@@ -145,11 +148,11 @@ impl CostInfo {
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 pub struct ProviderInfo {
     /// Unique identifier for the model
-    #[schema(example = "veo3")]
+    #[schema(example = "lumalabs")]
     pub id: String,
 
     /// Display name
-    #[schema(example = "Veo3")]
+    #[schema(example = "LumaLabs")]
     pub name: String,
 
     /// Description of the model
@@ -168,6 +171,10 @@ pub struct ProviderInfo {
 
     /// Whether the model can generate audio
     pub supports_audio: bool,
+
+    /// Whether the model supports audio input (for talking head, etc.)
+    #[serde(default)]
+    pub supports_audio_input: bool,
 
     /// Whether the model supports seed for reproducibility
     pub supports_seed: bool,
@@ -190,9 +197,9 @@ pub struct ProviderInfo {
     /// Default resolution if not specified
     pub default_resolution: Option<ResolutionV2>,
 
-    /// Default duration if not specified
+    /// Default duration if not specified (None for providers where duration is determined by input)
     #[schema(example = 5)]
-    pub default_duration: u8,
+    pub default_duration: Option<u8>,
 
     // Status
     /// Whether the model is currently available
@@ -203,11 +210,11 @@ pub struct ProviderInfo {
     pub is_internal: bool,
 
     /// Path to model icon
-    #[schema(example = "/img/ai-models/veo3.svg")]
+    #[schema(example = "/img/ai-models/lumalabs.svg")]
     pub model_icon: Option<String>,
 
     /// Path to model icon
-    #[schema(example = "/img/ai-models/veo3.svg")]
+    #[schema(example = "/img/ai-models/lumalabs.svg")]
     pub ios_model_icon: Option<String>,
 
     /// Additional model-specific information
