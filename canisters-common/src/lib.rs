@@ -94,10 +94,19 @@ impl Canisters<true> {
         let result = user_info_service.register_new_user().await?;
 
         if let Result_::Err(e) = result {
-            return Err(Error::YralCanister(format!(
-                "Failed to register new user: {e} for user {}",
-                service_canister.user_principal().to_text()
-            )));
+            // If user already exists on-chain but metadata is missing, log and continue
+            if e.to_lowercase().contains("already exists") {
+                log::error!(
+                    "[register_new_user] User already exists on-chain but metadata missing. Error: {} for user {}. Proceeding to set metadata.",
+                    e,
+                    service_canister.user_principal().to_text()
+                );
+            } else {
+                return Err(Error::YralCanister(format!(
+                    "Failed to register new user: {e} for user {}",
+                    service_canister.user_principal().to_text()
+                )));
+            }
         }
 
         service_canister

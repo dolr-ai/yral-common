@@ -5726,6 +5726,7 @@ dependencies = [
  "candid_parser",
  "convert_case 0.6.0",
  "ic-agent",
+ "log",
  "prettyplease",
  "proc-macro2",
  "quote",

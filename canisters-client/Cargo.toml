@@ -9,6 +9,7 @@ candid.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 tokio = { version = "1", features = ["time"] }
+log = "0.4"
 
 [build-dependencies]
 serde.workspace = true
