@@ -325,9 +325,24 @@ fn build_did_intfs(out_dir: &str) -> Result<()> {
                                             Ok(res) => return Ok(res),
                                             Err(e) => {
                                                 match e{
-                                                    ::ic_agent::AgentError::TransportError(_) | ::ic_agent::AgentError::CertifiedReject { .. } | ::ic_agent::AgentError::HttpError(_) => {
+                                                    ::ic_agent::AgentError::TransportError(_) | ::ic_agent::AgentError::CertifiedReject { .. } => {
                                                         attempts += 1;
                                                         log::error!("[Retry] Attempt {}/{} failed with retryable error: {:?}", attempts, max_retries, e);
+                                                        if attempts > max_retries {
+                                                            log::error!("[Retry] Max retries exceeded, returning error");
+                                                            return Err(e);
+                                                        }
+                                                        let delay_multiplier = 2_u64.pow(attempts.saturating_sub(1));
+                                                        let current_delay_ms = base_delay.as_millis() as u64 * delay_multiplier;
+                                                        let capped_delay_ms = ::std::cmp::min(current_delay_ms, 10_000);
+                                                        let actual_delay = ::std::time::Duration::from_millis(capped_delay_ms);
+                                                        log::error!("[Retry] Waiting {:?} before retry", actual_delay);
+                                                        ::tokio::time::sleep(actual_delay).await;
+                                                    },
+                                                    ::ic_agent::AgentError::HttpError(ref payload)
+                                                        if payload.status == 400 && ::std::string::String::from_utf8_lossy(&payload.content).contains("Invalid request expiry") => {
+                                                        attempts += 1;
+                                                        log::error!("[Retry] Attempt {}/{} failed with Invalid request expiry error: {:?}", attempts, max_retries, e);
                                                         if attempts > max_retries {
                                                             log::error!("[Retry] Max retries exceeded, returning error");
                                                             return Err(e);
