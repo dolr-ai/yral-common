@@ -15,7 +15,7 @@ use canisters_client::{
     sns_root::SnsRoot,
     sns_swap::SnsSwap,
     user_index::UserIndex,
-    user_info_service::{Result4, Result_, UserInfoService},
+    user_info_service::{Result3, Result_, UserInfoService},
     user_post_service::UserPostService,
 };
 use consts::{
@@ -160,7 +160,7 @@ impl Canisters<true> {
             let user_canister_id = user_metadata.user_canister_id;
 
             canisters = Canisters {
-                agent: AgentWrapper::build(|b| b),
+                agent: AgentWrapper::build(|b| b.with_arc_identity(id.clone())),
                 id: Some(id.clone()),
                 id_wire: Some(auth.clone()),
                 user_canister: user_canister_id,
@@ -176,18 +176,18 @@ impl Canisters<true> {
         if canisters.user_canister == USER_INFO_SERVICE_ID {
             let service_canister = canisters.user_info_service().await;
             let user_profile_details = service_canister
-                .get_user_profile_details(canisters.user_principal())
+                .get_profile_details_v_4(canisters.user_principal())
                 .await?;
 
             match user_profile_details {
-                Result4::Ok(profile_details) => {
+                Result3::Ok(profile_details) => {
                     canisters.profile_details = Some(ProfileDetails::from_service_canister(
                         canisters.user_principal(),
                         maybe_meta.map(|m| m.user_name),
                         profile_details,
                     ));
                 }
-                Result4::Err(e) => {
+                Result3::Err(e) => {
                     return Err(Error::YralCanister(format!(
                         "{e} for principal {}",
                         canisters.user_principal()
@@ -228,6 +228,21 @@ impl Canisters<true> {
         }
 
         Ok(())
+    }
+
+    pub fn update_profile_details(
+        &mut self,
+        bio: Option<String>,
+        website_url: Option<String>,
+        profile_pic: Option<String>,
+    ) {
+        if let Some(ref mut profile) = self.profile_details {
+            profile.bio = bio;
+            profile.website_url = website_url;
+            if let Some(pic) = profile_pic {
+                profile.profile_pic = Some(pic);
+            }
+        }
     }
 
     pub fn from_wire(wire: CanistersAuthWire, base: Canisters<false>) -> Result<Self> {

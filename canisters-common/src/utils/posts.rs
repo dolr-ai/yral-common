@@ -7,6 +7,7 @@ use candid::Principal;
 use canisters_client::individual_user_template::PostDetailsForFrontend;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
+    user_info_service::Result3,
     user_post_service::{
         Post as PostFromServiceCanister,
         PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result5,
@@ -43,6 +44,9 @@ pub struct PostDetails {
     /// user or not, None if unknown
     pub liked_by_user: Option<bool>,
     pub poster_principal: Principal,
+    pub creator_follows_user: Option<bool>,
+    pub user_follows_creator: Option<bool>,
+    pub creator_bio: Option<String>,
     pub hastags: Vec<String>,
     pub is_nsfw: bool,
     pub hot_or_not_feed_ranking_score: Option<u64>,
@@ -97,6 +101,9 @@ impl PostDetails {
             propic_url: propic_from_principal(service_post.creator_principal),
             liked_by_user: None,
             poster_principal: service_post.creator_principal,
+            creator_follows_user: None,
+            user_follows_creator: None,
+            creator_bio: None,
             hastags: service_post.hashtags,
             is_nsfw: false,
             hot_or_not_feed_ranking_score: Some(0),
@@ -125,6 +132,9 @@ impl PostDetails {
             propic_url: propic_from_principal(post_details.created_by_user_principal_id),
             liked_by_user: Some(post_details.liked_by_me),
             poster_principal: post_details.creator_principal,
+            creator_follows_user: None,
+            user_follows_creator: None,
+            creator_bio: None,
             hastags: post_details.hashtags,
             is_nsfw: false,
             hot_or_not_feed_ranking_score: Some(0),
@@ -158,6 +168,9 @@ impl PostDetails {
                 .unwrap_or_else(|| propic_from_principal(details.created_by_user_principal_id)),
             liked_by_user: authenticated.then_some(details.liked_by_me),
             poster_principal: details.created_by_user_principal_id,
+            creator_follows_user: None,
+            user_follows_creator: None,
+            creator_bio: None,
             hastags: details.hashtags,
             is_nsfw: nsfw_probability >= NSFW_THRESHOLD,
             hot_or_not_feed_ranking_score: details.hot_or_not_feed_ranking_score,
@@ -328,6 +341,91 @@ impl<const A: bool> Canisters<A> {
 
         post_details.nsfw_probability = nsfw_prob;
         post_details.username = creator_meta.map(|m| m.user_name).filter(|s| !s.is_empty());
+
+        Ok(Some(post_details))
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn get_post_details_with_creator_info(
+        &self,
+        user_canister: Principal,
+        post_id: String,
+    ) -> Result<Option<PostDetails>> {
+        // First, get the base post details with NSFW info
+        let Some(mut post_details) = self
+            .get_post_details_with_nsfw_info(user_canister, post_id, None)
+            .await?
+        else {
+            return Ok(None);
+        };
+
+        let creator_principal = post_details.poster_principal;
+
+        // Fetch metadata and profile details in parallel
+        let (creator_meta, profile_result) = try_join!(
+            async {
+                let meta = self
+                    .metadata_client
+                    .get_user_metadata_v2(creator_principal.to_text())
+                    .await?;
+
+                Ok::<_, Error>(meta)
+            },
+            async {
+                // Only fetch profile details if authenticated
+                if A {
+                    let service_canister = self.user_info_service().await;
+                    let profile_details = service_canister
+                        .get_profile_details_v_4(creator_principal)
+                        .await?;
+                    Ok::<_, Error>(Some(profile_details))
+                } else {
+                    Ok::<_, Error>(None)
+                }
+            }
+        )?;
+
+        // Handle username: use metadata if available, otherwise generate
+        post_details.username = if let Some(meta) = creator_meta {
+            let username = meta.user_name;
+            if !username.is_empty() {
+                Some(username)
+            } else {
+                Some(random_username_from_principal(
+                    creator_principal,
+                    USERNAME_MAX_LEN,
+                ))
+            }
+        } else {
+            Some(random_username_from_principal(
+                creator_principal,
+                USERNAME_MAX_LEN,
+            ))
+        };
+
+        // Handle follow relationships and profile info if profile was fetched
+        if let Some(profile_response) = profile_result {
+            match profile_response {
+                Result3::Ok(profile_details) => {
+                    post_details.user_follows_creator = profile_details.caller_follows_user;
+                    post_details.creator_follows_user = profile_details.user_follows_caller;
+                    post_details.creator_bio = profile_details.bio;
+                    // Update propic_url if available from profile
+                    if let Some(profile_pic) = profile_details.profile_picture_url {
+                        if !profile_pic.is_empty() {
+                            post_details.propic_url = profile_pic;
+                        }
+                    }
+                }
+                Result3::Err(e) => {
+                    log::warn!(
+                        "Failed to get profile details for creator {}: {}",
+                        creator_principal,
+                        e
+                    );
+                }
+            }
+        }
 
         Ok(Some(post_details))
     }
