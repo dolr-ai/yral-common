@@ -74,7 +74,7 @@ impl Canisters<true> {
     pub async fn register_new_user(
         id: Arc<DelegatedIdentity>,
         id_wire: Arc<DelegatedIdentityWire>,
-    ) -> Result<Self> {
+    ) -> Result<(Self, bool)> {
         let service_canister = Self {
             agent: AgentWrapper::build(|b| b.with_arc_identity(id.clone())),
             id: Some(id),
@@ -93,7 +93,7 @@ impl Canisters<true> {
         let user_info_service = service_canister.user_info_service().await;
         let result = user_info_service.register_new_user().await?;
 
-        if let Result_::Err(e) = result {
+        let is_new_user = if let Result_::Err(e) = result {
             // If user already exists on-chain but metadata is missing, log and continue
             if e.to_lowercase().contains("already exists") {
                 log::error!(
@@ -101,13 +101,16 @@ impl Canisters<true> {
                     e,
                     service_canister.user_principal().to_text()
                 );
+                false // User already existed on-chain
             } else {
                 return Err(Error::YralCanister(format!(
                     "Failed to register new user: {e} for user {}",
                     service_canister.user_principal().to_text()
                 )));
             }
-        }
+        } else {
+            true // Successfully registered a new user
+        };
 
         service_canister
             .metadata_client
@@ -120,7 +123,7 @@ impl Canisters<true> {
             )
             .await?;
 
-        Ok(service_canister)
+        Ok((service_canister, is_new_user))
     }
 
     pub fn identity(&self) -> &DelegatedIdentity {
@@ -165,6 +168,7 @@ impl Canisters<true> {
             .await?;
 
         let mut canisters;
+        let is_new_user;
         if let Some(user_metadata) = maybe_meta.clone() {
             let user_canister_id = user_metadata.user_canister_id;
 
@@ -177,30 +181,60 @@ impl Canisters<true> {
                 expiry,
                 profile_details: None,
             };
+            is_new_user = false;
         } else {
             //TODO Register new user
-            canisters = Self::register_new_user(id, auth).await?;
+            (canisters, is_new_user) = Self::register_new_user(id, auth).await?;
         }
 
         if canisters.user_canister == USER_INFO_SERVICE_ID {
-            let service_canister = canisters.user_info_service().await;
-            let user_profile_details = service_canister
-                .get_profile_details_v_4(canisters.user_principal())
-                .await?;
+            if is_new_user {
+                // For new users, use default profile details instead of fetching from canister
+                use canisters_client::user_info_service::{
+                    UserProfileDetailsForFrontendV4, UserProfileGlobalStats,
+                };
 
-            match user_profile_details {
-                Result3::Ok(profile_details) => {
-                    canisters.profile_details = Some(ProfileDetails::from_service_canister(
-                        canisters.user_principal(),
-                        maybe_meta.map(|m| m.user_name),
-                        profile_details,
-                    ));
-                }
-                Result3::Err(e) => {
-                    return Err(Error::YralCanister(format!(
-                        "{e} for principal {}",
-                        canisters.user_principal()
-                    )));
+                let default_profile = UserProfileDetailsForFrontendV4 {
+                    bio: None,
+                    website_url: None,
+                    following_count: 0,
+                    user_follows_caller: None,
+                    profile_picture_url: None,
+                    principal_id: canisters.user_principal(),
+                    profile_stats: UserProfileGlobalStats {
+                        hot_bets_received: 0,
+                        not_bets_received: 0,
+                    },
+                    followers_count: 0,
+                    caller_follows_user: None,
+                };
+
+                canisters.profile_details = Some(ProfileDetails::from_service_canister(
+                    canisters.user_principal(),
+                    maybe_meta.map(|m| m.user_name),
+                    default_profile,
+                ));
+            } else {
+                // For existing users, fetch profile details from canister
+                let service_canister = canisters.user_info_service().await;
+                let user_profile_details = service_canister
+                    .get_profile_details_v_4(canisters.user_principal())
+                    .await?;
+
+                match user_profile_details {
+                    Result3::Ok(profile_details) => {
+                        canisters.profile_details = Some(ProfileDetails::from_service_canister(
+                            canisters.user_principal(),
+                            maybe_meta.map(|m| m.user_name),
+                            profile_details,
+                        ));
+                    }
+                    Result3::Err(e) => {
+                        return Err(Error::YralCanister(format!(
+                            "{e} for principal {}",
+                            canisters.user_principal()
+                        )));
+                    }
                 }
             }
         } else {
