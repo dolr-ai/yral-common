@@ -430,6 +430,109 @@ impl<const A: bool> Canisters<A> {
         Ok(Some(post_details))
     }
 
+    #[tracing::instrument(skip(self))]
+    pub async fn get_post_details_with_creator_info_v1(
+        &self,
+        user_canister: Principal,
+        post_id: String,
+        creator_principal: Principal,
+        nsfw_probability: Option<f32>,
+    ) -> Result<Option<PostDetails>> {
+        // Fetch post details with NSFW info, creator metadata, and profile details concurrently
+        let (post_details_result, creator_meta, profile_result) = try_join!(
+            async {
+                let details = self
+                    .get_post_details_with_nsfw_info(
+                        user_canister,
+                        post_id.clone(),
+                        nsfw_probability,
+                    )
+                    .await?;
+                Ok::<_, Error>(details)
+            },
+            async {
+                let meta = self
+                    .metadata_client
+                    .get_user_metadata_v2(creator_principal.to_text())
+                    .await?;
+                Ok::<_, Error>(meta)
+            },
+            async {
+                // Only fetch profile details if authenticated
+                if A {
+                    let service_canister = self.user_info_service().await;
+                    let profile_details = service_canister
+                        .get_profile_details_v_4(creator_principal)
+                        .await?;
+                    Ok::<_, Error>(Some(profile_details))
+                } else {
+                    Ok::<_, Error>(None)
+                }
+            }
+        )?;
+
+        let Some(mut post_details) = post_details_result else {
+            log::error!(
+                "Post details not found for canister {} and post ID {},  skipping",
+                user_canister,
+                post_id
+            );
+            return Ok(None);
+        };
+
+        // Handle username: use metadata if available, otherwise generate
+        post_details.username = if let Some(meta) = creator_meta {
+            let username = meta.user_name;
+            if !username.is_empty() {
+                Some(username)
+            } else {
+                log::error!(
+                    "Creator {} has empty username in metadata, generating fallback",
+                    creator_principal
+                );
+                Some(random_username_from_principal(
+                    creator_principal,
+                    USERNAME_MAX_LEN,
+                ))
+            }
+        } else {
+            log::error!(
+                "Failed to fetch metadata for creator {}, generating fallback username",
+                creator_principal
+            );
+            Some(random_username_from_principal(
+                creator_principal,
+                USERNAME_MAX_LEN,
+            ))
+        };
+
+        // Handle follow relationships and profile info if profile was fetched
+        if let Some(profile_response) = profile_result {
+            match profile_response {
+                Result3::Ok(profile_details) => {
+                    post_details.user_follows_creator = profile_details.caller_follows_user;
+                    post_details.creator_follows_user = profile_details.user_follows_caller;
+                    post_details.creator_bio = profile_details.bio;
+                    // Update propic_url if available from profile
+                    if let Some(profile_pic) = profile_details.profile_picture_url {
+                        if !profile_pic.is_empty() {
+                            post_details.propic_url = profile_pic;
+                        }
+                    }
+                }
+                Result3::Err(e) => {
+                    log::error!(
+                        "Failed to get profile details for creator {}: {}",
+                        creator_principal,
+                        e
+                    );
+                }
+            }
+        }
+
+        Ok(Some(post_details))
+    }
+
     pub async fn post_like_info(
         &self,
         post_canister: Principal,
