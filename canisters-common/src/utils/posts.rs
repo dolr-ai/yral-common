@@ -442,7 +442,11 @@ impl<const A: bool> Canisters<A> {
         let (post_details_result, creator_meta, profile_result) = try_join!(
             async {
                 let details = self
-                    .get_post_details_with_nsfw_info(user_canister, post_id, nsfw_probability)
+                    .get_post_details_with_nsfw_info(
+                        user_canister,
+                        post_id.clone(),
+                        nsfw_probability,
+                    )
                     .await?;
                 Ok::<_, Error>(details)
             },
@@ -468,6 +472,11 @@ impl<const A: bool> Canisters<A> {
         )?;
 
         let Some(mut post_details) = post_details_result else {
+            log::error!(
+                "Post details not found for canister {} and post ID {},  skipping",
+                user_canister,
+                post_id
+            );
             return Ok(None);
         };
 
@@ -477,12 +486,20 @@ impl<const A: bool> Canisters<A> {
             if !username.is_empty() {
                 Some(username)
             } else {
+                log::error!(
+                    "Creator {} has empty username in metadata, generating fallback",
+                    creator_principal
+                );
                 Some(random_username_from_principal(
                     creator_principal,
                     USERNAME_MAX_LEN,
                 ))
             }
         } else {
+            log::error!(
+                "Failed to fetch metadata for creator {}, generating fallback username",
+                creator_principal
+            );
             Some(random_username_from_principal(
                 creator_principal,
                 USERNAME_MAX_LEN,
@@ -504,7 +521,7 @@ impl<const A: bool> Canisters<A> {
                     }
                 }
                 Result3::Err(e) => {
-                    log::warn!(
+                    log::error!(
                         "Failed to get profile details for creator {}: {}",
                         creator_principal,
                         e
