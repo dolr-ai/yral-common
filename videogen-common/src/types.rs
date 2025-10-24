@@ -38,6 +38,10 @@ pub trait VideoGenerator {
     fn flow_control_config(&self) -> Option<(u32, u32)> {
         None // Default: no flow control
     }
+
+    fn supports_webhook_callbacks(&self) -> bool {
+        false // Default: no webhook support
+    }
 }
 
 // VideoModel and ModelMetadata have been removed - using ProviderInfo from types_v2 instead

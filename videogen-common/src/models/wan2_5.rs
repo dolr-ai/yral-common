@@ -51,6 +51,10 @@ impl VideoGenerator for Wan25Model {
     fn flow_control_config(&self) -> Option<(u32, u32)> {
         None // Will be configured via env vars
     }
+
+    fn supports_webhook_callbacks(&self) -> bool {
+        true
+    }
 }
 
 impl FlowControlFromEnv for Wan25Model {
@@ -91,6 +95,10 @@ impl VideoGenerator for Wan25FastModel {
 
     fn flow_control_config(&self) -> Option<(u32, u32)> {
         None // Will be configured via env vars
+    }
+
+    fn supports_webhook_callbacks(&self) -> bool {
+        true
     }
 }
 
