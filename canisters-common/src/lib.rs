@@ -71,7 +71,7 @@ impl Canisters<false> {
         self,
         id: Arc<DelegatedIdentity>,
         id_wire: Arc<DelegatedIdentityWire>,
-    ) -> Result<Canisters<true>> {
+    ) -> Result<Canisters<false>> {
         let expiry = id_wire
             .delegation_chain
             .iter()
