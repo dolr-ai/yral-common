@@ -66,6 +66,31 @@ impl Default for Canisters<false> {
     }
 }
 
+impl Canisters<false> {
+    pub fn set_agent(
+        self,
+        id: Arc<DelegatedIdentity>,
+        id_wire: Arc<DelegatedIdentityWire>,
+    ) -> Result<Canisters<true>> {
+        let expiry = id_wire
+            .delegation_chain
+            .iter()
+            .fold(u64::MAX, |res, next_val| {
+                next_val.delegation.expiration.min(res)
+            });
+
+        Ok(Canisters {
+            agent: AgentWrapper::build(|b| b.with_arc_identity(id.clone())),
+            id: Some(id),
+            id_wire: Some(id_wire),
+            metadata_client: self.metadata_client,
+            user_canister: self.user_canister,
+            expiry,
+            profile_details: self.profile_details,
+        })
+    }
+}
+
 impl Canisters<true> {
     pub fn expiry_ns(&self) -> u64 {
         self.expiry
