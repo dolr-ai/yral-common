@@ -372,16 +372,11 @@ impl<const A: bool> Canisters<A> {
                 Ok::<_, Error>(meta)
             },
             async {
-                // Only fetch profile details if authenticated
-                if A {
-                    let service_canister = self.user_info_service().await;
-                    let profile_details = service_canister
-                        .get_profile_details_v_4(creator_principal)
-                        .await?;
-                    Ok::<_, Error>(Some(profile_details))
-                } else {
-                    Ok::<_, Error>(None)
-                }
+                let service_canister = self.user_info_service().await;
+                let profile_details = service_canister
+                    .get_profile_details_v_4(creator_principal)
+                    .await?;
+                Ok::<_, Error>(Some(profile_details))
             }
         )?;
 
@@ -458,16 +453,11 @@ impl<const A: bool> Canisters<A> {
                 Ok::<_, Error>(meta)
             },
             async {
-                // Only fetch profile details if authenticated
-                if A {
-                    let service_canister = self.user_info_service().await;
-                    let profile_details = service_canister
-                        .get_profile_details_v_4(creator_principal)
-                        .await?;
-                    Ok::<_, Error>(Some(profile_details))
-                } else {
-                    Ok::<_, Error>(None)
-                }
+                let service_canister = self.user_info_service().await;
+                let profile_details = service_canister
+                    .get_profile_details_v_4(creator_principal)
+                    .await?;
+                Ok::<_, Error>(Some(profile_details))
             }
         )?;
 
