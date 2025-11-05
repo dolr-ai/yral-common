@@ -10,7 +10,8 @@ use canisters_client::{
     user_info_service::Result3,
     user_post_service::{
         Post as PostFromServiceCanister,
-        PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result2, Result5,
+        PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result3 as PostServiceResult3,
+        Result5,
     },
 };
 use futures_util::try_join;
@@ -267,7 +268,7 @@ impl<const A: bool> Canisters<A> {
                 )
                 .await?;
 
-            let Result2::Ok(post_details) = post_details else {
+            let PostServiceResult3::Ok(post_details) = post_details else {
                 return Ok(None);
             };
 
