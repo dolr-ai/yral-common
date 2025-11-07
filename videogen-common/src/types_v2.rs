@@ -106,12 +106,25 @@ pub struct VideoGenRequestV2 {
     pub extra_params: HashMap<String, serde_json::Value>,
 }
 
+/// Specifies how video uploads should be handled:
+/// - Client: The client uploads the video.
+/// - ServerDraft: The server uploads the video directly to the draft (canister).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
+pub enum VideoUploadHandling {
+    /// The client is responsible for uploading the video.
+    Client,
+    /// The server uploads the video directly to the draft (canister).
+    ServerDraft,
+}
+
 /// Request with delegated identity for v2 API
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 pub struct VideoGenRequestWithIdentityV2 {
     pub request: VideoGenRequestV2,
     #[schema(value_type = Object)]
     pub delegated_identity: DelegatedIdentityWire,
+    #[serde(default)]
+    pub upload_handling: Option<VideoUploadHandling>,
 }
 
 /// Cost information in multiple currencies
