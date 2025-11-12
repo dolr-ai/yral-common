@@ -182,7 +182,7 @@ impl AudioData {
         }
     }
 
-    /// Get the URL if this is a URL variant
+    /// Get the URL representation (returns actual URL for Url variant, or data URL for Base64 variant)
     pub fn as_url(&self) -> String {
         match self {
             AudioData::Url(url) => url.clone(),
