@@ -1,6 +1,7 @@
 #[cfg(feature = "server")]
 use std::sync::LazyLock;
 
+use crate::models::speech_to_video::SpeechToVideoModel;
 use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
@@ -21,6 +22,7 @@ impl AdapterRegistry {
             "talkinghead" => TalkingHeadModel::from_unified_request(request),
             "wan2_5" => Wan25Model::from_unified_request(request),
             "wan2_5_fast" => Wan25FastModel::from_unified_request(request),
+            "speech_to_video" => SpeechToVideoModel::from_unified_request(request),
             _ => Err(VideoGenError::InvalidInput(format!(
                 "Unknown model: {}",
                 request.model_id

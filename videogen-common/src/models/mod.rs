@@ -1,5 +1,6 @@
 pub mod inttest;
 pub mod lumalabs;
+pub mod speech_to_video;
 pub mod talkinghead;
 pub mod wan2_5;
 
