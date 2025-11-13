@@ -68,6 +68,7 @@ impl AdapterRegistry {
             "talkinghead" => Some(TalkingHeadModel::get_provider_info()),
             "wan2_5" => Some(Wan25Model::get_provider_info()),
             "wan2_5_fast" => Some(Wan25FastModel::get_provider_info()),
+            "speech_to_video" => Some(SpeechToVideoModel::get_provider_info()),
             _ => None,
         }
     }
