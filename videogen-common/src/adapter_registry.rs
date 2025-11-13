@@ -37,6 +37,7 @@ impl AdapterRegistry {
             Wan25Model::get_provider_info(),
             LumaLabsModel::get_provider_info(),
             IntTestModel::get_provider_info(),
+            SpeechToVideoModel::get_provider_info(),
         ];
 
         ProvidersResponse {
