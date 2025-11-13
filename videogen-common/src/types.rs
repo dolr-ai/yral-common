@@ -1,4 +1,7 @@
-use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
+use crate::models::{
+    speech_to_video::SpeechToVideoModel, IntTestModel, LumaLabsModel, TalkingHeadModel,
+    Wan25FastModel, Wan25Model,
+};
 // VideoModel has been removed - using ProviderInfo from types_v2 instead
 use candid::{CandidType, Principal};
 use enum_dispatch::enum_dispatch;
@@ -82,6 +85,7 @@ pub enum VideoGenInput {
     TalkingHead(TalkingHeadModel),
     Wan25(Wan25Model),
     Wan25Fast(Wan25FastModel),
+    SpeechToVideo(SpeechToVideoModel),
 }
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
@@ -95,6 +99,7 @@ pub enum VideoGenProvider {
     TalkingHead,
     Wan25,
     Wan25Fast,
+    SpeechToVideo,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
@@ -181,7 +186,14 @@ impl AudioData {
     pub fn as_url(&self) -> Option<&str> {
         match self {
             AudioData::Url(url) => Some(url),
-            AudioData::Base64(_) => None,
+            AudioData::Base64(_input) => None,
+        }
+    }
+
+    pub fn to_url(&self) -> String {
+        match self {
+            AudioData::Url(url) => url.clone(),
+            AudioData::Base64(input) => format!("data:{};base64,{}", input.mime_type, input.data),
         }
     }
 
