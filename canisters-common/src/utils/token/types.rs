@@ -1,4 +1,4 @@
-use candid::Principal;
+use candid::{Nat, Principal};
 use hon_worker_common::SatsBalanceUpdateRequestV2;
 use num_bigint::{BigInt, BigUint, Sign};
 use reqwest::Client;
@@ -7,7 +7,13 @@ use url::Url;
 use super::balance::TokenBalance;
 use super::operations::TokenOperations;
 use crate::{consts::DOLR_AI_LEDGER_CANISTER, error::Error, Result};
-use canisters_client::sns_ledger::{self, Account as LedgerAccount};
+use canisters_client::{
+    dedup_index::Result_,
+    ic::{self, USER_INFO_SERVICE_ID},
+    individual_user_template::Ok,
+    sns_ledger::{self, Account as LedgerAccount},
+    user_info_service::{Result5, Result_ as UserInfoResult, SubscriptionPlan, UserInfoService},
+};
 
 // ckBTC transfer types - no longer needed as we're using direct IC transfers
 
@@ -282,6 +288,65 @@ impl TokenOperations for DolrOperations {
 }
 
 #[derive(Clone)]
+pub struct YralProSubscription {
+    admin_agent: ic_agent::Agent,
+    user_principal: Principal,
+}
+
+impl TokenOperations for YralProSubscription {
+    async fn load_balance(&self, _user_principal: Principal) -> Result<TokenBalance> {
+        let user_info_service = UserInfoService(USER_INFO_SERVICE_ID, &self.admin_agent);
+
+        let user_profile_info_res = user_info_service
+            .get_user_profile_details_v_5(self.user_principal)
+            .await?;
+
+        match user_profile_info_res {
+            Result5::Ok(user_profile_info) => match user_profile_info.subscription_plan {
+                SubscriptionPlan::Pro(yral_pro_subscription) => Ok(TokenBalance::new(
+                    Nat::from(yral_pro_subscription.free_video_credits_left),
+                    0,
+                )),
+                SubscriptionPlan::Free => Ok(TokenBalance::new(Nat::from(0u64), 0)),
+            },
+            Result5::Err(e) => Err(Error::YralCanister(format!(
+                "Failed to get user profile info: {e:?}"
+            ))),
+        }
+    }
+
+    async fn deduct_balance(&self, _user_principal: Principal, _amount: u64) -> Result<u64> {
+        let user_info_service = UserInfoService(USER_INFO_SERVICE_ID, &self.admin_agent);
+
+        let deduct_res = user_info_service
+            .remove_pro_plan_free_video_credits(self.user_principal, 1)
+            .await?;
+
+        match deduct_res {
+            UserInfoResult::Ok => Ok(1),
+            UserInfoResult::Err(e) => Err(Error::YralCanister(format!(
+                "Failed to deduct Yral Pro credit: {e:?}"
+            ))),
+        }
+    }
+
+    async fn add_balance(&self, _user_principal: Principal, _amount: u64) -> Result<()> {
+        let user_info_service = UserInfoService(USER_INFO_SERVICE_ID, &self.admin_agent);
+
+        let deduct_res = user_info_service
+            .add_pro_plan_free_video_credits(self.user_principal, 1)
+            .await?;
+
+        match deduct_res {
+            UserInfoResult::Ok => Ok(()),
+            UserInfoResult::Err(e) => Err(Error::YralCanister(format!(
+                "Failed to add Yral Pro credit: {e:?}"
+            ))),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct CkBtcOperations {
     admin_agent: ic_agent::Agent,
 }
@@ -397,4 +462,5 @@ pub enum TokenOperationsProvider {
     Sats(SatsOperations),
     Dolr(DolrOperations),
     CkBtc(CkBtcOperations),
+    YralProSubscription(YralProSubscription),
 }
