@@ -8,9 +8,7 @@ use super::balance::TokenBalance;
 use super::operations::TokenOperations;
 use crate::{consts::DOLR_AI_LEDGER_CANISTER, error::Error, Result};
 use canisters_client::{
-    dedup_index::Result_,
-    ic::{self, USER_INFO_SERVICE_ID},
-    individual_user_template::Ok,
+    ic::USER_INFO_SERVICE_ID,
     sns_ledger::{self, Account as LedgerAccount},
     user_info_service::{Result5, Result_ as UserInfoResult, SubscriptionPlan, UserInfoService},
 };
