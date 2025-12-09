@@ -83,7 +83,8 @@ impl TokenCostConfig {
         match token_type {
             TokenType::Sats => usd_cents * self.conversion_rates.usd_cents_to_sats,
             TokenType::Dolr => usd_cents * self.conversion_rates.usd_cents_to_dolr,
-            TokenType::Free => 0, // Free requests have no cost
+            TokenType::Free => 0,
+            TokenType::YralProSubscription => 1,
         }
     }
 
@@ -92,7 +93,8 @@ impl TokenCostConfig {
         match token_type {
             TokenType::Sats => amount / self.conversion_rates.usd_cents_to_sats,
             TokenType::Dolr => amount / self.conversion_rates.usd_cents_to_dolr,
-            TokenType::Free => 0, // Free requests have no USD value
+            TokenType::Free => 0,
+            TokenType::YralProSubscription => 0,
         }
     }
 

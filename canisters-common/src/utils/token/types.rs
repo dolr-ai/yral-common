@@ -287,8 +287,8 @@ impl TokenOperations for DolrOperations {
 
 #[derive(Clone)]
 pub struct YralProSubscription {
-    admin_agent: ic_agent::Agent,
-    user_principal: Principal,
+    pub admin_agent: ic_agent::Agent,
+    pub user_principal: Principal,
 }
 
 impl TokenOperations for YralProSubscription {
