@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ic-validator-ingress-message = { git = "https://github.com/dfinity/ic.git", default-features = false, rev = "b2a4053f1dca2455511f2c6c0dc12cb65f93b4b1", optional = true }
-ic-types = { git = "https://github.com/dfinity/ic.git", rev = "b2a4053f1dca2455511f2c6c0dc12cb65f93b4b1", optional = true }
+ic-validator-ingress-message = { git = "https://github.com/dfinity/ic.git", default-features = false, rev = "d2a13f0ecb29c96818d24076925d5da19ae61e93", optional = true }
+ic-types = { git = "https://github.com/dfinity/ic.git", rev = "d2a13f0ecb29c96818d24076925d5da19ae61e93", optional = true }
 ic-agent = { workspace = true, default-features = false, optional = true }
 candid.workspace = true
 web-time.workspace = true
