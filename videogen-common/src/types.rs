@@ -63,6 +63,7 @@ pub enum TokenType {
     Dolr,
     #[default]
     Free,
+    YralProSubscription,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
