@@ -4,14 +4,17 @@ use std::{
 };
 
 use candid::Principal;
-use canisters_client::individual_user_template::PostDetailsForFrontend;
+use canisters_client::individual_user_template::{
+    PostDetailsForFrontend, PostStatus as IndividualUserPostStatus,
+};
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
     user_info_service::Result3,
     user_post_service::{
         Post as PostFromServiceCanister,
-        PostDetailsForFrontend as PostServicePostDetailsForFrontend, Result3 as PostServiceResult3,
-        Result5,
+        PostDetailsForFrontend as PostServicePostDetailsForFrontend,
+        PostStatus as ServicePostStatus, Result2 as PostServiceResult2,
+        Result3 as PostServiceResult3, Result5,
     },
 };
 use futures_util::try_join;
@@ -253,6 +256,9 @@ impl<const A: bool> Canisters<A> {
     ///
     /// No additional detail is resolved, e.g. username or nsfw probability. For
     /// a more accurate post detail refer to `[Canisters::get_post_details]`
+    ///
+    /// Note: This function filters posts by status, returning `None` for posts
+    /// that are banned, deleted, or not yet ready to view.
     #[tracing::instrument(skip(self))]
     pub async fn get_post_details_from_canister(
         &self,
@@ -261,6 +267,22 @@ impl<const A: bool> Canisters<A> {
     ) -> Result<Option<PostDetails>> {
         let post_details = if user_canister == USER_INFO_SERVICE_ID {
             let post_service_canister = self.user_post_service().await;
+
+            // First, get the post with status to check if it's viewable
+            let post_with_status = post_service_canister
+                .get_individual_post_details_by_id(post_id.into())
+                .await?;
+
+            let PostServiceResult2::Ok(post) = post_with_status else {
+                return Ok(None);
+            };
+
+            // Check if post status allows viewing
+            if !matches!(post.status, ServicePostStatus::ReadyToView) {
+                return Ok(None);
+            }
+
+            // Get full post details with liked_by_me info
             let post_details = post_service_canister
                 .get_individual_post_details_by_id_for_user(
                     post_id.into(),
@@ -282,6 +304,12 @@ impl<const A: bool> Canisters<A> {
             let res = post_creator_can
                 .get_individual_post_details_by_id(post_id.parse::<u64>().unwrap())
                 .await?;
+
+            // Check if post status allows viewing
+            if !matches!(res.status, IndividualUserPostStatus::ReadyToView) {
+                return Ok(None);
+            }
+
             Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
                 A,
                 None,
