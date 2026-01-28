@@ -102,10 +102,7 @@ type UserProfileGlobalStats = record {
   hot_bets_received : nat64;
   not_bets_received : nat64;
 };
-type YralProSubscription = record {
-  free_video_credits_left : nat32;
-  total_video_credits_alloted : nat32;
-};
+type YralProSubscription = record { free_video_credits_left : nat32 };
 service : (UserInfoServiceInitArgs) -> {
   accept_new_user_registration : (principal, bool) -> (Result);
   accept_new_user_registration_v2 : (principal, bool, opt principal) -> (
