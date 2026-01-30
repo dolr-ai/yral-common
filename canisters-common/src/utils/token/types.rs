@@ -288,15 +288,14 @@ impl TokenOperations for DolrOperations {
 #[derive(Clone)]
 pub struct YralProSubscription {
     pub admin_agent: ic_agent::Agent,
-    pub user_principal: Principal,
 }
 
 impl TokenOperations for YralProSubscription {
-    async fn load_balance(&self, _user_principal: Principal) -> Result<TokenBalance> {
+    async fn load_balance(&self, user_principal: Principal) -> Result<TokenBalance> {
         let user_info_service = UserInfoService(USER_INFO_SERVICE_ID, &self.admin_agent);
 
         let user_profile_info_res = user_info_service
-            .get_user_profile_details_v_5(self.user_principal)
+            .get_user_profile_details_v_5(user_principal)
             .await?;
 
         match user_profile_info_res {
@@ -313,11 +312,11 @@ impl TokenOperations for YralProSubscription {
         }
     }
 
-    async fn deduct_balance(&self, _user_principal: Principal, _amount: u64) -> Result<u64> {
+    async fn deduct_balance(&self, user_principal: Principal, amount: u64) -> Result<u64> {
         let user_info_service = UserInfoService(USER_INFO_SERVICE_ID, &self.admin_agent);
 
         let deduct_res = user_info_service
-            .remove_pro_plan_free_video_credits(self.user_principal, 1)
+            .remove_pro_plan_free_video_credits(user_principal, amount as u32)
             .await?;
 
         match deduct_res {
@@ -328,11 +327,11 @@ impl TokenOperations for YralProSubscription {
         }
     }
 
-    async fn add_balance(&self, _user_principal: Principal, _amount: u64) -> Result<()> {
+    async fn add_balance(&self, user_principal: Principal, amount: u64) -> Result<()> {
         let user_info_service = UserInfoService(USER_INFO_SERVICE_ID, &self.admin_agent);
 
         let deduct_res = user_info_service
-            .add_pro_plan_free_video_credits(self.user_principal, 1)
+            .add_pro_plan_free_video_credits(user_principal, amount as u32)
             .await?;
 
         match deduct_res {
