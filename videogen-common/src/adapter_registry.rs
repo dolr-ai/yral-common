@@ -2,7 +2,9 @@
 use std::sync::LazyLock;
 
 use crate::models::speech_to_video::SpeechToVideoModel;
-use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
+use crate::models::{
+    IntTestModel, Ltx2Model, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model,
+};
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
 use crate::VideoGenInput;
@@ -23,6 +25,7 @@ impl AdapterRegistry {
             "wan2_5" => Wan25Model::from_unified_request(request),
             "wan2_5_fast" => Wan25FastModel::from_unified_request(request),
             "speech_to_video" => SpeechToVideoModel::from_unified_request(request),
+            "ltx2" => Ltx2Model::from_unified_request(request),
             _ => Err(VideoGenError::InvalidInput(format!(
                 "Unknown model: {}",
                 request.model_id
@@ -36,6 +39,7 @@ impl AdapterRegistry {
             Wan25FastModel::get_provider_info(), // Default
             Wan25Model::get_provider_info(),
             LumaLabsModel::get_provider_info(),
+            Ltx2Model::get_provider_info(),
             IntTestModel::get_provider_info(),
             SpeechToVideoModel::get_provider_info(),
         ];
@@ -52,6 +56,7 @@ impl AdapterRegistry {
             Wan25FastModel::get_provider_info(), // Default
             Wan25Model::get_provider_info(),
             LumaLabsModel::get_provider_info(),
+            Ltx2Model::get_provider_info(),
         ];
 
         ProvidersResponse {
@@ -69,6 +74,7 @@ impl AdapterRegistry {
             "wan2_5" => Some(Wan25Model::get_provider_info()),
             "wan2_5_fast" => Some(Wan25FastModel::get_provider_info()),
             "speech_to_video" => Some(SpeechToVideoModel::get_provider_info()),
+            "ltx2" => Some(Ltx2Model::get_provider_info()),
             _ => None,
         }
     }
