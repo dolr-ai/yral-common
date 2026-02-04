@@ -1,5 +1,5 @@
 use crate::models::{
-    speech_to_video::SpeechToVideoModel, IntTestModel, LumaLabsModel, TalkingHeadModel,
+    speech_to_video::SpeechToVideoModel, IntTestModel, Ltx2Model, LumaLabsModel, TalkingHeadModel,
     Wan25FastModel, Wan25Model,
 };
 // VideoModel has been removed - using ProviderInfo from types_v2 instead
@@ -87,6 +87,7 @@ pub enum VideoGenInput {
     Wan25(Wan25Model),
     Wan25Fast(Wan25FastModel),
     SpeechToVideo(SpeechToVideoModel),
+    Ltx2(Ltx2Model),
 }
 
 // VideoGenInput now gets model_name() and other methods from VideoGenerator trait via enum_dispatch
@@ -101,6 +102,7 @@ pub enum VideoGenProvider {
     Wan25,
     Wan25Fast,
     SpeechToVideo,
+    Ltx2,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
