@@ -9,12 +9,18 @@ use utoipa::ToSchema;
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct Wan25Model {
     pub prompt: String,
+    /// Optional image for image-to-video generation
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<crate::types::ImageData>,
     // All other parameters are hardcoded in the provider implementation
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct Wan25FastModel {
     pub prompt: String,
+    /// Optional image for image-to-video generation
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<crate::types::ImageData>,
     // All other parameters are hardcoded in the provider implementation
 }
 
@@ -41,11 +47,11 @@ impl VideoGenerator for Wan25Model {
     }
 
     fn get_image(&self) -> Option<&crate::types::ImageData> {
-        None // No image support
+        self.image.as_ref()
     }
 
     fn get_image_mut(&mut self) -> Option<&mut crate::types::ImageData> {
-        None
+        self.image.as_mut()
     }
 
     fn flow_control_config(&self) -> Option<(u32, u32)> {
@@ -86,11 +92,11 @@ impl VideoGenerator for Wan25FastModel {
     }
 
     fn get_image(&self) -> Option<&crate::types::ImageData> {
-        None // No image support
+        self.image.as_ref()
     }
 
     fn get_image_mut(&mut self) -> Option<&mut crate::types::ImageData> {
-        None
+        self.image.as_mut()
     }
 
     fn flow_control_config(&self) -> Option<(u32, u32)> {
@@ -115,17 +121,10 @@ impl Wan25Model {
     ) -> Result<VideoGenInput, VideoGenError> {
         use crate::types_v2::ResolutionV2;
 
-        // Validate no image input
-        if unified.image.is_some() {
-            return Err(VideoGenError::InvalidInput(
-                "Wan 2.5 does not support image input".to_string(),
-            ));
-        }
-
-        // Validate parameters that Wan 2.2 doesn't support in unified API
+        // Validate parameters that Wan 2.5 doesn't support in unified API
         if unified.negative_prompt.is_some() {
             return Err(VideoGenError::InvalidInput(
-                "Wan 2.2 negative prompt is hardcoded and cannot be customized".to_string(),
+                "Wan 2.5 negative prompt is hardcoded and cannot be customized".to_string(),
             ));
         }
 
@@ -160,6 +159,7 @@ impl Wan25Model {
 
         Ok(VideoGenInput::Wan25(Wan25Model {
             prompt: unified.prompt,
+            image: unified.image,
         }))
     }
 
@@ -170,10 +170,10 @@ impl Wan25Model {
 
         crate::types_v2::ProviderInfo {
             id: "wan2_5".to_string(),
-            name: "Wan 2.5 T2V".to_string(),
-            description: "Alibaba's Wan 2.5 MoE model for cinematic 720p text-to-video generation with superior motion coherence".to_string(),
+            name: "Wan 2.5".to_string(),
+            description: "Alibaba's Wan 2.5 MoE model for cinematic 720p video generation with superior motion coherence. Supports image-to-video.".to_string(),
             cost: CostInfo::from_usd_cents(WAN2_5_COST_USD_CENTS),
-            supports_image: false,
+            supports_image: true,
             supports_negative_prompt: false, // Hardcoded
             supports_audio: false,
             supports_audio_input: false,
@@ -202,13 +202,6 @@ impl Wan25FastModel {
         unified: crate::types_v2::VideoGenRequestV2,
     ) -> Result<VideoGenInput, VideoGenError> {
         use crate::types_v2::ResolutionV2;
-
-        // Validate no image input
-        if unified.image.is_some() {
-            return Err(VideoGenError::InvalidInput(
-                "Wan 2.5 Fast does not support image input".to_string(),
-            ));
-        }
 
         // Validate parameters that Wan 2.5 Fast doesn't support in unified API
         if unified.negative_prompt.is_some() {
@@ -248,6 +241,7 @@ impl Wan25FastModel {
 
         Ok(VideoGenInput::Wan25Fast(Wan25FastModel {
             prompt: unified.prompt,
+            image: unified.image,
         }))
     }
 
@@ -258,10 +252,10 @@ impl Wan25FastModel {
 
         crate::types_v2::ProviderInfo {
             id: "wan2_5_fast".to_string(),
-            name: "Wan 2.5 Fast T2V".to_string(),
-            description: "Alibaba's Wan 2.5 Fast model for quick 720p text-to-video generation with optimized speed".to_string(),
+            name: "Wan 2.5 Fast".to_string(),
+            description: "Alibaba's Wan 2.5 Fast model for quick 720p video generation with optimized speed. Supports image-to-video.".to_string(),
             cost: CostInfo::from_usd_cents(WAN2_5_COST_USD_CENTS),
-            supports_image: false,
+            supports_image: true,
             supports_negative_prompt: false, // Hardcoded
             supports_audio: false,
             supports_audio_input: false,
