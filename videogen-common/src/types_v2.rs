@@ -61,8 +61,8 @@ pub struct VideoGenRequestV2 {
     #[schema(example = "A cat playing piano in a jazz club")]
     pub prompt: String,
 
-    /// The model to use (e.g., "wan2_5", "wan2_5_fast")
-    #[schema(example = "wan2_5_fast")]
+    /// The model to use (e.g., "lumalabs", "wan2_5")
+    #[schema(example = "lumalabs")]
     pub model_id: String,
 
     /// Token type for payment
@@ -161,11 +161,11 @@ impl CostInfo {
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 pub struct ProviderInfo {
     /// Unique identifier for the model
-    #[schema(example = "wan2_5_fast")]
+    #[schema(example = "lumalabs")]
     pub id: String,
 
     /// Display name
-    #[schema(example = "Wan 2.5 Fast")]
+    #[schema(example = "LumaLabs")]
     pub name: String,
 
     /// Description of the model
@@ -223,11 +223,11 @@ pub struct ProviderInfo {
     pub is_internal: bool,
 
     /// Path to model icon
-    #[schema(example = "/img/ai-models/wan2_5.svg")]
+    #[schema(example = "/img/ai-models/lumalabs.svg")]
     pub model_icon: Option<String>,
 
     /// Path to model icon
-    #[schema(example = "/img/ai-models/wan2_5.svg")]
+    #[schema(example = "/img/ai-models/lumalabs.svg")]
     pub ios_model_icon: Option<String>,
 
     /// Additional model-specific information
