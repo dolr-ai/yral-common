@@ -2,7 +2,7 @@
 use std::sync::LazyLock;
 
 use crate::models::speech_to_video::SpeechToVideoModel;
-use crate::models::{IntTestModel, LumaLabsModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
+use crate::models::{IntTestModel, TalkingHeadModel, Wan25FastModel, Wan25Model};
 use crate::types::VideoGenError;
 use crate::types_v2::{ProviderInfo, ProvidersResponse, VideoGenRequestV2};
 use crate::VideoGenInput;
@@ -17,7 +17,6 @@ impl AdapterRegistry {
         request: VideoGenRequestV2,
     ) -> Result<VideoGenInput, VideoGenError> {
         match request.model_id.as_str() {
-            "lumalabs" => LumaLabsModel::from_unified_request(request),
             "inttest" => IntTestModel::from_unified_request(request),
             "talkinghead" => TalkingHeadModel::from_unified_request(request),
             "wan2_5" => Wan25Model::from_unified_request(request),
@@ -35,7 +34,6 @@ impl AdapterRegistry {
         let providers = vec![
             Wan25FastModel::get_provider_info(), // Default
             Wan25Model::get_provider_info(),
-            LumaLabsModel::get_provider_info(),
             IntTestModel::get_provider_info(),
             SpeechToVideoModel::get_provider_info(),
         ];
@@ -51,7 +49,6 @@ impl AdapterRegistry {
         let providers = vec![
             Wan25FastModel::get_provider_info(), // Default
             Wan25Model::get_provider_info(),
-            LumaLabsModel::get_provider_info(),
         ];
 
         ProvidersResponse {
@@ -63,7 +60,6 @@ impl AdapterRegistry {
     /// Get provider information for a specific model
     pub fn get_provider_info(&self, model_id: &str) -> Option<ProviderInfo> {
         match model_id {
-            "lumalabs" => Some(LumaLabsModel::get_provider_info()),
             "inttest" => Some(IntTestModel::get_provider_info()),
             "talkinghead" => Some(TalkingHeadModel::get_provider_info()),
             "wan2_5" => Some(Wan25Model::get_provider_info()),

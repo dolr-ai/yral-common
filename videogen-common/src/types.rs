@@ -1,6 +1,6 @@
 use crate::models::{
-    speech_to_video::SpeechToVideoModel, IntTestModel, LumaLabsModel, TalkingHeadModel,
-    Wan25FastModel, Wan25Model,
+    speech_to_video::SpeechToVideoModel, IntTestModel, TalkingHeadModel, Wan25FastModel,
+    Wan25Model,
 };
 // VideoModel has been removed - using ProviderInfo from types_v2 instead
 use candid::{CandidType, Principal};
@@ -81,7 +81,6 @@ pub struct VideoGenRequest {
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 #[serde(tag = "provider", content = "data")]
 pub enum VideoGenInput {
-    LumaLabs(LumaLabsModel),
     IntTest(IntTestModel),
     TalkingHead(TalkingHeadModel),
     Wan25(Wan25Model),
@@ -95,7 +94,6 @@ pub enum VideoGenInput {
     Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, CandidType, strum_macros::Display,
 )]
 pub enum VideoGenProvider {
-    LumaLabs,
     IntTest,
     TalkingHead,
     Wan25,
@@ -220,25 +218,6 @@ pub enum Veo3AspectRatio {
     Ratio9x16,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema, CandidType)]
-pub enum LumaLabsResolution {
-    #[serde(rename = "540p")]
-    R540p,
-    #[serde(rename = "720p")]
-    R720p,
-    #[serde(rename = "1080p")]
-    R1080p,
-    #[serde(rename = "4k")]
-    R4k,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema, CandidType)]
-pub enum LumaLabsDuration {
-    #[serde(rename = "5s")]
-    D5s,
-    #[serde(rename = "9s")]
-    D9s,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, CandidType)]
 pub struct VideoGenRequestKey {
