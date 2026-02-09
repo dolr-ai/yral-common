@@ -175,7 +175,7 @@ impl Wan25Model {
             cost: CostInfo::from_usd_cents(WAN2_5_COST_USD_CENTS),
             supports_image: true,
             supports_negative_prompt: false, // Hardcoded
-            supports_audio: false,
+            supports_audio: true,
             supports_audio_input: false,
             supports_seed: false, // Always -1 (random)
             allowed_aspect_ratios: vec![AspectRatioV2::Ratio9x16], // 720x1280
@@ -257,7 +257,7 @@ impl Wan25FastModel {
             cost: CostInfo::from_usd_cents(WAN2_5_COST_USD_CENTS),
             supports_image: true,
             supports_negative_prompt: false, // Hardcoded
-            supports_audio: false,
+            supports_audio: true,
             supports_audio_input: false,
             supports_seed: false, // Always -1 (random)
             allowed_aspect_ratios: vec![AspectRatioV2::Ratio9x16], // 720x1280
