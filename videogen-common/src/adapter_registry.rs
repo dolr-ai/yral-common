@@ -55,7 +55,6 @@ impl AdapterRegistry {
         let providers = vec![
             Wan25FastModel::get_provider_info(), // Default
             Wan25Model::get_provider_info(),
-            LumaLabsModel::get_provider_info(),
             Ltx2Model::get_provider_info(),
         ];
 

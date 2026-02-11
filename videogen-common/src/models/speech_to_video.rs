@@ -14,6 +14,9 @@ use crate::{
 pub struct SpeechToVideoModel {
     /// Input audio (voice) for the speech-to-video model
     pub audio: AudioData,
+    /// Optional image for image-to-video generation with speech
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<crate::types::ImageData>,
 }
 
 impl VideoGenerator for SpeechToVideoModel {
@@ -36,11 +39,11 @@ impl VideoGenerator for SpeechToVideoModel {
     }
 
     fn get_image(&self) -> Option<&crate::types::ImageData> {
-        None // No image support
+        self.image.as_ref()
     }
 
     fn get_image_mut(&mut self) -> Option<&mut crate::types::ImageData> {
-        None
+        self.image.as_mut()
     }
 
     fn flow_control_config(&self) -> Option<(u32, u32)> {
@@ -62,7 +65,10 @@ impl SpeechToVideoModel {
         request: VideoGenRequestV2,
     ) -> Result<VideoGenInput, VideoGenError> {
         if let Some(audio) = request.audio {
-            Ok(VideoGenInput::SpeechToVideo(SpeechToVideoModel { audio }))
+            Ok(VideoGenInput::SpeechToVideo(SpeechToVideoModel {
+                audio,
+                image: request.image,
+            }))
         } else {
             Err(VideoGenError::InvalidInput(
                 "Audio data is required for SpeechToVideoModel".to_string(),
@@ -74,8 +80,8 @@ impl SpeechToVideoModel {
         crate::types_v2::ProviderInfo {
             id: "speech_to_video".to_string(),
             name: "SpeechToVideo".to_string(),
-            description: "Generates videos from speech input using advanced AI models.".to_string(),
-            supports_image: false,
+            description: "Generates videos from speech and optional image input using advanced AI models.".to_string(),
+            supports_image: true,
             model_icon: Some("https://yral.com/img/yral/favicon.svg".to_string()),
             is_available: true,
             cost: CostInfo::from_usd_cents(WAN2_5_COST_USD_CENTS),
