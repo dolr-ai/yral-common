@@ -1,5 +1,7 @@
 use crate::TokenType;
-use global_constants::{VIDEOGEN_USD_CENTS_TO_DOLR_E8S, VIDEOGEN_USD_CENTS_TO_SATS};
+use global_constants::{
+    LTX2_COST_USD_CENTS, VIDEOGEN_USD_CENTS_TO_DOLR_E8S, VIDEOGEN_USD_CENTS_TO_SATS,
+};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -50,7 +52,13 @@ impl Default for TokenCostConfig {
     fn default() -> Self {
         // NOTE: Model costs are now fetched dynamically via API
         // This provides default costs as a fallback
-        let model_costs_usd = HashMap::new();
+        let mut model_costs_usd = HashMap::new();
+        model_costs_usd.insert(
+            "ltx2".to_string(),
+            ModelCostUSD {
+                usd_cents: LTX2_COST_USD_CENTS,
+            },
+        );
 
         // Default cost for models not in the list
         let default_cost = ModelCostUSD::default();

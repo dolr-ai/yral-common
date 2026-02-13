@@ -97,7 +97,7 @@ pub const WAN2_5_FAST_COST_USD_CENTS: u64 = 50; // $0.5
 pub const SEEDANCE_COST_USD_CENTS: u64 = 50; // $0.5
 pub const TALKINGHEAD_COST_USD_CENTS: u64 = 50; // $0.5
 pub const INTTEST_COST_USD_CENTS: u64 = 0; // Free for testing
-pub const LTX2_COST_USD_CENTS: u64 = 25; // $0.25 - Self-hosted LTX-2 on Vast.ai H100
+pub const LTX2_COST_USD_CENTS: u64 = 0; // Free - Self-hosted LTX-2 on Vast.ai H100
 
 // Token conversion ratios for video generation
 // Based on: $0.5 (50 cents) = 500 sats = 100 dolr
