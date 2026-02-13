@@ -80,7 +80,9 @@ impl SpeechToVideoModel {
         crate::types_v2::ProviderInfo {
             id: "speech_to_video".to_string(),
             name: "SpeechToVideo".to_string(),
-            description: "Generates videos from speech and optional image input using advanced AI models.".to_string(),
+            description:
+                "Generates videos from speech and optional image input using advanced AI models."
+                    .to_string(),
             supports_image: true,
             model_icon: Some("https://yral.com/img/yral/favicon.svg".to_string()),
             is_available: true,
