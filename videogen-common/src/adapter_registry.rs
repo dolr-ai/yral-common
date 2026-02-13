@@ -36,10 +36,10 @@ impl AdapterRegistry {
     /// Get provider information for all registered models
     pub fn get_all_providers(&self) -> ProvidersResponse {
         let providers = vec![
-            Wan25FastModel::get_provider_info(), // Default
+            Ltx2Model::get_provider_info(), // Default
+            Wan25FastModel::get_provider_info(),
             Wan25Model::get_provider_info(),
             LumaLabsModel::get_provider_info(),
-            Ltx2Model::get_provider_info(),
             IntTestModel::get_provider_info(),
             SpeechToVideoModel::get_provider_info(),
         ];
@@ -53,9 +53,9 @@ impl AdapterRegistry {
     /// Get provider information for all prod models
     pub fn get_all_prod_providers(&self) -> ProvidersResponse {
         let providers = vec![
-            Wan25FastModel::get_provider_info(), // Default
+            Ltx2Model::get_provider_info(), // Default
+            Wan25FastModel::get_provider_info(),
             Wan25Model::get_provider_info(),
-            Ltx2Model::get_provider_info(),
         ];
 
         ProvidersResponse {
