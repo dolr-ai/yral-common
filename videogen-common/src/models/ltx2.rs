@@ -123,7 +123,7 @@ impl Ltx2Model {
             cost: CostInfo::from_usd_cents(LTX2_COST_USD_CENTS),
             supports_image: true,
             supports_negative_prompt: false, // Hardcoded
-            supports_audio: false, // Audio output is very weak
+            supports_audio: true,
             supports_audio_input: false,
             supports_seed: false,
             allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9, AspectRatioV2::Ratio9x16],
