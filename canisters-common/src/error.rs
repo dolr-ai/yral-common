@@ -30,7 +30,7 @@ pub enum Error {
     #[error("error from yral canister: {0}")]
     YralCanister(String),
     #[error("invalid identity: {0}")]
-    Identity(#[from] k256::elliptic_curve::Error),
+    Identity(String),
     #[error("identity error: {0}")]
     YralIdentity(#[from] identity::Error),
     #[error("failed to get transactions: {0}")]

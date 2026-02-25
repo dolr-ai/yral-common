@@ -25,15 +25,16 @@ impl std::fmt::Debug for DelegatedIdentityWire {
 }
 
 impl TryFrom<DelegatedIdentityWire> for DelegatedIdentity {
-    type Error = k256::elliptic_curve::Error;
+    type Error = Box<dyn std::error::Error>;
 
     fn try_from(value: DelegatedIdentityWire) -> Result<Self, Self::Error> {
         let to_secret = k256::SecretKey::from_jwk(&value.to_secret)?;
         let to_identity = Secp256k1Identity::from_private_key(to_secret);
-        Ok(Self::new_unchecked(
+        DelegatedIdentity::new(
             value.from_key,
             Box::new(to_identity),
             value.delegation_chain,
-        ))
+        )
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
     }
 }

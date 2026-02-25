@@ -178,7 +178,10 @@ impl Canisters<true> {
     }
 
     pub async fn authenticate_with_network(auth: DelegatedIdentityWire) -> Result<Canisters<true>> {
-        let id: DelegatedIdentity = auth.clone().try_into()?;
+        let id: DelegatedIdentity = auth
+            .clone()
+            .try_into()
+            .map_err(|e: Box<dyn std::error::Error>| Error::Identity(e.to_string()))?;
         let expiry = id
             .delegation_chain()
             .iter()
@@ -314,7 +317,11 @@ impl Canisters<true> {
     }
 
     pub fn from_wire(wire: CanistersAuthWire, base: Canisters<false>) -> Result<Self> {
-        let id: DelegatedIdentity = wire.id.clone().try_into()?;
+        let id: DelegatedIdentity = wire
+            .id
+            .clone()
+            .try_into()
+            .map_err(|e: Box<dyn std::error::Error>| Error::Identity(e.to_string()))?;
         let arc_id = Arc::new(id);
 
         let mut agent = base.agent.clone();
