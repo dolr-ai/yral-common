@@ -1,6 +1,6 @@
-use crate::models::{IntTestModel, LumaLabsModel};
+use crate::models::IntTestModel;
 use crate::types::{
-    ImageData, LumaLabsDuration, LumaLabsResolution, ModelMetadata, Veo3AspectRatio, VideoGenInput,
+    ImageData, ModelMetadata, Veo3AspectRatio, VideoGenInput,
     VideoGenProvider,
 };
 use candid::CandidType;
