@@ -1,6 +1,6 @@
-use crate::models::{IntTestModel, LumaLabsModel};
+use crate::models::IntTestModel;
 use crate::types::{
-    ImageData, LumaLabsDuration, LumaLabsResolution, ModelMetadata, Veo3AspectRatio, VideoGenInput,
+    ImageData, ModelMetadata, Veo3AspectRatio, VideoGenInput,
     VideoGenProvider,
 };
 use candid::CandidType;
@@ -24,28 +24,10 @@ pub struct VideoModel {
     pub is_available: bool, // Whether the model is currently available or coming soon
 }
 
-impl Default for VideoModel {
-    fn default() -> Self {
-        Self {
-            id: "lumalabs".to_string(),
-            name: "LumaLabs".to_string(),
-            description: "LumaLabs Dream Machine video generation".to_string(),
-            cost_usd_cents: 10,
-            supports_image: true,
-            provider: VideoGenProvider::LumaLabs,
-            max_duration_seconds: 9,
-            supported_aspect_ratios: vec![Veo3AspectRatio::Ratio16x9, Veo3AspectRatio::Ratio9x16],
-            model_icon: None,
-            is_available: true,
-        }
-    }
-}
-
 impl VideoModel {
     /// Get all available video generation models
     pub fn get_models() -> Vec<Self> {
         vec![
-            LumaLabsModel::model_info().clone(),
             IntTestModel::model_info().clone(),
         ]
     }
@@ -67,18 +49,6 @@ impl VideoModel {
         }
 
         match self.provider {
-            VideoGenProvider::LumaLabs => Ok(VideoGenInput::LumaLabs(LumaLabsModel {
-                prompt,
-                image,
-                resolution: LumaLabsResolution::R1080p, // Default to 1080p
-                duration: if self.max_duration_seconds <= 5 {
-                    LumaLabsDuration::D5s
-                } else {
-                    LumaLabsDuration::D9s
-                },
-                aspect_ratio: Some("16:9".to_string()),
-                loop_video: false,
-            })),
             VideoGenProvider::IntTest => Ok(VideoGenInput::IntTest(IntTestModel { prompt, image })),
             _ => Err(format!("Model {} is not supported", self.name)),
         }
