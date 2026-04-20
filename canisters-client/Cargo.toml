@@ -40,9 +40,11 @@ services = [
     "dedup-index",
     "rate-limits",
     "user-info-service",
+    "daily-missions",
 ]
 notification-store = []
 dedup-index = []
 rate-limits = []
 user-info-service = []
 user-post-service = []
+daily-missions = []
