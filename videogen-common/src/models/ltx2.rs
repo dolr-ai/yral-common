@@ -12,6 +12,8 @@ use utoipa::ToSchema;
 pub struct Ltx2Model {
     pub prompt: String,
     pub image: Option<ImageData>,
+    /// Duration in seconds (None = use server default)
+    pub duration_seconds: Option<u32>,
 }
 
 impl VideoGenerator for Ltx2Model {
@@ -80,14 +82,7 @@ impl Ltx2Model {
             ));
         }
 
-        // Validate duration (only 5s supported - 121 frames at 24fps)
-        if let Some(duration) = unified.duration_seconds {
-            if duration != 5 {
-                return Err(VideoGenError::InvalidInput(
-                    "LTX-2 only supports 5 second duration".to_string(),
-                ));
-            }
-        }
+        // No duration restriction — server picks default if not specified
 
         // Validate resolution (720p or 1080p supported)
         if let Some(ref res) = unified.resolution {
@@ -108,6 +103,7 @@ impl Ltx2Model {
         Ok(VideoGenInput::Ltx2(Ltx2Model {
             prompt: unified.prompt,
             image: unified.image,
+            duration_seconds: unified.duration_seconds.map(|d| d as u32),
         }))
     }
 
@@ -128,10 +124,10 @@ impl Ltx2Model {
             supports_seed: false,
             allowed_aspect_ratios: vec![AspectRatioV2::Ratio16x9, AspectRatioV2::Ratio9x16],
             allowed_resolutions: vec![ResolutionV2::R720p, ResolutionV2::R1080p],
-            allowed_durations: vec![5],
+            allowed_durations: vec![5, 10, 15],
             default_aspect_ratio: Some(AspectRatioV2::Ratio16x9),
             default_resolution: Some(ResolutionV2::R720p),
-            default_duration: Some(5),
+            default_duration: Some(15),
             is_available: true,
             is_internal: false,
             model_icon: Some("https://yral.com/img/yral/favicon.svg".to_string()),
