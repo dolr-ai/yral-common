@@ -42,10 +42,6 @@ static DID_WHITELIST: LazyLock<HashSet<&str>> = LazyLock::new(|| {
     whitelist.insert("sns_swap");
     #[cfg(feature = "sns-index")]
     whitelist.insert("sns_index");
-    #[cfg(feature = "notification-store")]
-    whitelist.insert("notification_store");
-    #[cfg(feature = "dedup-index")]
-    whitelist.insert("dedup_index");
     #[cfg(feature = "rate-limits")]
     whitelist.insert("rate_limits");
     #[cfg(feature = "user-info-service")]
