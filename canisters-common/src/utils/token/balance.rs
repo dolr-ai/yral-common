@@ -19,19 +19,6 @@ impl TokenBalance {
         Self { e8s, decimals }
     }
 
-    /// Token Balance but with 8 decimals (default for Cdao)
-    pub fn new_cdao(e8s: Nat) -> Self {
-        Self::new(e8s, 8u8)
-    }
-
-    /// Parse a numeric value
-    /// multiplied by 8 decimals (1e8)
-    pub fn parse_cdao(token_str: &str) -> Result<Self, rust_decimal::Error> {
-        let tokens = (Decimal::from_str(token_str)? * Decimal::new(1e8 as i64, 0)).floor();
-        let e8s = Nat::from_str(&tokens.to_string()).unwrap();
-        Ok(Self::new_cdao(e8s))
-    }
-
     pub fn parse(token_str: &str, decimals: u8) -> Result<Self, rust_decimal::Error> {
         let scale_factor = 10u64.pow(decimals.into());
         let tokens = (Decimal::from_str(token_str)? * Decimal::new(scale_factor as i64, 0)).floor();

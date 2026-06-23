@@ -27,21 +27,6 @@ type BettingStatus = variant {
   BettingClosed;
 };
 type Canister = record { id : opt principal };
-type CdaoDeployError = variant {
-  CycleError : text;
-  Unregistered;
-  CallError : record { RejectionCode; text };
-  InvalidInitPayload : text;
-  TokenLimit : nat64;
-  Unauthenticated;
-};
-type CdaoTokenError = variant {
-  NoBalance;
-  InvalidRoot;
-  CallError : record { RejectionCode; text };
-  Transfer : TransferError;
-  Unauthenticated;
-};
 type ClaimStatus = variant {
   Unclaimed;
   Claiming;
@@ -55,14 +40,6 @@ type Committed = record {
 };
 type Countries = record { iso_codes : vec text };
 type DappCanisters = record { canisters : vec Canister };
-type DeployedCdaoCanisters = record {
-  airdrop_info : AirdropInfo;
-  root : principal;
-  swap : principal;
-  ledger : principal;
-  index : principal;
-  governance : principal;
-};
 type DeveloperDistribution = record {
   developer_neurons : vec NeuronDistribution;
 };
@@ -92,10 +69,6 @@ type HttpResponse = record {
 };
 type IdealMatchedParticipationFunction = record {
   serialized_representation : opt text;
-};
-type IndividualUserCreatorDaoEntry = record {
-  deployed_canisters : vec principal;
-  individual_profile_id : principal;
 };
 type IndividualUserTemplateInitArgs = record {
   pump_dump_onboarding_reward : opt nat;
@@ -250,17 +223,13 @@ type RejectionCode = variant {
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : nat64; Err : text };
 type Result_10 = variant { Ok; Err : AirdropError };
-type Result_11 = variant { Ok : IndividualUserCreatorDaoEntry; Err : text };
 type Result_12 = variant { Committed : Committed; Aborted : record {} };
 type Result_13 = variant { Ok : Ok; Err : GovernanceError };
-type Result_14 = variant { Ok; Err : CdaoTokenError };
 type Result_15 = variant { Ok : text; Err : text };
 type Result_16 = variant {
   Ok : UserProfileDetailsForFrontend;
   Err : UpdateProfileDetailsError;
 };
-type Result_2 = variant { Ok : bool; Err : CdaoTokenError };
-type Result_3 = variant { Ok : DeployedCdaoCanisters; Err : CdaoDeployError };
 type Result_4 = variant { Ok : Post; Err };
 type Result_5 = variant { Ok : SystemTime; Err : text };
 type Result_6 = variant {
@@ -374,13 +343,11 @@ type UserProfileUpdateDetailsFromFrontend = record {
 service : (IndividualUserTemplateInitArgs) -> {
   add_dollr_to_liquidity_pool : (principal, nat) -> (Result);
   add_post_v2 : (PostDetailsFromFrontend) -> (Result_1);
-  add_token : (principal) -> (Result_2);
+  add_token : (principal) -> (Result);
   cents_token_balance_info : () -> (BalanceInfo) query;
   clear_snapshot : () -> ();
   delete_all_creator_token : () -> ();
   delete_post : (nat64) -> (Result);
-  deploy_cdao_sns : (SnsInitPayload, nat64) -> (Result_3);
-  deployed_cdao_canisters : () -> (vec DeployedCdaoCanisters) query;
   download_snapshot : (nat64, nat64) -> (blob) query;
   get_entire_individual_post_detail_by_id : (nat64) -> (Result_4) query;
   get_individual_post_details_by_id : (nat64) -> (PostDetailsForFrontend) query;
@@ -419,14 +386,13 @@ service : (IndividualUserTemplateInitArgs) -> {
   return_cycles_to_user_index_canister : (opt nat) -> ();
   save_snapshot_json : () -> (nat32);
   save_snapshot_json_v2 : () -> (nat32);
-  send_creator_dao_stats_to_subnet_orchestrator : () -> (Result_11);
   set_controller_as_subnet_orchestrator : (principal) -> ();
   settle_neurons_fund_participation : (
       SettleNeuronsFundParticipationRequest,
     ) -> (SettleNeuronsFundParticipationResponse);
   stake_dollr_for_gdollr : (nat) -> (Result);
   transfer_token_to_user_canister : (principal, principal, opt blob, nat) -> (
-      Result_14,
+      Result,
     );
   update_last_access_time : () -> (Result_15);
   update_pd_onboarding_reward : (nat) -> (Result);
@@ -442,5 +408,4 @@ service : (IndividualUserTemplateInitArgs) -> {
   update_referrer_details : (UserCanisterDetails) -> (Result_15);
   update_session_type : (SessionType) -> (Result_15);
   update_well_known_principal : (KnownPrincipalType, principal) -> ();
-  upgrade_creator_dao_governance_canisters : (blob) -> (Result);
 }

@@ -43,10 +43,6 @@ type HttpResponse = record {
   headers : vec record { text; text };
   status_code : nat16;
 };
-type IndividualUserCreatorDaoEntry = record {
-  deployed_canisters : vec principal;
-  individual_profile_id : principal;
-};
 type KnownPrincipalType = variant {
   CanisterIdUserIndex;
   CanisterIdPlatformOrchestrator;
@@ -87,10 +83,6 @@ type RejectionCode = variant {
   CanisterReject;
 };
 type Result = variant { Ok : principal; Err : text };
-type Result_1 = variant {
-  Ok : vec record { principal; IndividualUserCreatorDaoEntry };
-  Err : text;
-};
 type Result_2 = variant { Ok : text; Err : text };
 type Result_3 = variant { Ok; Err : text };
 type Result_4 = variant {
@@ -129,7 +121,6 @@ service : (UserIndexInitArgs) -> {
   allot_empty_canister : () -> (Result);
   are_signups_enabled : () -> (bool) query;
   clear_snapshot : () -> ();
-  collect_creator_dao_stats_in_the_network : () -> (Result_1);
   create_pool_of_individual_user_available_canisters : (text, blob) -> (
       Result_2,
     );
@@ -175,15 +166,8 @@ service : (UserIndexInitArgs) -> {
   load_snapshot : () -> ();
   make_individual_canister_logs_private : (principal) -> (Result_3);
   make_individual_canister_logs_public : (principal) -> (Result_3);
-  notify_specific_individual_canister_to_upgrade_creator_dao_governance_canisters : (
-      principal,
-      blob,
-    ) -> (Result_3);
   provision_empty_canisters : (nat64) -> ();
   receive_and_save_snaphot : (nat64, blob) -> ();
-  receive_creator_dao_stats_from_individual_canister : (vec principal) -> (
-      Result_3,
-    );
   receive_empty_canister_from_individual_canister : (vec principal) -> (
       Result_3,
     );
@@ -207,7 +191,6 @@ service : (UserIndexInitArgs) -> {
   update_profile_owner_for_individual_canisters : () -> ();
   update_restart_timers_hon_game : () -> (text);
   update_well_known_principal : (KnownPrincipalType, principal) -> ();
-  upgrade_all_creator_dao_governance_canisters_in_the_network : (blob) -> ();
   upgrade_specific_individual_canister_with_wasm_version : (
       principal,
       text,

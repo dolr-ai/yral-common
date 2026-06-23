@@ -30,7 +30,6 @@ pub mod types;
 pub use operations::TokenOperations;
 pub use types::{CkBtcOperations, DolrOperations, SatsOperations, TokenOperationsProvider};
 
-use canisters_client::individual_user_template::ClaimStatus;
 use canisters_client::sns_root::ListSnsCanistersResponse;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -281,7 +280,7 @@ impl<const A: bool> Canisters<A> {
             name: metadata.name.unwrap_or_default(),
             description: metadata.description.unwrap_or_default(),
             symbol,
-            fees: TokenBalance::new_cdao(fees),
+            fees: TokenBalance::new(fees, 8),
             balance: None,
             withdrawable_state: None,
             root: Some(token_root),
@@ -539,30 +538,6 @@ impl<const A: bool> Canisters<A> {
             .await?;
         log::debug!("transfer res: {res:?}");
         Ok(())
-    }
-
-    pub async fn get_airdrop_status(
-        &self,
-        token_owner: Principal,
-        token_root: Principal,
-        user_principal: Principal,
-    ) -> Result<bool> {
-        let token_owner = self.individual_user(token_owner).await;
-        let is_airdrop_claimed = token_owner
-            .deployed_cdao_canisters()
-            .await?
-            .into_iter()
-            .any(|token| {
-                token.root == token_root
-                    && token
-                        .airdrop_info
-                        .principals_who_successfully_claimed
-                        .iter()
-                        .any(|(principal, status)| {
-                            principal == &user_principal && matches!(*status, ClaimStatus::Claimed)
-                        })
-            });
-        Ok(is_airdrop_claimed)
     }
 
     pub async fn get_token_owner(&self, token_root: Principal) -> Result<Option<TokenOwner>> {
