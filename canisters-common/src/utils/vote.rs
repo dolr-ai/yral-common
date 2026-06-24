@@ -1,5 +1,4 @@
 use candid::{CandidType, Principal};
-use canisters_client::individual_user_template::BettingStatus;
 use hon_worker_common::{GameInfo, GameInfoReq, GameInfoReqV3, GameInfoReqV4};
 use identity::{ic_agent::sign_message, msg_builder::Message, Signature};
 use serde::{Deserialize, Serialize};
@@ -8,6 +7,27 @@ use web_time::Duration;
 use crate::{consts::CENTS_IN_E6S, Canisters, Error, HonError, Result};
 
 use super::time::current_epoch;
+
+/// SystemTime matching the candid definition (was from individual_user_template.did)
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub struct SystemTime {
+    pub nanos_since_epoch: u32,
+    pub secs_since_epoch: u64,
+}
+
+/// BettingStatus matching the candid definition (was from individual_user_template.did)
+/// TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub enum BettingStatus {
+    BettingOpen {
+        number_of_participants: u8,
+        ongoing_room: u64,
+        ongoing_slot: u8,
+        has_this_user_participated_in_this_post: Option<bool>,
+        started_at: SystemTime,
+    },
+    BettingClosed,
+}
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum VoteOutcome {

@@ -4,7 +4,6 @@ use agent_wrapper::AgentWrapper;
 use candid::Principal;
 use canisters_client::{
     ic::USER_POST_SERVICE_ID,
-    individual_user_template::IndividualUserTemplate,
     local::USER_INFO_SERVICE_ID,
     platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
@@ -161,10 +160,6 @@ impl Canisters<true> {
         self.user_canister
     }
 
-    pub async fn authenticated_user(&self) -> IndividualUserTemplate<'_> {
-        self.individual_user(self.user_canister).await
-    }
-
     pub fn profile_details(&self) -> ProfileDetails {
         self.profile_details
             .clone()
@@ -263,17 +258,12 @@ impl Canisters<true> {
                 }
             }
         } else {
-            let profile_details = canisters
-                .individual_user(canisters.user_canister)
-                .await
-                .get_profile_details_v_2()
-                .await?;
-
-            canisters.profile_details = Some(ProfileDetails::from_canister(
-                canisters.user_canister,
-                maybe_meta.map(|m| m.user_name),
-                profile_details,
-            ));
+            // TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+            // Legacy path for users still on old individual user canisters — no longer supported.
+            return Err(Error::YralCanister(format!(
+                "User canister {} is not USER_INFO_SERVICE_ID; individual_user_template canisters have been decommissioned",
+                canisters.user_canister
+            )));
         }
 
         //TODO: update last access time
@@ -346,11 +336,6 @@ impl<const A: bool> Canisters<A> {
     pub async fn user_post_service(&self) -> UserPostService<'_> {
         let agent = self.agent.get_agent().await;
         UserPostService(USER_POST_SERVICE_ID, agent)
-    }
-
-    pub async fn individual_user(&self, user_canister: Principal) -> IndividualUserTemplate<'_> {
-        let agent = self.agent.get_agent().await;
-        IndividualUserTemplate(user_canister, agent)
     }
 
     pub async fn user_index_with(&self, subnet_principal: Principal) -> UserIndex<'_> {

@@ -1,9 +1,19 @@
 use candid::{Nat, Principal};
-use canisters_client::individual_user_template::ParticipatedGameInfo;
 use identity::{msg_builder::Message, Signature};
 use serde::{Deserialize, Serialize};
 
 use crate::GameDirection;
+
+/// ParticipatedGameInfo matching the candid definition (was from individual_user_template.did)
+/// TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ParticipatedGameInfo {
+    pub game_direction: GameDirection,
+    pub reward: Nat,
+    pub pumps: u64,
+    pub dumps: u64,
+    pub token_root: Principal,
+}
 
 /// Request for converting GDOLLR to DOLLR
 #[derive(Serialize, Deserialize, Clone)]
@@ -68,7 +78,7 @@ impl From<CompletedGameInfo> for ParticipatedGameInfo {
             dumps: value.dumps,
             reward: value.reward,
             token_root: value.token_root,
-            game_direction: value.outcome.into(),
+            game_direction: value.outcome,
         }
     }
 }
@@ -80,7 +90,7 @@ impl From<ParticipatedGameInfo> for CompletedGameInfo {
             dumps: value.dumps,
             reward: value.reward,
             token_root: value.token_root,
-            outcome: value.game_direction.into(),
+            outcome: value.game_direction,
         }
     }
 }

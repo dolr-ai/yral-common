@@ -2,7 +2,6 @@ pub mod rest;
 pub mod ws;
 
 use candid::Nat;
-use canisters_client::individual_user_template::GameDirection as CanisterGameDirection;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,23 +10,9 @@ pub enum GameDirection {
     Dump,
 }
 
-impl From<GameDirection> for CanisterGameDirection {
-    fn from(value: GameDirection) -> Self {
-        match value {
-            GameDirection::Pump => CanisterGameDirection::Pump,
-            GameDirection::Dump => CanisterGameDirection::Dump,
-        }
-    }
-}
-
-impl From<CanisterGameDirection> for GameDirection {
-    fn from(value: CanisterGameDirection) -> Self {
-        match value {
-            CanisterGameDirection::Pump => GameDirection::Pump,
-            CanisterGameDirection::Dump => GameDirection::Dump,
-        }
-    }
-}
+// TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+// The From<GameDirection> for CanisterGameDirection and reverse impls were removed
+// because CanisterGameDirection came from individual_user_template::GameDirection.
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum WithdrawalState {

@@ -509,9 +509,13 @@ impl<const A: bool> Canisters<A> {
             return Ok(());
         }
 
-        let destination_canister = self.individual_user(destination_canister_id).await;
-        let res = destination_canister.add_token(root_id).await?;
-        log::debug!("add_token res {res:?}");
+        // TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+        // The old individual_user canister's add_token endpoint is no longer available.
+        // For legacy canister IDs, we skip the add_token call.
+        log::debug!(
+            "Skipping add_token for legacy canister {} — individual_user_template decommissioned",
+            destination_canister_id
+        );
 
         Ok(())
     }

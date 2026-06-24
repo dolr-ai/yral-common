@@ -4,7 +4,6 @@ use std::{
 };
 
 use candid::Principal;
-use canisters_client::individual_user_template::PostDetailsForFrontend;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
     user_info_service::Result3,
@@ -15,7 +14,7 @@ use canisters_client::{
     },
 };
 use futures_util::try_join;
-use global_constants::{NSFW_THRESHOLD, USERNAME_MAX_LEN};
+use global_constants::USERNAME_MAX_LEN;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use username_gen::random_username_from_principal;
@@ -77,15 +76,6 @@ impl Hash for PostDetails {
 impl Eq for PostDetails {}
 
 impl PostDetails {
-    pub fn from_canister_post(
-        authenticated: bool,
-        username: Option<String>,
-        canister_id: Principal,
-        details: PostDetailsForFrontend,
-    ) -> Self {
-        Self::from_canister_post_with_nsfw_info(authenticated, username, canister_id, details, 0.0)
-    }
-
     pub fn from_service_post_anonymous(
         username: Option<String>,
         canister_id: Principal,
@@ -148,41 +138,6 @@ impl PostDetails {
         }
     }
 
-    pub fn from_canister_post_with_nsfw_info(
-        authenticated: bool,
-        username: Option<String>,
-        canister_id: Principal,
-        details: PostDetailsForFrontend,
-        nsfw_probability: f32,
-    ) -> Self {
-        Self {
-            canister_id,
-            post_id: details.id.to_string(),
-            uid: details.video_uid,
-            description: details.description,
-            views: details.total_view_count,
-            likes: details.like_count,
-            display_name: details.created_by_display_name,
-            username,
-            propic_url: details
-                .created_by_profile_photo_url
-                .unwrap_or_else(|| propic_from_principal(details.created_by_user_principal_id)),
-            liked_by_user: authenticated.then_some(details.liked_by_me),
-            poster_principal: details.created_by_user_principal_id,
-            creator_follows_user: None,
-            user_follows_creator: None,
-            creator_bio: None,
-            hastags: details.hashtags,
-            is_nsfw: nsfw_probability >= NSFW_THRESHOLD,
-            hot_or_not_feed_ranking_score: details.hot_or_not_feed_ranking_score,
-            created_at: Duration::new(
-                details.created_at.secs_since_epoch,
-                details.created_at.nanos_since_epoch,
-            ),
-            nsfw_probability,
-        }
-    }
-
     pub fn is_hot_or_not(&self) -> bool {
         self.hot_or_not_feed_ranking_score.is_some()
     }
@@ -231,24 +186,6 @@ impl<const A: bool> Canisters<A> {
             .await
     }
 
-    #[instrument(skip(self))]
-    async fn get_individual_post_details_by_id_instrumented(
-        &self,
-        user_canister: Principal,
-        post_id: u64,
-    ) -> Option<PostDetailsForFrontend> {
-        let post_creator_can = self.individual_user(user_canister).await;
-        post_creator_can
-            .get_individual_post_details_by_id(post_id)
-            .await
-            .inspect_err(|err| {
-                log::warn!(
-                    "failed to get post details for {user_canister} {post_id}: {err:#?}, skipping"
-                );
-            })
-            .ok()
-    }
-
     /// A fast path for fetching post details from the canister.
     ///
     /// No additional detail is resolved, e.g. username or nsfw probability. For
@@ -259,39 +196,32 @@ impl<const A: bool> Canisters<A> {
         user_canister: Principal,
         post_id: &str,
     ) -> Result<Option<PostDetails>> {
-        let post_details = if user_canister == USER_INFO_SERVICE_ID {
-            let post_service_canister = self.user_post_service().await;
-            let post_details = post_service_canister
-                .get_individual_post_details_by_id_for_user(
-                    post_id.into(),
-                    post_service_canister.1.get_principal().unwrap(),
-                )
-                .await?;
+        if user_canister != USER_INFO_SERVICE_ID {
+            // TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+            // Legacy path for users still on old individual user canisters — no longer supported.
+            return Err(Error::YralCanister(format!(
+                "User canister {} is not USER_INFO_SERVICE_ID; individual_user_template canisters have been decommissioned",
+                user_canister
+            )));
+        }
 
-            let PostServiceResult3::Ok(post_details) = post_details else {
-                return Ok(None);
-            };
+        let post_service_canister = self.user_post_service().await;
+        let post_details = post_service_canister
+            .get_individual_post_details_by_id_for_user(
+                post_id.into(),
+                post_service_canister.1.get_principal().unwrap(),
+            )
+            .await?;
 
-            Ok::<_, Error>(Some(PostDetails::from_service_post(
-                None,
-                user_canister,
-                post_details,
-            )))
-        } else {
-            let post_creator_can = self.individual_user(user_canister).await;
-            let res = post_creator_can
-                .get_individual_post_details_by_id(post_id.parse::<u64>().unwrap())
-                .await?;
-            Ok(Some(PostDetails::from_canister_post_with_nsfw_info(
-                A,
-                None,
-                user_canister,
-                res,
-                0.0,
-            )))
-        }?;
+        let PostServiceResult3::Ok(post_details) = post_details else {
+            return Ok(None);
+        };
 
-        Ok(post_details)
+        Ok(Some(PostDetails::from_service_post(
+            None,
+            user_canister,
+            post_details,
+        )))
     }
 
     #[tracing::instrument(skip(self))]
@@ -555,11 +485,11 @@ impl Canisters<true> {
                 }
             }
             _ => {
-                let individual = self.individual_user(post_canister).await;
-                individual
-                    .update_post_toggle_like_status_by_caller(post_id.parse::<u64>().unwrap())
-                    .await
-                    .map_err(|e| crate::Error::YralCanister(e.to_string()))
+                // TODO: individual_user_template removed, needs migration to user_post_service
+                Err(crate::Error::YralCanister(format!(
+                    "Post canister {} is not USER_INFO_SERVICE_ID; individual_user_template canisters have been decommissioned",
+                    post_canister
+                )))
             }
         }
     }

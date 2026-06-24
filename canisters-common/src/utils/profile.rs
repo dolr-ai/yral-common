@@ -1,7 +1,6 @@
 use candid::Principal;
 use canisters_client::{
     ic::USER_INFO_SERVICE_ID,
-    individual_user_template::UserProfileDetailsForFrontendV2,
     user_info_service::{Result3, UserProfileDetailsForFrontendV4},
 };
 use global_constants::USERNAME_MAX_LEN;
@@ -32,29 +31,6 @@ pub struct ProfileDetails {
 }
 
 impl ProfileDetails {
-    pub fn from_canister(
-        user_canister: Principal,
-        username: Option<String>,
-        user: UserProfileDetailsForFrontendV2,
-    ) -> Self {
-        Self {
-            username: username.filter(|u| !u.is_empty()),
-            lifetime_earnings: user.lifetime_earnings,
-            followers_cnt: user.followers_count,
-            following_cnt: user.following_count,
-            profile_pic: user.profile_picture_url,
-            display_name: user.display_name,
-            principal: user.principal_id,
-            user_canister,
-            hots: user.profile_stats.hot_bets_received,
-            nots: user.profile_stats.not_bets_received,
-            bio: None,                 // V2 doesn't have bio
-            website_url: None,         // V2 doesn't have website_url
-            caller_follows_user: None, // V2 doesn't have follow relationships
-            user_follows_caller: None, // V2 doesn't have follow relationships
-        }
-    }
-
     pub fn from_service_canister(
         user_principal: Principal,
         username: Option<String>,
@@ -157,16 +133,11 @@ impl<const A: bool> Canisters<A> {
                 ))),
             }
         } else {
-            let profile_details = self
-                .individual_user(user_canister)
-                .await
-                .get_profile_details_v_2()
-                .await?;
-
-            Ok(Some(ProfileDetails::from_canister(
-                user_canister,
-                Some(meta.user_name),
-                profile_details,
+            // TODO: individual_user_template removed, needs migration to user_info_service/user_post_service
+            // Legacy path for users still on old individual user canisters — no longer supported.
+            Err(Error::YralCanister(format!(
+                "User canister {} is not USER_INFO_SERVICE_ID; individual_user_template canisters have been decommissioned",
+                user_canister
             )))
         }
     }
