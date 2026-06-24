@@ -13,7 +13,6 @@ use canisters_client::{
     sns_ledger::SnsLedger,
     sns_root::SnsRoot,
     sns_swap::SnsSwap,
-    user_index::UserIndex,
     user_info_service::{Result3, Result_, UserInfoService},
     user_post_service::UserPostService,
 };
@@ -336,11 +335,6 @@ impl<const A: bool> Canisters<A> {
     pub async fn user_post_service(&self) -> UserPostService<'_> {
         let agent = self.agent.get_agent().await;
         UserPostService(USER_POST_SERVICE_ID, agent)
-    }
-
-    pub async fn user_index_with(&self, subnet_principal: Principal) -> UserIndex<'_> {
-        let agent = self.agent.get_agent().await;
-        UserIndex(subnet_principal, agent)
     }
 
     pub async fn orchestrator(&self) -> PlatformOrchestrator<'_> {

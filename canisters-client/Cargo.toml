@@ -24,11 +24,10 @@ proc-macro2 = "1.0.95"
 
 [features]
 full = ["backend", "sns", "services"]
-backend = ["platform-orchestrator", "post-cache", "user-index", "user-info-service", "user-post-service"]
+backend = ["platform-orchestrator", "post-cache", "user-info-service", "user-post-service"]
 sns = ["sns-governance", "sns-ledger", "sns-root", "sns-swap", "sns-index"]
 platform-orchestrator = []
 post-cache = []
-user-index = []
 sns-governance = []
 sns-ledger = []
 sns-root = []

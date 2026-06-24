@@ -27,8 +27,6 @@ static DID_WHITELIST: LazyLock<HashSet<&str>> = LazyLock::new(|| {
     whitelist.insert("platform_orchestrator");
     #[cfg(feature = "post-cache")]
     whitelist.insert("post_cache");
-    #[cfg(feature = "user-index")]
-    whitelist.insert("user_index");
 
     #[cfg(feature = "sns-governance")]
     whitelist.insert("sns_governance");
