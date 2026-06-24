@@ -5,7 +5,6 @@ use candid::Principal;
 use canisters_client::{
     ic::USER_POST_SERVICE_ID,
     local::USER_INFO_SERVICE_ID,
-    platform_orchestrator::PlatformOrchestrator,
     post_cache::PostCache,
     rate_limits::RateLimits,
     sns_governance::SnsGovernance,
@@ -17,7 +16,7 @@ use canisters_client::{
     user_post_service::UserPostService,
 };
 use consts::{
-    canister_ids::{PLATFORM_ORCHESTRATOR_ID, POST_CACHE_ID, RATE_LIMITS_ID},
+    canister_ids::{POST_CACHE_ID, RATE_LIMITS_ID},
     METADATA_API_BASE,
 };
 use ic_agent::{identity::DelegatedIdentity, Identity};
@@ -335,11 +334,6 @@ impl<const A: bool> Canisters<A> {
     pub async fn user_post_service(&self) -> UserPostService<'_> {
         let agent = self.agent.get_agent().await;
         UserPostService(USER_POST_SERVICE_ID, agent)
-    }
-
-    pub async fn orchestrator(&self) -> PlatformOrchestrator<'_> {
-        let agent = self.agent.get_agent().await;
-        PlatformOrchestrator(PLATFORM_ORCHESTRATOR_ID, agent)
     }
 
     pub async fn get_user_metadata(

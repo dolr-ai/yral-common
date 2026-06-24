@@ -23,8 +23,6 @@ static DID_WHITELIST: LazyLock<HashSet<&str>> = LazyLock::new(|| {
     #[allow(unused_mut)]
     let mut whitelist = HashSet::new();
 
-    #[cfg(feature = "platform-orchestrator")]
-    whitelist.insert("platform_orchestrator");
     #[cfg(feature = "post-cache")]
     whitelist.insert("post_cache");
 
