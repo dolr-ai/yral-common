@@ -86,7 +86,8 @@ fn index_from_principal(principal: Principal) -> u32 {
 
 pub fn propic_from_principal(principal: Principal) -> String {
     let index = index_from_principal(principal);
-    format!("{GOBGOB_PROPIC_URL}{index}/public")
+    // Hetzner objects are gob.<index>.png (was Cloudflare's gob.<index>/public).
+    format!("{GOBGOB_PROPIC_URL}{index}.png")
 }
 
 impl ProfileDetails {

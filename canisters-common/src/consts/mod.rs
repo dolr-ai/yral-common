@@ -12,7 +12,10 @@ pub mod canister_ids;
 
 pub const CENTS_IN_E6S: u64 = 1_000_000;
 pub const GOBGOB_TOTAL_COUNT: u32 = 18557;
-pub const GOBGOB_PROPIC_URL: &str = "https://imagedelivery.net/abXI9nS4DYYtyR1yFFtziA/gob.";
+// GobGob default avatars migrated off Cloudflare Images to self-hosted Hetzner
+// (prakash-yral/gobgob/). Objects are gob.<index>.png (public-read). See
+// propic_from_principal for how the full URL is built.
+pub const GOBGOB_PROPIC_URL: &str = "https://prakash-yral.hel1.your-objectstorage.com/gobgob/gob.";
 
 pub const CKBTC_LEDGER: &str = "mxzaz-hqaaa-aaaar-qaada-cai";
 pub const CKBTC_INDEX: &str = "n5wcd-faaaa-aaaar-qaaea-cai";
